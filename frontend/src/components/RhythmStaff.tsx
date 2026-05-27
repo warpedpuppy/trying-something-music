@@ -3,6 +3,8 @@ import type { Pattern, Verdict } from '../api/types'
 import { renderPattern } from '../lib/vexflowPattern'
 import type { NoteAnchor } from '../lib/vexflowPattern'
 
+export type { NoteAnchor }
+
 export interface DotMarker {
   /** Index into `pattern.events` of the note this dot sits above. */
   eventIndex: number
@@ -30,12 +32,14 @@ interface RhythmStaffProps {
   timeSigBottom: number
   dots?: DotMarker[]
   caption?: string
-  /** Called once after each render with the rendered SVG width in pixels. */
-  onRendered?: (width: number) => void
+  /** Current playhead x position (px within the staff canvas). Null = hidden. */
+  playheadX?: number | null
+  /** Called after each render with the SVG width and all note anchors. */
+  onRendered?: (width: number, anchors: NoteAnchor[]) => void
 }
 
 /** Engraved notation with optional colored feedback dots floating above the notes. */
-export function RhythmStaff({ pattern, timeSigTop, timeSigBottom, dots = [], caption, onRendered }: RhythmStaffProps) {
+export function RhythmStaff({ pattern, timeSigTop, timeSigBottom, dots = [], caption, playheadX, onRendered }: RhythmStaffProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [anchors, setAnchors] = useState<NoteAnchor[]>([])
   const [renderError, setRenderError] = useState<string | null>(null)
@@ -48,7 +52,7 @@ export function RhythmStaff({ pattern, timeSigTop, timeSigBottom, dots = [], cap
     try {
       const result = renderPattern(container, pattern, timeSigTop, timeSigBottom)
       setAnchors(result.anchors)
-      onRendered?.(result.width)
+      onRendered?.(result.width, result.anchors)
       setRenderError(null)
     } catch (error) {
       setRenderError(error instanceof Error ? error.message : 'Could not render notation')
@@ -63,6 +67,9 @@ export function RhythmStaff({ pattern, timeSigTop, timeSigBottom, dots = [], cap
     <figure className="rhythm-staff">
       <div className="rhythm-staff-canvas">
         <div ref={containerRef} />
+        {playheadX != null && (
+          <div className="staff-playhead" style={{ left: playheadX }} />
+        )}
         {dots.map((dot, i) => {
           const anchor = anchors.find((a) => a.eventIndex === dot.eventIndex)
           if (!anchor) {

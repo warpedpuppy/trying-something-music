@@ -4,13 +4,13 @@ import { api } from '../api/client'
 import type { AttemptMode, AttemptResult, Exercise } from '../api/types'
 import { Metronome } from '../components/Metronome'
 import { RhythmStaff } from '../components/RhythmStaff'
-import type { DotMarker } from '../components/RhythmStaff'
+import type { DotMarker, NoteAnchor } from '../components/RhythmStaff'
 import { TapButton } from '../components/TapButton'
 import { useTapCapture } from '../hooks/useTapCapture'
 import { tickEngine } from '../lib/audio'
-import { expectedOnsets, getBeatLabel, onsetTimesMs, tapsToPattern } from '../lib/rhythm'
+import { expectedOnsets, onsetTimesMs, tapsToPattern, totalBeats } from '../lib/rhythm'
 
-type Phase = 'idle' | 'count-in' | 'capturing' | 'submitting' | 'playback' | 'result'
+type Phase = 'idle' | 'count-in' | 'give-up-count-in' | 'capturing' | 'submitting' | 'playback' | 'result'
 
 export function ExercisePlayer() {
   const { id } = useParams<{ id: string }>()
@@ -23,12 +23,14 @@ export function ExercisePlayer() {
   const [result, setResult] = useState<AttemptResult | null>(null)
   const [lastTaps, setLastTaps] = useState<number[]>([])
   const [playingIndex, setPlayingIndex] = useState<number | null>(null)
-  const [playbackLabel, setPlaybackLabel] = useState('')
-  const [playbackFlashKey, setPlaybackFlashKey] = useState(0)
+  const [playheadX, setPlayheadX] = useState<number | null>(null)
+  const [staffAnchors, setStaffAnchors] = useState<NoteAnchor[]>([])
   const [showPlayed, setShowPlayed] = useState(false)
   const [staffWidth, setStaffWidth] = useState<number | undefined>()
   const downbeatEpochRef = useRef(0)
   const captureOpenTimerRef = useRef<number | null>(null)
+  const playheadRafRef = useRef<number | null>(null)
+  const playheadHoldRef = useRef<number | null>(null)
 
   const onsets = useMemo(() => (exercise ? expectedOnsets(exercise.pattern) : []), [exercise])
 
@@ -38,6 +40,45 @@ export function ExercisePlayer() {
       captureOpenTimerRef.current = null
     }
   }, [])
+
+  function startPlayheadAnim(
+    startWallMs: number,
+    durationMs: number,
+    x0: number,
+    x1: number,
+    holdMs: number,
+    onEnd?: () => void,
+  ) {
+    if (playheadRafRef.current !== null) cancelAnimationFrame(playheadRafRef.current)
+    if (playheadHoldRef.current !== null) clearTimeout(playheadHoldRef.current)
+    const step = () => {
+      const t = Math.min(1, (performance.now() - startWallMs) / durationMs)
+      setPlayheadX(x0 + t * (x1 - x0))
+      if (t < 1) {
+        playheadRafRef.current = requestAnimationFrame(step)
+      } else {
+        playheadRafRef.current = null
+        playheadHoldRef.current = window.setTimeout(() => {
+          setPlayheadX(null)
+          playheadHoldRef.current = null
+          onEnd?.()
+        }, holdMs)
+      }
+    }
+    playheadRafRef.current = requestAnimationFrame(step)
+  }
+
+  function stopPlayheadAnim() {
+    if (playheadRafRef.current !== null) {
+      cancelAnimationFrame(playheadRafRef.current)
+      playheadRafRef.current = null
+    }
+    if (playheadHoldRef.current !== null) {
+      clearTimeout(playheadHoldRef.current)
+      playheadHoldRef.current = null
+    }
+    setPlayheadX(null)
+  }
 
   const submitAttempt = useCallback(
     async (tapsMs: number[], gaveUp: boolean, attemptMode: AttemptMode) => {
@@ -76,6 +117,7 @@ export function ExercisePlayer() {
     setPhase('idle')
     setShowPlayed(false)
     setPlayingIndex(null)
+    setPlayheadX(null)
     setCountInBeat(null)
     resetCapture()
     api
@@ -94,6 +136,7 @@ export function ExercisePlayer() {
     setResult(null)
     setShowPlayed(false)
     setPlayingIndex(null)
+    stopPlayheadAnim()
     setCountInBeat(null)
 
     if (mode === 'free') {
@@ -132,26 +175,55 @@ export function ExercisePlayer() {
   function handleGiveUp() {
     if (!exercise) return
     clearCaptureOpenTimer()
-    tickEngine.stopMetronome()
+    tickEngine.cancelAll()
+    stopPlayheadAnim()
     tapCapture.reset()
     setResult(null)
     setShowPlayed(false)
     setCountInBeat(null)
-    setPlaybackLabel('')
-    setPhase('playback')
+    setPhase('give-up-count-in')
+
+    const countInBeats = exercise.time_sig_top
+    const beatMs = 60000 / exercise.tempo_bpm
     const offsets = onsetTimesMs(exercise.pattern, exercise.tempo_bpm)
-    tickEngine.playSchedule(
-      offsets,
-      (index) => {
-        setPlayingIndex(index)
-        const onset = onsets[index]
-        if (onset) {
-          const withinMeasure = onset.beat % exercise.time_sig_top
-          setPlaybackLabel(getBeatLabel(withinMeasure))
-          setPlaybackFlashKey(k => k + 1)
+    const patternDurationMs = totalBeats(exercise.pattern) * beatMs
+
+    tickEngine.startMetronome(
+      exercise.tempo_bpm,
+      (index, wallTimeMs) => {
+        if (index < countInBeats) {
+          setCountInBeat(index + 1)
+        }
+
+        if (index === countInBeats - 1) {
+          const startDelayMs = Math.max(50, wallTimeMs + beatMs - performance.now())
+          tickEngine.playSchedule(
+            offsets,
+            (noteIndex) => { setPlayingIndex(noteIndex) },
+            () => {
+              tickEngine.stopMetronome()
+              setPlayingIndex(null)
+              // submitAttempt is deferred to after the playhead animation finishes
+            },
+            600,
+            startDelayMs,
+          )
+        }
+
+        if (index === countInBeats) {
+          setPhase('playback')
+          setCountInBeat(null)
+          const x0 = staffAnchors[0]?.x ?? 40
+          const x1 = (staffWidth ?? 200) - 10
+          startPlayheadAnim(
+            performance.now(),
+            patternDurationMs,
+            x0, x1,
+            beatMs,                                        // hold at the barline for one beat
+            () => void submitAttempt([], true, mode),      // then submit → show result
+          )
         }
       },
-      () => { setPlayingIndex(null); setPlaybackLabel(''); void submitAttempt([], true, mode) },
     )
   }
 
@@ -161,7 +233,7 @@ export function ExercisePlayer() {
     setResult(null)
     setShowPlayed(false)
     setPlayingIndex(null)
-    setPlaybackLabel('')
+    stopPlayheadAnim()
     setCountInBeat(null)
     tapCapture.reset()
     setPhase('idle')
@@ -184,7 +256,7 @@ export function ExercisePlayer() {
 
   const tapLabel =
     phase === 'idle' ? 'START' :
-    phase === 'count-in' ? (countInBeat !== null ? String(countInBeat) : '…') :
+    (phase === 'count-in' || phase === 'give-up-count-in') ? (countInBeat !== null ? String(countInBeat) : '…') :
     phase === 'capturing' ? 'TAP' :
     phase === 'result' ? 'AGAIN' :
     '…'
@@ -195,7 +267,7 @@ export function ExercisePlayer() {
       : undefined
 
   const tapDisabled =
-    phase === 'count-in' || phase === 'submitting' || phase === 'playback'
+    phase === 'count-in' || phase === 'give-up-count-in' || phase === 'submitting' || phase === 'playback'
 
   function handleTapButton() {
     if (phase === 'idle') handleStart()
@@ -227,7 +299,10 @@ export function ExercisePlayer() {
   }
 
   const showMetronome =
-    phase === 'count-in' || (phase === 'capturing' && mode === 'strict')
+    phase === 'count-in' ||
+    phase === 'give-up-count-in' ||
+    phase === 'playback' ||
+    (phase === 'capturing' && mode === 'strict')
 
   const inferredMsPerBeat = result?.inferred_bpm ? 60000 / result.inferred_bpm : 600
 
@@ -269,13 +344,14 @@ export function ExercisePlayer() {
               {mode === 'strict' ? 'Stay locked to the metronome' : 'Tap freely at your own tempo'}
             </span>
           )}
-          {phase === 'playback' && <span>Listen — this is the rhythm the notation is asking for.</span>}
+          {phase === 'give-up-count-in' && <span>Counting in — the answer plays on the downbeat…</span>}
+          {phase === 'playback' && <span>Listen — hear how the rhythm fits the underlying beat.</span>}
           {phase === 'submitting' && <span className="muted">Checking your rhythm…</span>}
           {phase === 'result' && result && (
             <span className={result.passed ? 'text-success' : 'text-warn'}>
-              <strong>
-                {result.passed ? 'Passed!' : result.gave_up ? 'No worries.' : 'Not quite.'}
-              </strong>{' '}
+              {!result.gave_up && (
+                <strong>{result.passed ? 'Passed!' : 'Not quite.'}{' '}</strong>
+              )}
               {result.message}
               {!result.gave_up && (
                 <>
@@ -298,13 +374,9 @@ export function ExercisePlayer() {
         timeSigTop={exercise.time_sig_top}
         timeSigBottom={exercise.time_sig_bottom}
         dots={dots}
-        onRendered={setStaffWidth}
+        playheadX={playheadX}
+        onRendered={(width, anchors) => { setStaffWidth(width); setStaffAnchors(anchors) }}
       />
-
-      {/* Beat count label — visible during playback */}
-      <p key={playbackFlashKey} className="playback-count-label" style={{ visibility: phase === 'playback' && playbackLabel ? 'visible' : 'hidden' }}>
-        <em>{playbackLabel}</em>
-      </p>
 
       <TapButton
         label={tapLabel}
@@ -324,7 +396,7 @@ export function ExercisePlayer() {
       )}
 
       <div className="player-controls">
-        {(phase === 'capturing' || phase === 'count-in') && (
+        {(phase === 'capturing' || phase === 'count-in' || phase === 'give-up-count-in' || phase === 'playback') && (
           <button type="button" className="button-secondary" onClick={handleTryAgain}>Cancel</button>
         )}
         {phase === 'result' && (
