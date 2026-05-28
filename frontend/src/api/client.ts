@@ -31,6 +31,7 @@ import {
 } from '../lib/localDb'
 import {
   allExercises,
+  catchUpLevel,
   createCustomExercise,
   deleteCustomExercise,
   maxLevel,
@@ -117,6 +118,7 @@ export const api = {
 
   listExercises: async (): Promise<ExerciseListItem[]> => {
     const user = currentUser()!
+    catchUpLevel(user.id)
     const progress = getProgress(user.id)
     const attempts = getAttempts(user.id)
     const passedIds = new Set(attempts.filter((a) => a.passed).map((a) => a.exerciseId))
@@ -195,6 +197,7 @@ export const api = {
 
   getProgress: async (): Promise<ProgressSummary> => {
     const user = currentUser()!
+    catchUpLevel(user.id)
     const progress = getProgress(user.id)
     const attempts = getAttempts(user.id)
     const mastery = getMastery(user.id)

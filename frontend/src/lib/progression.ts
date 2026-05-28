@@ -41,6 +41,34 @@ export function maxLevel(): number {
   return Math.max(...allExercises().map((e) => e.level), 1)
 }
 
+/**
+ * Advance unlockedLevel past any levels where all exercises are already passed.
+ *
+ * This handles the case where new exercises are added to a level above the
+ * user's previous maximum: they completed the old max level when it was the
+ * ceiling, so checkLevelUnlock never ticked them forward. Calling this at the
+ * start of nextExercise() and listExercises() keeps the state correct.
+ */
+export function catchUpLevel(userId: number): void {
+  const progress = getProgress(userId)
+  const passed = passedExerciseIds(userId)
+  const highest = maxLevel()
+  let changed = false
+
+  while (progress.unlockedLevel < highest) {
+    const atLevel = allExercises().filter((e) => e.level === progress.unlockedLevel)
+    // If every exercise at this level is passed (or there are none), advance.
+    if (atLevel.length === 0 || atLevel.every((e) => passed.has(e.id))) {
+      progress.unlockedLevel++
+      changed = true
+    } else {
+      break
+    }
+  }
+
+  if (changed) saveProgress(userId, progress)
+}
+
 function passedExerciseIds(userId: number): Set<number> {
   return new Set(
     getAttempts(userId)
@@ -188,6 +216,7 @@ function checkLevelUnlock(userId: number, exercise: Exercise): number | null {
 export function nextExercise(
   userId: number,
 ): { exercise: Exercise | null; reason: 'progression' | 'remediation' | 'complete'; message: string } {
+  catchUpLevel(userId)
   const progress = getProgress(userId)
   const passed = passedExerciseIds(userId)
   const remediation = getRemediation(userId)
