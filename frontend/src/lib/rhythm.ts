@@ -105,3 +105,44 @@ export function getBeatLabel(beat: number): string {
   if (subdivision === 2) return 'and'
   return 'a'
 }
+
+export interface CountingBeat {
+  label: string
+  hasNote: boolean
+  offsetMs: number
+}
+
+/**
+ * Generate all counting-syllable positions for the playback display.
+ * Uses 8th-note grid unless the pattern contains any 16th notes.
+ * Each position carries the syllable ("one", "and", "ee", "a"), whether a
+ * note falls there, and the ms offset from playback start.
+ */
+export function buildCountingBeats(
+  pattern: Pattern,
+  bpm: number,
+  timeSigTop: number,
+): CountingBeat[] {
+  const msPerBeat = 60000 / bpm
+  const total = totalBeats(pattern)
+  const grid = pattern.events.some(e => e.duration === '16') ? 0.25 : 0.5
+
+  const notePositions = new Set(
+    expectedOnsets(pattern).map(o => Math.round(o.beat * 10000))
+  )
+
+  const beats: CountingBeat[] = []
+  let pos = 0
+  while (pos < total - 0.001) {
+    const label = getBeatLabel(pos % timeSigTop)
+    if (label) {
+      beats.push({
+        label,
+        hasNote: notePositions.has(Math.round(pos * 10000)),
+        offsetMs: pos * msPerBeat,
+      })
+    }
+    pos = Math.round((pos + grid) * 10000) / 10000
+  }
+  return beats
+}
