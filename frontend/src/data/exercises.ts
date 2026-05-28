@@ -184,6 +184,91 @@ const seeds: ExerciseSeed[] = [
     time_sig_top: 4, time_sig_bottom: 4, num_measures: 2, tempo_bpm: 80, is_active: true,
     pattern: { events: [n('q', 1), n('8', 0, true), n('h'), n('q', 1), n('8'), n('q'), r('q')] },
   },
+
+  // Level 8 — advanced syncopation & compound rhythm
+  {
+    id: 23, title: 'Offbeat groove',
+    description: "Every note lands on the 'and' — the beats are silent. Feel the pull against the metronome.",
+    level: 8, concept: 'syncopation', learn_section: 'syncopation',
+    time_sig_top: 4, time_sig_bottom: 4, num_measures: 1, tempo_bpm: 76, is_active: true,
+    pattern: { events: [r('8'), n('8'), r('8'), n('8'), r('8'), n('8'), r('8'), n('8')] },
+  },
+  {
+    id: 24, title: 'The anticipation',
+    description: "The dotted quarter 'anticipates' the next measure by arriving a half-beat early. Hold through the barline.",
+    level: 8, concept: 'syncopation', learn_section: 'syncopation',
+    time_sig_top: 4, time_sig_bottom: 4, num_measures: 2, tempo_bpm: 76, is_active: true,
+    pattern: { events: [n('q'), n('q'), n('q', 1), n('8', 0, true), n('h'), n('q'), n('q')] },
+  },
+  {
+    id: 25, title: 'Long-short groove',
+    description: 'Alternating dotted-quarter-and-eighth pairs across both measures — a loping, forward-leaning feel.',
+    level: 8, concept: 'dotted-notes', learn_section: 'dotted-notes',
+    time_sig_top: 4, time_sig_bottom: 4, num_measures: 2, tempo_bpm: 80, is_active: true,
+    pattern: { events: [n('q', 1), n('8'), n('q', 1), n('8'), n('q', 1), n('8'), n('q'), n('q')] },
+  },
+  {
+    id: 26, title: 'The gallop',
+    description: "Dotted-eighth plus sixteenth — a 3:1 long-short drive. Say 'gal-lop' for each pair.",
+    level: 8, concept: 'sixteenths', learn_section: 'sixteenths',
+    time_sig_top: 4, time_sig_bottom: 4, num_measures: 2, tempo_bpm: 72, is_active: true,
+    pattern: { events: [
+      n('8', 1), n('16'), n('8', 1), n('16'),
+      n('8', 1), n('16'), n('8', 1), n('16'),
+      n('8', 1), n('16'), n('8', 1), n('16'),
+      n('q'), n('q'),
+    ]},
+  },
+  {
+    id: 27, title: 'The reverse gallop',
+    description: 'Sixteenth first, then dotted-eighth — the short-long flip of the gallop. Harder to feel than it looks.',
+    level: 8, concept: 'sixteenths', learn_section: 'sixteenths',
+    time_sig_top: 4, time_sig_bottom: 4, num_measures: 1, tempo_bpm: 72, is_active: true,
+    pattern: { events: [n('16'), n('8', 1), n('16'), n('8', 1), n('16'), n('8', 1), n('16'), n('8', 1)] },
+  },
+  {
+    id: 28, title: 'Habanera',
+    description: 'The classic tango-derived figure: dotted-eighth, sixteenth, eighth, eighth — repeated twice per measure.',
+    level: 8, concept: 'dotted-notes', learn_section: 'dotted-notes',
+    time_sig_top: 4, time_sig_bottom: 4, num_measures: 2, tempo_bpm: 76, is_active: true,
+    pattern: { events: [
+      n('8', 1), n('16'), n('8'), n('8'),
+      n('8', 1), n('16'), n('8'), n('8'),
+      n('8', 1), n('16'), n('8'), n('8'),
+      n('8', 1), n('16'), n('8'), n('8'),
+    ]},
+  },
+  {
+    id: 29, title: 'Funk pocket',
+    description: "Rests on the weak beats create the 'pocket' feel. Don't tap beats 2 and 4 — that's where the groove lives.",
+    level: 8, concept: 'syncopation', learn_section: 'syncopation',
+    time_sig_top: 4, time_sig_bottom: 4, num_measures: 2, tempo_bpm: 80, is_active: true,
+    pattern: { events: [n('8'), n('8'), r('8'), n('8'), n('8'), r('q'), n('8'), n('8'), n('8'), r('8'), n('8'), n('h')] },
+  },
+  {
+    id: 30, title: 'Son clave',
+    description: 'The 3-2 son clave: three notes on the first bar, two on the second. The backbone of Afro-Cuban music.',
+    level: 8, concept: 'syncopation', learn_section: 'syncopation',
+    time_sig_top: 4, time_sig_bottom: 4, num_measures: 2, tempo_bpm: 84, is_active: true,
+    pattern: { events: [n('q'), r('8'), n('8'), r('q'), n('q'), r('8'), n('8'), r('8'), n('8'), n('h')] },
+  },
+  {
+    id: 31, title: 'Waltz syncopation',
+    description: 'Offbeat accents in 3/4 — landing between the beats instead of on them disrupts the expected waltz lilt.',
+    level: 8, concept: 'syncopation', learn_section: 'syncopation',
+    time_sig_top: 3, time_sig_bottom: 4, num_measures: 3, tempo_bpm: 84, is_active: true,
+    pattern: { events: [r('8'), n('q'), n('8'), r('8'), n('8'), n('q', 1), r('8'), n('q'), r('8'), n('8'), n('q'), n('q')] },
+  },
+  {
+    id: 32, title: 'Sixteenth-note puzzle',
+    description: "Groups of sixteenths mixed with eighths and quarters. Count in sixteenths: 1-e-and-a.",
+    level: 8, concept: 'sixteenths', learn_section: 'sixteenths',
+    time_sig_top: 4, time_sig_bottom: 4, num_measures: 2, tempo_bpm: 69, is_active: true,
+    pattern: { events: [
+      n('8'), n('16'), n('16'), n('8'), n('16'), n('16'), n('q'), n('q'),
+      n('16'), n('16'), n('16'), n('16'), n('8'), n('8'), n('q'), n('q'),
+    ]},
+  },
 ]
 
 export const SEED_EXERCISES: Exercise[] = seeds.map((s) => ({

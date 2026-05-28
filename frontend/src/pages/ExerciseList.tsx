@@ -14,12 +14,14 @@ const LEVEL_NAMES: Record<number, string> = {
   5: 'Dotted notes',
   6: 'Ties',
   7: 'Sixteenths & syncopation',
+  8: 'Advanced syncopation & compound rhythm',
 }
 
 const SKIP_OPTIONS = [
   { level: 3, label: 'Intermediate', sublabel: 'Level 3 — Rests' },
   { level: 5, label: 'Advanced',     sublabel: 'Level 5 — Dotted notes' },
   { level: 7, label: 'Expert',       sublabel: 'Level 7 — Sixteenths' },
+  { level: 8, label: 'Advanced',     sublabel: 'Level 8 — Advanced syncopation' },
 ]
 
 export function ExerciseList() {
