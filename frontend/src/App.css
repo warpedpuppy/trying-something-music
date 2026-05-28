@@ -24,7 +24,7 @@
   position: sticky;
   top: 0;
   z-index: 100;
-  padding: 10px 16px 0;
+  padding: 10px 16px 8px;
   pointer-events: none; /* let clicks pass through the gap above the island */
 }
 
@@ -236,18 +236,18 @@
 
 /* sub-nav (desktop) */
 .subnav {
-  background: rgba(249,248,246,0.90);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(229,231,235,0.60);
-  border-top: none;
-  border-radius: 0 0 12px 12px;
+  background: rgba(249,248,246,0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(229,231,235,0.80);
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.05);
   max-width: 920px;
-  margin: 0 auto;
+  margin: 6px auto 0;
 }
 
 .subnav-inner {
-  padding: 0 16px;
+  padding: 0 18px;
   display: flex;
   gap: 2px;
 }
@@ -971,12 +971,19 @@
   margin: 1rem 0;
   text-align: center;
   font-style: italic;
-  font-size: 1.5rem;
+  font-size: 1.35rem;
   font-family: Georgia, "Times New Roman", serif;
   letter-spacing: 0.06em;
   word-spacing: 0.2em;
   user-select: none;
-  min-height: 2rem;
+}
+
+.counting-replay-note {
+  margin: 4px 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-style: italic;
+  text-align: center;
 }
 
 .result-legend {
