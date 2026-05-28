@@ -22,6 +22,7 @@ import { SheetMusicGame } from './pages/SheetMusicGame'
 import { Home } from './pages/Home'
 import { Learn } from './pages/Learn'
 import { Login } from './pages/Login'
+import { PlayAlong } from './pages/PlayAlong'
 import { Register } from './pages/Register'
 import { TheoryHome } from './pages/theory/TheoryHome'
 import './App.css'
@@ -49,6 +50,7 @@ function App() {
             <Route path="/rhythm/exercises" element={<ProtectedRoute><ExerciseList /></ProtectedRoute>} />
             <Route path="/rhythm/exercises/:id" element={<ProtectedRoute><ExercisePlayer /></ProtectedRoute>} />
             <Route path="/rhythm/game" element={<ProtectedRoute><SheetMusicGame /></ProtectedRoute>} />
+            <Route path="/rhythm/play-along" element={<PlayAlong />} />
 
             {/* theory section */}
             <Route path="/theory" element={<TheoryHome />} />

@@ -174,6 +174,80 @@ EXERCISES = [
         7, "syncopation", "syncopation", (4, 4), 2, 80,
         [n("q", dots=1), n("8", tie=True), n("h"), n("q", dots=1), n("8"), n("q"), r("q")],
     ),
+    # Level 8 — advanced syncopation & compound rhythm --------------------------------
+    (
+        "Offbeat groove",
+        "Every note lands on the 'and' — the beats are silent. Feel the pull against the metronome.",
+        8, "syncopation", "syncopation", (4, 4), 1, 76,
+        [r("8"), n("8"), r("8"), n("8"), r("8"), n("8"), r("8"), n("8")],
+    ),
+    (
+        "The anticipation",
+        "The dotted quarter 'anticipates' the next measure by arriving a half-beat early. Hold through the barline.",
+        8, "syncopation", "syncopation", (4, 4), 2, 76,
+        [n("q"), n("q"), n("q", dots=1), n("8", tie=True), n("h"), n("q"), n("q")],
+    ),
+    (
+        "Long-short groove",
+        "Alternating dotted-quarter-and-eighth pairs across both measures — a loping, forward-leaning feel.",
+        8, "dotted-notes", "dotted-notes", (4, 4), 2, 80,
+        [n("q", dots=1), n("8"), n("q", dots=1), n("8"), n("q", dots=1), n("8"), n("q"), n("q")],
+    ),
+    (
+        "The gallop",
+        "Dotted-eighth plus sixteenth — a 3:1 long-short drive. Say 'gal-lop' for each pair.",
+        8, "sixteenths", "sixteenths", (4, 4), 2, 72,
+        [
+            n("8", dots=1), n("16"), n("8", dots=1), n("16"),
+            n("8", dots=1), n("16"), n("8", dots=1), n("16"),
+            n("8", dots=1), n("16"), n("8", dots=1), n("16"),
+            n("q"), n("q"),
+        ],
+    ),
+    (
+        "The reverse gallop",
+        "Sixteenth first, then dotted-eighth — the short-long flip of the gallop. Harder to feel than it looks.",
+        8, "sixteenths", "sixteenths", (4, 4), 1, 72,
+        [n("16"), n("8", dots=1), n("16"), n("8", dots=1), n("16"), n("8", dots=1), n("16"), n("8", dots=1)],
+    ),
+    (
+        "Habanera",
+        "The classic tango-derived figure: dotted-eighth, sixteenth, eighth, eighth — repeated twice per measure.",
+        8, "dotted-notes", "dotted-notes", (4, 4), 2, 76,
+        [
+            n("8", dots=1), n("16"), n("8"), n("8"),
+            n("8", dots=1), n("16"), n("8"), n("8"),
+            n("8", dots=1), n("16"), n("8"), n("8"),
+            n("8", dots=1), n("16"), n("8"), n("8"),
+        ],
+    ),
+    (
+        "Funk pocket",
+        "Rests on the weak beats create the 'pocket' feel. Don't tap beats 2 and 4 — that's where the groove lives.",
+        8, "syncopation", "syncopation", (4, 4), 2, 80,
+        [n("8"), n("8"), r("8"), n("8"), n("8"), r("q"), n("8"), n("8"), n("8"), r("8"), n("8"), n("h")],
+    ),
+    (
+        "Son clave",
+        "The 3-2 son clave: three notes on the first bar, two on the second. The backbone of Afro-Cuban music.",
+        8, "syncopation", "syncopation", (4, 4), 2, 84,
+        [n("q"), r("8"), n("8"), r("q"), n("q"), r("8"), n("8"), r("8"), n("8"), n("h")],
+    ),
+    (
+        "Waltz syncopation",
+        "Offbeat accents in 3/4 — landing between the beats instead of on them disrupts the expected waltz lilt.",
+        8, "syncopation", "syncopation", (3, 4), 3, 84,
+        [r("8"), n("q"), n("8"), r("8"), n("8"), n("q", dots=1), r("8"), n("q"), r("8"), n("8"), n("q"), n("q")],
+    ),
+    (
+        "Sixteenth-note puzzle",
+        "Groups of sixteenths mixed with eighths and quarters. Count in sixteenths: 1-e-and-a.",
+        8, "sixteenths", "sixteenths", (4, 4), 2, 69,
+        [
+            n("8"), n("16"), n("16"), n("8"), n("16"), n("16"), n("q"), n("q"),
+            n("16"), n("16"), n("16"), n("16"), n("8"), n("8"), n("q"), n("q"),
+        ],
+    ),
 ]
 
 

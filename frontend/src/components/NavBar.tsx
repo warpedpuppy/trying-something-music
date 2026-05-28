@@ -98,6 +98,7 @@ export function NavBar() {
                 {user && <NavLink to="/rhythm/dashboard" className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Dashboard</NavLink>}
                 {user && <NavLink to="/rhythm/exercises" className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Exercises</NavLink>}
                 <NavLink to="/rhythm/learn" className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Learn</NavLink>
+                <NavLink to="/rhythm/play-along" className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Play Along</NavLink>
               </div>
             )}
             <Link
@@ -150,6 +151,9 @@ export function NavBar() {
                 )}
                 <NavLink to="/rhythm/learn" className={({ isActive }) => isActive ? 'subnav-link active' : 'subnav-link'}>
                   Learn
+                </NavLink>
+                <NavLink to="/rhythm/play-along" className={({ isActive }) => isActive ? 'subnav-link active' : 'subnav-link'}>
+                  Play Along
                 </NavLink>
               </>
             )}

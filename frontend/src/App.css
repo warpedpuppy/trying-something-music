@@ -116,6 +116,10 @@
   text-decoration: none;
 }
 
+.navbar-user .link-button {
+  font-size: 0.88rem;
+}
+
 .navbar-username {
   font-weight: 600;
   font-size: 0.88rem;
@@ -1616,6 +1620,29 @@ a.theory-card:hover {
 }
 
 /* Sign up button — solid high-contrast white on rhythm-blue */
+.btn-primary {
+  display: inline-block;
+  padding: 12px 32px;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  background: var(--accent);
+  color: #ffffff !important;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  letter-spacing: -0.01em;
+  transition: background 0.15s, transform 0.1s, box-shadow 0.1s;
+  box-shadow: 0 3px 14px rgba(67,97,238,0.28);
+}
+
+.btn-primary:hover {
+  background: var(--accent-dark);
+  text-decoration: none;
+  transform: translateY(-1px);
+  box-shadow: 0 5px 20px rgba(67,97,238,0.38);
+}
+
 .btn-signup {
   display: inline-block;
   padding: 7px 16px;
@@ -2142,6 +2169,293 @@ a.theory-card:hover {
 
 .game-tap-hint {
   font-size: 0.75rem;
+  color: var(--muted);
+}
+
+/* ---------------------------------------------------------------- play along */
+
+.pa-stage {
+  max-width: 520px;
+  margin: 40px auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  text-align: center;
+}
+
+/* welcome */
+.pa-welcome-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+}
+
+.pa-welcome-body {
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.6;
+  max-width: 420px;
+  margin: 0;
+}
+
+.pa-welcome-bullets {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+}
+
+.pa-welcome-bullets li {
+  padding-left: 24px;
+  position: relative;
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+.pa-welcome-bullets li::before {
+  content: '→';
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.pa-cta {
+  margin-top: 8px;
+  padding: 12px 32px;
+  font-size: 1rem;
+}
+
+/* bpm setup */
+.pa-setup-heading {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+}
+
+.pa-setup-hint {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.pa-bpm-display {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.pa-bpm-number {
+  font-size: 4rem;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  min-width: 4ch;
+  text-align: right;
+}
+
+.pa-bpm-unit {
+  font-size: 1.1rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.pa-speed-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: -12px 0 0;
+  font-style: italic;
+}
+
+.pa-bpm-slider {
+  width: 100%;
+  max-width: 360px;
+  accent-color: var(--accent);
+}
+
+.pa-slider-labels {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 360px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  margin-top: -12px;
+}
+
+.pa-tap-tempo-btn {
+  padding: 10px 24px;
+  border: 2px solid var(--accent);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.pa-tap-tempo-btn:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.pa-tap-hint {
+  font-weight: 400;
+  font-size: 0.82rem;
+  opacity: 0.7;
+}
+
+/* playing */
+.pa-playing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  padding: 32px 0 48px;
+}
+
+.pa-beat-row {
+  display: flex;
+  gap: 20px;
+}
+
+.pa-beat-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.12);
+  transition: background 0.07s, transform 0.07s;
+}
+
+.pa-beat-dot.active {
+  background: var(--accent);
+  transform: scale(1.4);
+}
+
+.pa-bpm-label {
+  color: var(--muted);
+  font-size: 0.88rem;
+  margin: -16px 0 0;
+}
+
+/* scrolling reel */
+.pa-reel-viewport {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: rgba(0,0,0,0.02);
+}
+
+.pa-cursor-line {
+  position: absolute;
+  left: 22%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--accent);
+  opacity: 0.4;
+  z-index: 2;
+  pointer-events: none;
+}
+
+@keyframes pa-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+.pa-reel-track {
+  display: flex;
+  animation: pa-scroll linear infinite;
+  will-change: transform;
+}
+
+.pa-measure-block {
+  flex-shrink: 0;
+  width: 260px;
+  padding: 28px 16px 20px;
+  border-right: 1px solid rgba(0,0,0,0.07);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+/* beat-grid cells */
+.pa-beat-grid {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 48px;
+}
+
+.pa-cell {
+  border-radius: 3px;
+}
+
+/* beat (1,2,3,4) */
+.pa-cell-beat { width: 15px; }
+.pa-cell-beat.note { height: 48px; background: var(--accent); }
+.pa-cell-beat.rest { height: 22px; background: rgba(0,0,0,0.10); }
+
+/* and (1&,2&,3&,4&) */
+.pa-cell-and { width: 11px; }
+.pa-cell-and.note { height: 36px; background: #f97316; }
+.pa-cell-and.rest { height: 16px; background: rgba(0,0,0,0.07); }
+
+/* sub (e, a) */
+.pa-cell-sub { width: 7px; }
+.pa-cell-sub.note { height: 26px; background: #f97316; opacity: 0.75; }
+.pa-cell-sub.rest { height: 10px; background: rgba(0,0,0,0.05); }
+
+.pa-measure-label {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-align: center;
+  letter-spacing: 0.01em;
+}
+
+/* tap button */
+.pa-tap-btn {
+  width: 180px;
+  height: 80px;
+  border-radius: 20px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(67,97,238,0.35);
+  transition: transform 0.09s, background 0.09s, box-shadow 0.09s;
+  touch-action: none;
+  user-select: none;
+}
+
+.pa-tap-btn:hover:not(.flash) {
+  transform: scale(1.04);
+  box-shadow: 0 6px 28px rgba(67,97,238,0.45);
+}
+
+.pa-tap-btn.flash,
+.pa-tap-btn:active {
+  transform: scale(0.92);
+  background: var(--accent-dark, #2d4fb8);
+  box-shadow: 0 2px 10px rgba(67,97,238,0.25);
+}
+
+.pa-stop-btn {
+  font-size: 0.85rem;
   color: var(--muted);
 }
 
