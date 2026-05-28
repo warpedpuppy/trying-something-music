@@ -60,19 +60,24 @@ export function renderPattern(
   pattern: Pattern,
   timeSigTop: number,
   timeSigBottom: number,
-  options: { showTimeSignature?: boolean; scale?: number } = {},
+  options: { showTimeSignature?: boolean; scale?: number; fixedTotalWidth?: number } = {},
 ): RenderResult {
-  const { showTimeSignature = true } = options
+  const { showTimeSignature = true, fixedTotalWidth } = options
   container.innerHTML = ''
 
   const beatsPerMeasure = timeSigTop * (4 / timeSigBottom)
   const measures = splitIntoMeasures(pattern, beatsPerMeasure)
 
   const measureWidths = measures.map((measure, measureIndex) => {
+    if (fixedTotalWidth) {
+      // Distribute the fixed canvas width evenly across all measures.
+      // 20px total horizontal margin (10 left + 10 right) is reserved.
+      return Math.floor((fixedTotalWidth - 20) / measures.length)
+    }
     const base = Math.max(140, measure.events.length * 64)
     return measureIndex === 0 ? base + 80 : base
   })
-  const totalWidth = measureWidths.reduce((a, b) => a + b, 0) + 20
+  const totalWidth = fixedTotalWidth ?? (measureWidths.reduce((a, b) => a + b, 0) + 20)
   const height = STAVE_Y + STAVE_HEIGHT + 30
 
   const renderer = new Renderer(container, Renderer.Backends.SVG)

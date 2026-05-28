@@ -2352,8 +2352,9 @@ a.theory-card:hover {
   width: 100%;
   overflow: hidden;
   border-radius: 16px;
-  border: 1px solid rgba(0,0,0,0.08);
-  background: rgba(0,0,0,0.02);
+  border: 1px solid rgba(0,0,0,0.10);
+  background: #fff;
+  box-shadow: inset 0 1px 4px rgba(0,0,0,0.04);
 }
 
 .pa-cursor-line {
@@ -2381,47 +2382,46 @@ a.theory-card:hover {
 
 .pa-measure-block {
   flex-shrink: 0;
-  width: 260px;
-  padding: 28px 16px 20px;
+  width: 380px;  /* must match SLOT_PX in PlayAlong.tsx */
+  padding: 16px 0 12px;
   border-right: 1px solid rgba(0,0,0,0.07);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 8px;
+  background: #fff;
 }
 
-/* beat-grid cells */
-.pa-beat-grid {
+/* VexFlow renders an SVG into this div — let it size itself */
+.pa-notation-container {
+  width: 100%;
+  line-height: 0; /* collapse whitespace around the SVG */
+}
+
+.pa-notation-container svg {
+  display: block;
+  max-width: 100%;
+}
+
+.pa-measure-footer {
   display: flex;
-  align-items: flex-end;
-  gap: 4px;
-  height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 14px;
 }
-
-.pa-cell {
-  border-radius: 3px;
-}
-
-/* beat (1,2,3,4) */
-.pa-cell-beat { width: 15px; }
-.pa-cell-beat.note { height: 48px; background: var(--accent); }
-.pa-cell-beat.rest { height: 22px; background: rgba(0,0,0,0.10); }
-
-/* and (1&,2&,3&,4&) */
-.pa-cell-and { width: 11px; }
-.pa-cell-and.note { height: 36px; background: #f97316; }
-.pa-cell-and.rest { height: 16px; background: rgba(0,0,0,0.07); }
-
-/* sub (e, a) */
-.pa-cell-sub { width: 7px; }
-.pa-cell-sub.note { height: 26px; background: #f97316; opacity: 0.75; }
-.pa-cell-sub.rest { height: 10px; background: rgba(0,0,0,0.05); }
 
 .pa-measure-label {
   font-size: 0.72rem;
   color: var(--muted);
-  text-align: center;
   letter-spacing: 0.01em;
+}
+
+.pa-measure-level {
+  font-size: 0.55rem;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  opacity: 0.6;
 }
 
 /* tap button */

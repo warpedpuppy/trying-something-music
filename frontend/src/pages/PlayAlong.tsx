@@ -1,82 +1,72 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { CSSProperties } from 'react'
-import type { Pattern } from '../api/types'
-import { expectedOnsets } from '../lib/rhythm'
+import type { PatternEvent } from '../api/types'
+import { renderPattern } from '../lib/vexflowPattern'
 import { tickEngine } from '../lib/audio'
 
-// ── curated single-measure 4/4 patterns for the reel ────────────────────────
+// ── helpers ──────────────────────────────────────────────────────────────────
 
-const REEL_PATTERNS: Array<{ pattern: Pattern; label: string }> = [
-  {
-    label: 'Steady quarters',
-    pattern: { events: [
-      { type: 'note', duration: 'q' },
-      { type: 'note', duration: 'q' },
-      { type: 'note', duration: 'q' },
-      { type: 'note', duration: 'q' },
-    ]},
-  },
-  {
-    label: 'Half + quarters',
-    pattern: { events: [
-      { type: 'note', duration: 'h' },
-      { type: 'note', duration: 'q' },
-      { type: 'note', duration: 'q' },
-    ]},
-  },
-  {
-    label: 'Long-short',
-    pattern: { events: [
-      { type: 'note', duration: 'q', dots: 1 },
-      { type: 'note', duration: '8' },
-      { type: 'note', duration: 'q', dots: 1 },
-      { type: 'note', duration: '8' },
-    ]},
-  },
-  {
-    label: 'Off the beat',
-    pattern: { events: [
-      { type: 'note', duration: '8' },
-      { type: 'note', duration: 'q' },
-      { type: 'note', duration: 'q' },
-      { type: 'note', duration: 'q' },
-      { type: 'note', duration: '8' },
-    ]},
-  },
-  {
-    label: 'Off-beat 8ths',
-    pattern: { events: [
-      { type: 'rest', duration: '8' },
-      { type: 'note', duration: '8' },
-      { type: 'rest', duration: '8' },
-      { type: 'note', duration: '8' },
-      { type: 'rest', duration: '8' },
-      { type: 'note', duration: '8' },
-      { type: 'rest', duration: '8' },
-      { type: 'note', duration: '8' },
-    ]},
-  },
-  {
-    label: 'Gallop',
-    pattern: { events: [
-      { type: 'note', duration: '8', dots: 1 },
-      { type: 'note', duration: '16' },
-      { type: 'note', duration: '8', dots: 1 },
-      { type: 'note', duration: '16' },
-      { type: 'note', duration: '8', dots: 1 },
-      { type: 'note', duration: '16' },
-      { type: 'note', duration: '8', dots: 1 },
-      { type: 'note', duration: '16' },
-    ]},
-  },
+function n(
+  duration: PatternEvent['duration'],
+  dots = 0,
+  tie = false,
+): PatternEvent {
+  const e: PatternEvent = { type: 'note', duration }
+  if (dots) e.dots = dots
+  if (tie) e.tieToNext = true
+  return e
+}
+
+function r(duration: PatternEvent['duration'], dots = 0): PatternEvent {
+  const e: PatternEvent = { type: 'rest', duration }
+  if (dots) e.dots = dots
+  return e
+}
+
+// ── pattern library (20 measures, 5 levels × 4 patterns) ─────────────────────
+//    All 4/4, single measure. Each entry is verified to sum to 4 beats.
+
+interface ReelMeasure { events: PatternEvent[]; label: string; level: number }
+
+const REEL_LIBRARY: ReelMeasure[] = [
+  // Level 1 — steady quarters & halves
+  { level: 1, label: 'Steady',         events: [n('q'), n('q'), n('q'), n('q')] },
+  { level: 1, label: 'Two halves',     events: [n('h'), n('h')] },
+  { level: 1, label: 'Lead-in',        events: [n('h'), n('q'), n('q')] },
+  { level: 1, label: 'Build-up',       events: [n('q'), n('q'), n('h')] },
+
+  // Level 2 — eighth-note pairs
+  { level: 2, label: 'Walk & run',     events: [n('q'), n('q'), n('8'), n('8'), n('q')] },
+  { level: 2, label: 'Running start',  events: [n('8'), n('8'), n('8'), n('8'), n('q'), n('q')] },
+  { level: 2, label: 'Step-step',      events: [n('q'), n('8'), n('8'), n('q'), n('q')] },
+  { level: 2, label: 'Pickup',         events: [n('8'), n('8'), n('q'), n('q'), n('q')] },
+
+  // Level 3 — dotted notes & quarter rests
+  { level: 3, label: 'Long-short',     events: [n('q', 1), n('8'), n('q'), n('q')] },
+  { level: 3, label: 'Double long-short', events: [n('q', 1), n('8'), n('q', 1), n('8')] },
+  { level: 3, label: 'Gap on 2',       events: [n('q'), r('q'), n('q'), n('q')] },
+  { level: 3, label: 'Late start',     events: [r('q'), n('q'), n('q'), n('q')] },
+
+  // Level 4 — syncopation
+  { level: 4, label: 'Off the beat',   events: [n('8'), n('q'), n('q'), n('q'), n('8')] },
+  { level: 4, label: 'Backbeat',       events: [r('8'), n('8'), r('8'), n('8'), n('h')] },
+  { level: 4, label: 'Anticipation',   events: [n('q', 1), n('8', 0, true), n('h')] },
+  { level: 4, label: 'Lean in',        events: [n('q'), r('8'), n('8'), n('q'), n('q')] },
+
+  // Level 5 — sixteenths
+  { level: 5, label: 'Sixteenth run',  events: [n('16'), n('16'), n('16'), n('16'), n('q'), n('8'), n('8'), n('q')] },
+  { level: 5, label: 'Gallop',         events: [n('8', 1), n('16'), n('8', 1), n('16'), n('8', 1), n('16'), n('8', 1), n('16')] },
+  { level: 5, label: 'Mixed',          events: [n('8'), n('16'), n('16'), n('q'), n('16'), n('16'), n('8'), n('q')] },
+  { level: 5, label: 'All off-beats',  events: [r('8'), n('8'), r('8'), n('8'), r('8'), n('8'), r('8'), n('8')] },
 ]
 
-// Double the list for a seamless CSS animation loop
-const REEL = [...REEL_PATTERNS, ...REEL_PATTERNS]
-const REEL_HALF = REEL_PATTERNS.length
+// Double the list for a seamless CSS animation loop.
+// The animation scrolls through the first N, then loops back to the start.
+const REEL = [...REEL_LIBRARY, ...REEL_LIBRARY]
 
-// Each measure slot is this many pixels wide in the scrolling track
-const SLOT_PX = 260
+const SLOT_PX = 380          // fixed pixel width of every rendered measure
+const REEL_HALF = REEL_LIBRARY.length   // 20 — one full cycle of difficulty
+
+// ── types ─────────────────────────────────────────────────────────────────────
 
 type Stage = 'welcome' | 'bpm-setup' | 'playing'
 
@@ -113,21 +103,12 @@ export function PlayAlong() {
 
   useEffect(() => () => { tickEngine.cancelAll() }, [])
 
-  if (stage === 'welcome') {
-    return <WelcomeScreen onStart={() => setStage('bpm-setup')} />
-  }
-
-  if (stage === 'bpm-setup') {
-    return <BpmSetup bpm={bpm} setBpm={setBpm} onStart={startPlaying} />
-  }
-
-  const reelStyle = {
-    width: `${REEL.length * SLOT_PX}px`,
-    animationDuration: `${reelDurationMs}ms`,
-  } satisfies CSSProperties
+  if (stage === 'welcome') return <WelcomeScreen onStart={() => setStage('bpm-setup')} />
+  if (stage === 'bpm-setup') return <BpmSetup bpm={bpm} setBpm={setBpm} onStart={startPlaying} />
 
   return (
     <div className="pa-playing">
+      {/* Beat dots */}
       <div className="pa-beat-row" aria-label="Beat indicator">
         {[0, 1, 2, 3].map(i => (
           <div key={i} className={`pa-beat-dot${beatIndex === i ? ' active' : ''}`} />
@@ -135,15 +116,28 @@ export function PlayAlong() {
       </div>
       <p className="pa-bpm-label">{bpm} BPM</p>
 
+      {/* Scrolling notation reel */}
       <div className="pa-reel-viewport">
         <div className="pa-cursor-line" aria-hidden="true" />
-        <div className="pa-reel-track" style={reelStyle}>
+        <div
+          className="pa-reel-track"
+          style={{
+            width: `${REEL.length * SLOT_PX}px`,
+            animationDuration: `${reelDurationMs}ms`,
+          }}
+        >
           {REEL.map((item, i) => (
-            <MeasureBlock key={i} pattern={item.pattern} label={item.label} />
+            <NotationBlock
+              key={i}
+              events={item.events}
+              label={item.label}
+              level={item.level}
+            />
           ))}
         </div>
       </div>
 
+      {/* Tap button */}
       <button
         type="button"
         className={`pa-tap-btn${tapFlash ? ' flash' : ''}`}
@@ -168,13 +162,14 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
     <div className="pa-stage pa-welcome">
       <h1 className="pa-welcome-title">Play Along</h1>
       <p className="pa-welcome-body">
-        Rhythm patterns scroll past from right to left. Tap along with the metronome
-        beat — no pressure, no score, just feel the groove.
+        Sheet music scrolls past from right to left — tap along with the metronome.
+        No pressure, no score: just feel the rhythm.
       </p>
       <ul className="pa-welcome-bullets">
         <li>Pick a tempo that feels comfortable</li>
-        <li>Watch the beat grid scroll by</li>
-        <li>Tap the big button to the beat</li>
+        <li>Watch the notation scroll by</li>
+        <li>Tap the big button on every note</li>
+        <li>Patterns get gradually more challenging</li>
       </ul>
       <button type="button" className="btn-primary pa-cta" onClick={onStart}>
         Get started
@@ -205,7 +200,11 @@ function BpmSetup({ bpm, setBpm, onStart }: {
     }
   }, [setBpm])
 
-  const speedLabel = bpm < 70 ? 'Very slow' : bpm < 90 ? 'Slow' : bpm < 110 ? 'Moderate' : bpm < 140 ? 'Upbeat' : 'Fast'
+  const speedLabel =
+    bpm < 70 ? 'Very slow' :
+    bpm < 90 ? 'Slow' :
+    bpm < 110 ? 'Moderate' :
+    bpm < 140 ? 'Upbeat' : 'Fast'
 
   return (
     <div className="pa-stage pa-bpm-setup">
@@ -219,25 +218,14 @@ function BpmSetup({ bpm, setBpm, onStart }: {
       <p className="pa-speed-label">{speedLabel}</p>
 
       <input
-        type="range"
-        min="40"
-        max="200"
-        value={bpm}
+        type="range" min="40" max="200" value={bpm}
         onChange={e => { setBpm(Number(e.target.value)); tapTimesRef.current = []; setTapCount(0) }}
         className="pa-bpm-slider"
         aria-label="Tempo in BPM"
       />
-      <div className="pa-slider-labels">
-        <span>40</span>
-        <span>200</span>
-      </div>
+      <div className="pa-slider-labels"><span>40</span><span>200</span></div>
 
-      <button
-        type="button"
-        className="pa-tap-tempo-btn"
-        onClick={handleTapTempo}
-        aria-label="Tap to set tempo"
-      >
+      <button type="button" className="pa-tap-tempo-btn" onClick={handleTapTempo}>
         Tap tempo
         {tapCount >= 2 && <span className="pa-tap-hint"> ({tapCount} taps)</span>}
       </button>
@@ -249,33 +237,38 @@ function BpmSetup({ bpm, setBpm, onStart }: {
   )
 }
 
-// ── measure beat-grid block ───────────────────────────────────────────────────
+// ── notation block ────────────────────────────────────────────────────────────
 
-const SIXTEENTH_GRID = Array.from({ length: 16 }, (_, i) => i * 0.25)
-
-function gridSize(cellIndex: number): 'beat' | 'and' | 'sub' {
-  if (cellIndex % 4 === 0) return 'beat'
-  if (cellIndex % 4 === 2) return 'and'
-  return 'sub'
+interface NotationBlockProps {
+  events: PatternEvent[]
+  label: string
+  level: number
 }
 
-function MeasureBlock({ pattern, label }: { pattern: Pattern; label: string }) {
-  const noteSet = new Set(expectedOnsets(pattern).map(o => Math.round(o.beat * 100)))
+function NotationBlock({ events, label, level }: NotationBlockProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    try {
+      renderPattern(el, { events }, 4, 4, { fixedTotalWidth: SLOT_PX })
+    } catch {
+      // silently ignore render errors (e.g. in test environments)
+    }
+  // events is a stable reference from the REEL constant — no need to deep-compare
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const levelDots = '●'.repeat(level) + '○'.repeat(5 - level)
+
   return (
     <div className="pa-measure-block">
-      <div className="pa-beat-grid">
-        {SIXTEENTH_GRID.map((pos, i) => {
-          const size = gridSize(i)
-          const hasNote = noteSet.has(Math.round(pos * 100))
-          return (
-            <div
-              key={i}
-              className={`pa-cell pa-cell-${size}${hasNote ? ' note' : ' rest'}`}
-            />
-          )
-        })}
+      <div ref={containerRef} className="pa-notation-container" />
+      <div className="pa-measure-footer">
+        <span className="pa-measure-label">{label}</span>
+        <span className="pa-measure-level" aria-label={`Level ${level}`}>{levelDots}</span>
       </div>
-      <p className="pa-measure-label">{label}</p>
     </div>
   )
 }
