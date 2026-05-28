@@ -60,9 +60,9 @@ export function renderPattern(
   pattern: Pattern,
   timeSigTop: number,
   timeSigBottom: number,
-  options: { showTimeSignature?: boolean; scale?: number; fixedTotalWidth?: number } = {},
+  options: { showTimeSignature?: boolean; showClef?: boolean; scale?: number; fixedTotalWidth?: number } = {},
 ): RenderResult {
-  const { showTimeSignature = true, fixedTotalWidth } = options
+  const { showTimeSignature = true, showClef = true, fixedTotalWidth } = options
   container.innerHTML = ''
 
   const beatsPerMeasure = timeSigTop * (4 / timeSigBottom)
@@ -91,7 +91,7 @@ export function renderPattern(
   measures.forEach((measure, measureIndex) => {
     const stave = new Stave(x, STAVE_Y, measureWidths[measureIndex])
     if (measureIndex === 0) {
-      stave.addClef('percussion')
+      if (showClef) stave.addClef('percussion')
       if (showTimeSignature) {
         stave.addTimeSignature(`${timeSigTop}/${timeSigBottom}`)
       }

@@ -1,76 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { PatternEvent } from '../api/types'
 import { renderPattern } from '../lib/vexflowPattern'
+import { generateReel, type GeneratedMeasure } from '../lib/rhythmGenerator'
 import { tickEngine } from '../lib/audio'
 
-// ── helpers ──────────────────────────────────────────────────────────────────
-
-function n(
-  duration: PatternEvent['duration'],
-  dots = 0,
-  tie = false,
-): PatternEvent {
-  const e: PatternEvent = { type: 'note', duration }
-  if (dots) e.dots = dots
-  if (tie) e.tieToNext = true
-  return e
-}
-
-function r(duration: PatternEvent['duration'], dots = 0): PatternEvent {
-  const e: PatternEvent = { type: 'rest', duration }
-  if (dots) e.dots = dots
-  return e
-}
-
-// ── pattern library (20 measures, 5 levels × 4 patterns) ─────────────────────
-//    All 4/4, single measure. Each entry is verified to sum to 4 beats.
-
-interface ReelMeasure { events: PatternEvent[]; label: string; level: number }
-
-const REEL_LIBRARY: ReelMeasure[] = [
-  // Level 1 — steady quarters & halves
-  { level: 1, label: 'Steady',         events: [n('q'), n('q'), n('q'), n('q')] },
-  { level: 1, label: 'Two halves',     events: [n('h'), n('h')] },
-  { level: 1, label: 'Lead-in',        events: [n('h'), n('q'), n('q')] },
-  { level: 1, label: 'Build-up',       events: [n('q'), n('q'), n('h')] },
-
-  // Level 2 — eighth-note pairs
-  { level: 2, label: 'Walk & run',     events: [n('q'), n('q'), n('8'), n('8'), n('q')] },
-  { level: 2, label: 'Running start',  events: [n('8'), n('8'), n('8'), n('8'), n('q'), n('q')] },
-  { level: 2, label: 'Step-step',      events: [n('q'), n('8'), n('8'), n('q'), n('q')] },
-  { level: 2, label: 'Pickup',         events: [n('8'), n('8'), n('q'), n('q'), n('q')] },
-
-  // Level 3 — dotted notes & quarter rests
-  { level: 3, label: 'Long-short',     events: [n('q', 1), n('8'), n('q'), n('q')] },
-  { level: 3, label: 'Double long-short', events: [n('q', 1), n('8'), n('q', 1), n('8')] },
-  { level: 3, label: 'Gap on 2',       events: [n('q'), r('q'), n('q'), n('q')] },
-  { level: 3, label: 'Late start',     events: [r('q'), n('q'), n('q'), n('q')] },
-
-  // Level 4 — syncopation
-  { level: 4, label: 'Off the beat',   events: [n('8'), n('q'), n('q'), n('q'), n('8')] },
-  { level: 4, label: 'Backbeat',       events: [r('8'), n('8'), r('8'), n('8'), n('h')] },
-  { level: 4, label: 'Anticipation',   events: [n('q', 1), n('8', 0, true), n('h')] },
-  { level: 4, label: 'Lean in',        events: [n('q'), r('8'), n('8'), n('q'), n('q')] },
-
-  // Level 5 — sixteenths
-  { level: 5, label: 'Sixteenth run',  events: [n('16'), n('16'), n('16'), n('16'), n('q'), n('8'), n('8'), n('q')] },
-  { level: 5, label: 'Gallop',         events: [n('8', 1), n('16'), n('8', 1), n('16'), n('8', 1), n('16'), n('8', 1), n('16')] },
-  { level: 5, label: 'Mixed',          events: [n('8'), n('16'), n('16'), n('q'), n('16'), n('16'), n('8'), n('q')] },
-  { level: 5, label: 'All off-beats',  events: [r('8'), n('8'), r('8'), n('8'), r('8'), n('8'), r('8'), n('8')] },
-]
-
-// Double the list for a seamless CSS animation loop.
-// The animation scrolls through the first N, then loops back to the start.
-const REEL = [...REEL_LIBRARY, ...REEL_LIBRARY]
+// ── Reel configuration ────────────────────────────────────────────────────────
 
 const SLOT_PX = 380          // fixed pixel width of every rendered measure
-const REEL_HALF = REEL_LIBRARY.length   // 20 — one full cycle of difficulty
+const REEL_UNIQUE = 24       // how many unique measures to generate before looping
 
-// ── types ─────────────────────────────────────────────────────────────────────
+// Build once at module load — deterministic, no re-generation on re-render
+const REEL_LIBRARY: GeneratedMeasure[] = generateReel(REEL_UNIQUE, 1337)
+// Double for seamless CSS loop
+const REEL: GeneratedMeasure[] = [...REEL_LIBRARY, ...REEL_LIBRARY]
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 type Stage = 'welcome' | 'bpm-setup' | 'playing'
 
-// ── main component ────────────────────────────────────────────────────────────
+// ── Main component ────────────────────────────────────────────────────────────
 
 export function PlayAlong() {
   const [stage, setStage] = useState<Stage>('welcome')
@@ -80,7 +27,7 @@ export function PlayAlong() {
   const tapFlashTimer = useRef<number | null>(null)
 
   const msPerMeasure = (4 * 60000) / bpm
-  const reelDurationMs = REEL_HALF * msPerMeasure
+  const reelDurationMs = REEL_UNIQUE * msPerMeasure
 
   function startPlaying() {
     tickEngine.cancelAll()
@@ -130,8 +77,12 @@ export function PlayAlong() {
             <NotationBlock
               key={i}
               events={item.events}
+              timeSigTop={item.timeSigTop}
+              timeSigBottom={item.timeSigBottom}
               label={item.label}
               level={item.level}
+              showClef={item.showClef}
+              showTimeSig={item.showTimeSig}
             />
           ))}
         </div>
@@ -155,7 +106,7 @@ export function PlayAlong() {
   )
 }
 
-// ── welcome screen ────────────────────────────────────────────────────────────
+// ── Welcome screen ────────────────────────────────────────────────────────────
 
 function WelcomeScreen({ onStart }: { onStart: () => void }) {
   return (
@@ -169,7 +120,7 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
         <li>Pick a tempo that feels comfortable</li>
         <li>Watch the notation scroll by</li>
         <li>Tap the big button on every note</li>
-        <li>Patterns get gradually more challenging</li>
+        <li>Patterns get gradually more challenging — and the time signature changes!</li>
       </ul>
       <button type="button" className="btn-primary pa-cta" onClick={onStart}>
         Get started
@@ -237,26 +188,34 @@ function BpmSetup({ bpm, setBpm, onStart }: {
   )
 }
 
-// ── notation block ────────────────────────────────────────────────────────────
+// ── Notation block ────────────────────────────────────────────────────────────
 
 interface NotationBlockProps {
-  events: PatternEvent[]
+  events: import('../api/types').PatternEvent[]
+  timeSigTop: number
+  timeSigBottom: number
   label: string
   level: number
+  showClef: boolean
+  showTimeSig: boolean
 }
 
-function NotationBlock({ events, label, level }: NotationBlockProps) {
+function NotationBlock({ events, timeSigTop, timeSigBottom, label, level, showClef, showTimeSig }: NotationBlockProps) {
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
     try {
-      renderPattern(el, { events }, 4, 4, { fixedTotalWidth: SLOT_PX })
+      renderPattern(el, { events }, timeSigTop, timeSigBottom, {
+        fixedTotalWidth: SLOT_PX,
+        showClef,
+        showTimeSignature: showTimeSig,
+      })
     } catch {
       // silently ignore render errors (e.g. in test environments)
     }
-  // events is a stable reference from the REEL constant — no need to deep-compare
+  // Each block's props are stable references from the REEL constant
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

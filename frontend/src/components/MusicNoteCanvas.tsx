@@ -1,10 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { triggerRipple } from '../lib/rippleEngine'
 import {
-  SPEED, NUM_MEASURES, NOTE_MARGIN, TARGET_FRAMES,
-  STAFF_POS, PATTERNS,
-  type NoteType, type RhythmNote, type MeasureNote,
-  calcMeasureW, makeMeasures, buildScrollData,
+  NUM_MEASURES, NOTE_MARGIN,
+  type NoteType, type MeasureNote,
+  makeMeasures, buildScrollData,
 } from '../lib/musicNoteEngine'
 import { getBeatLabel } from '../lib/rhythm'
 
