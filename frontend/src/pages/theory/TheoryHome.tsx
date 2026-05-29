@@ -10,6 +10,13 @@ interface Topic {
 
 const TOPICS: Topic[] = [
   {
+    title: 'Circle of Fifths',
+    description: 'The map of all 12 keys. Explore key signatures, relative minors, and the seven diatonic chords of any key — interactively.',
+    icon: '◎',
+    href: '/theory/circle-of-fifths',
+    available: true,
+  },
+  {
     title: 'Notes & the Staff',
     description: 'Read and name notes on the treble and bass clef. Learn how pitch is written on the page.',
     icon: '𝄞',

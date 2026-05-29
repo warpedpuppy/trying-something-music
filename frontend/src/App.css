@@ -1218,6 +1218,218 @@ a.theory-card:hover {
   border: 1px solid var(--line);
 }
 
+/* ---------------------------------------------------------------- circle of fifths */
+
+.cof-page {}
+
+.cof-header { margin-bottom: 32px; }
+
+.cof-intro {
+  color: var(--muted);
+  max-width: 62ch;
+  line-height: 1.65;
+  font-size: 1rem;
+}
+
+.cof-layout {
+  display: flex;
+  gap: 52px;
+  align-items: flex-start;
+}
+
+.cof-circle-wrap {
+  flex: 0 0 440px;
+}
+
+.cof-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.cof-compass {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 8px 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
+/* Info panel */
+
+.cof-info {
+  flex: 1;
+  min-width: 0;
+  padding-top: 8px;
+}
+
+.cof-key-title {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 0 0 20px;
+  font-family: Georgia, serif;
+}
+
+.cof-info-rows {
+  border-top: 1px solid var(--line);
+  margin-bottom: 24px;
+}
+
+.cof-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.cof-info-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.cof-info-value {
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-align: right;
+}
+
+.cof-section-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 20px 0 10px;
+}
+
+.cof-chords {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+}
+
+.cof-chord-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 9px 4px 8px;
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.cof-roman {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--muted);
+  font-family: Georgia, serif;
+}
+
+.cof-chord-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-align: center;
+  font-family: Georgia, serif;
+}
+
+.cof-chord-legend {
+  margin: 8px 0 0;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.cof-neighbors {
+  display: flex;
+  gap: 10px;
+}
+
+.cof-neighbor-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1.5px solid var(--line);
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: Georgia, serif;
+  cursor: pointer;
+  transition: background 0.13s, border-color 0.13s;
+  color: var(--ink);
+}
+
+.cof-neighbor-btn:hover {
+  background: var(--card);
+  border-color: var(--accent);
+}
+
+.cof-neighbor-hint {
+  font-size: 0.68rem;
+  font-weight: 400;
+  font-family: system-ui, sans-serif;
+  color: var(--muted);
+}
+
+/* Empty / intro state */
+
+.cof-empty-info h2 {
+  font-size: 1.4rem;
+  margin: 0 0 12px;
+}
+
+.cof-empty-info p {
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0 0 12px;
+}
+
+.cof-empty-info ul {
+  color: var(--muted);
+  padding-left: 20px;
+  margin: 0 0 20px;
+  line-height: 1.9;
+}
+
+.cof-tip {
+  background: var(--surface);
+  border-left: 3px solid #7c3aed;
+  border-radius: 0 8px 8px 0;
+  padding: 12px 16px;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+/* Responsive */
+
+@media (max-width: 760px) {
+  .cof-layout {
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  .cof-circle-wrap {
+    flex: none;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+  }
+
+  .cof-chords {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
 /* ---------------------------------------------------------------- tap button (new rectangular design) */
 
 .tap-button-area {

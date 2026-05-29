@@ -25,6 +25,7 @@ import { Login } from './pages/Login'
 import { PlayAlong } from './pages/PlayAlong'
 import { Register } from './pages/Register'
 import { TheoryHome } from './pages/theory/TheoryHome'
+import { CircleOfFifths } from './pages/theory/CircleOfFifths'
 import './App.css'
 
 function App() {
@@ -54,6 +55,7 @@ function App() {
 
             {/* theory section */}
             <Route path="/theory" element={<TheoryHome />} />
+            <Route path="/theory/circle-of-fifths" element={<CircleOfFifths />} />
 
             {/* admin */}
             <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
