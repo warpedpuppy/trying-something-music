@@ -60,7 +60,12 @@ export function PlayAlong() {
   }
 
   function handleMeasureClick(measure: GeneratedMeasure) {
-    if (!isPaused) return
+    // Pause the game if it's still running, then open the review modal.
+    if (!isPaused) {
+      setIsPaused(true)
+      tickEngine.cancelAll()
+      setBeatIndex(null)
+    }
     setReviewMeasure(measure)
   }
 
@@ -115,10 +120,6 @@ export function PlayAlong() {
       </div>
       <p className="pa-bpm-label">{bpm} BPM</p>
 
-      {isPaused && (
-        <p className="pa-pause-hint">Click a measure to hear it explained</p>
-      )}
-
       {/* Scrolling notation reel */}
       <div className="pa-reel-viewport">
         <div className="pa-cursor-line" aria-hidden="true" />
@@ -133,7 +134,6 @@ export function PlayAlong() {
             <NotationBlock
               key={i}
               measure={item}
-              interactive={isPaused}
               onClick={() => handleMeasureClick(item)}
             />
           ))}
@@ -186,7 +186,7 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
         <li>Watch the notation scroll by</li>
         <li>Tap the big button on every note</li>
         <li>Patterns get gradually more challenging — and the time signature changes!</li>
-        <li>Pause any time and click a measure to hear it played back</li>
+        <li>Click any measure to pause the music and hear it explained with a count-in</li>
       </ul>
       <button type="button" className="btn-primary pa-cta" onClick={onStart}>
         Get started
@@ -258,11 +258,10 @@ function BpmSetup({ bpm, setBpm, onStart }: {
 
 interface NotationBlockProps {
   measure: GeneratedMeasure
-  interactive: boolean
   onClick: () => void
 }
 
-function NotationBlock({ measure, interactive, onClick }: NotationBlockProps) {
+function NotationBlock({ measure, onClick }: NotationBlockProps) {
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -286,14 +285,15 @@ function NotationBlock({ measure, interactive, onClick }: NotationBlockProps) {
 
   return (
     <div
-      className={`pa-measure-block${interactive ? ' interactive' : ''}`}
-      onClick={interactive ? onClick : undefined}
-      role={interactive ? 'button' : undefined}
-      tabIndex={interactive ? 0 : undefined}
-      onKeyDown={interactive ? (e) => { if (e.key === 'Enter' || e.key === ' ') onClick() } : undefined}
-      aria-label={interactive ? `Hear measure: ${measure.label}` : undefined}
+      className="pa-measure-block"
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick() }}
+      aria-label={`Hear measure: ${measure.label}`}
     >
       <div ref={containerRef} className="pa-notation-container" />
+      <span className="pa-measure-hint">click to pause &amp; analyze</span>
       <div className="pa-measure-footer">
         <span className="pa-measure-label">{measure.label}</span>
         <span className="pa-measure-level" aria-label={`Level ${measure.level}`}>{levelDots}</span>

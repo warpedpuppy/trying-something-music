@@ -2991,25 +2991,44 @@ a.theory-card:hover {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   background: #fff;
+  cursor: pointer;
+  transition: background 0.2s;
   /* no border-right — seamless VexFlow barlines handle the visual separation */
 }
 
-/* Clickable measure while paused */
-.pa-measure-block.interactive {
-  cursor: pointer;
-  transition: background 0.15s;
+.pa-measure-block:hover {
+  background: rgba(249, 115, 22, 0.05);
 }
 
-.pa-measure-block.interactive:hover {
-  background: #f0f4ff;
-}
-
-/* VexFlow renders an SVG into this div — let it size itself */
+/* VexFlow container — orange tint on hover */
 .pa-notation-container {
   width: 100%;
   line-height: 0; /* collapse whitespace around the SVG */
+  transition: filter 0.2s;
+}
+
+.pa-measure-block:hover .pa-notation-container {
+  filter: sepia(1) saturate(6) hue-rotate(340deg);
+}
+
+/* "click to pause & analyze" hint — invisible until hover */
+.pa-measure-hint {
+  font-size: 0.67rem;
+  font-style: italic;
+  color: transparent;
+  margin: 0;
+  text-align: center;
+  transition: color 0.2s;
+  height: 1em;         /* reserve space so footer doesn't jump */
+  line-height: 1;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.pa-measure-block:hover .pa-measure-hint {
+  color: #f97316;
 }
 
 .pa-notation-container svg {
