@@ -230,21 +230,17 @@ export function RhythmPlayback({
 
   return (
     <div className="rp-wrap">
-      {/* Metronome + status — centred */}
+      {/* Metronome + status on one line */}
       <div className="rp-status-row">
         <Metronome bpm={bpm} running={isActive} compact />
         <p className="rp-status-text">
-          {phase === 'count-in' && (
-            countInBeat !== null
-              ? `Count-in — ${countInBeat}`
-              : 'Counting in — the answer plays on the downbeat…'
-          )}
-          {phase === 'playing' && 'Listen — hear how the rhythm fits the underlying beat.'}
+          {phase === 'count-in' && (countInBeat !== null ? `Count-in — ${countInBeat}` : 'Counting in…')}
+          {phase === 'playing' && 'Listen carefully.'}
           {phase === 'done' && (hasDoneFirstPlay ? 'Playback complete.' : '')}
         </p>
       </div>
 
-      {/* Staff — centred */}
+      {/* Staff */}
       <div className="rp-staff-wrap">
         <RhythmStaff
           pattern={pattern}
@@ -269,28 +265,32 @@ export function RhythmPlayback({
         </p>
       )}
 
-      {phase === 'done' && hasDoneFirstPlay && (
-        <div className="rp-actions">
-          <button
-            type="button"
-            className="button-secondary"
-            onClick={() => { startPlay(true, false) }}
-          >
-            Watch playback with counting
-          </button>
-          <p className="counting-replay-note">
-            We didn't show the counting on first play so you could focus on reading the notation.
-          </p>
-        </div>
-      )}
-
-      {onClose && (
-        <div className="rp-close-row">
-          <button type="button" className="button-secondary" onClick={onClose}>
+      {/* Action buttons — all on one row */}
+      <div className="rp-actions">
+        {phase === 'done' && hasDoneFirstPlay && (
+          <>
+            <button
+              type="button"
+              className="button-secondary small"
+              onClick={() => { startPlay(false, false) }}
+            >
+              Play again
+            </button>
+            <button
+              type="button"
+              className="button-secondary small"
+              onClick={() => { startPlay(true, false) }}
+            >
+              Watch with counting
+            </button>
+          </>
+        )}
+        {onClose && (
+          <button type="button" className="button-secondary small" onClick={onClose}>
             Close
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
