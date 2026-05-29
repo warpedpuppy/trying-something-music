@@ -15,7 +15,7 @@ interface Level {
   topics: Topic[]
 }
 
-type Tab = 'overview' | 'beginner' | 'intermediate' | 'advanced'
+type Tab = 'dashboard' | 'beginner' | 'intermediate' | 'advanced'
 
 const LEVELS: Level[] = [
   // ── Beginner ──────────────────────────────────────────────────────────────
@@ -190,6 +190,12 @@ const LEVELS: Level[] = [
   },
 ]
 
+// ── Derived stats ─────────────────────────────────────────────────────────────
+
+const ALL_TOPICS = LEVELS.flatMap((l) => l.topics)
+const AVAILABLE_TOPICS = ALL_TOPICS.filter((t) => t.available)
+const TOTAL_TOPICS = ALL_TOPICS.length
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const LEVEL_BADGE_CLASS: Record<Level['name'], string> = {
@@ -230,71 +236,87 @@ function TopicCard({ topic }: { topic: Topic }) {
   )
 }
 
-// ── Overview tab ──────────────────────────────────────────────────────────────
+// ── Theory Dashboard ──────────────────────────────────────────────────────────
 
-function OverviewTab({ onSelectTab }: { onSelectTab: (tab: Tab) => void }) {
-  const LEVEL_CARDS: Array<{
-    tab: 'beginner' | 'intermediate' | 'advanced'
-    emoji: string
-    heading: string
-    blurb: string
-    badge: string
-    badgeClass: string
-  }> = [
-    {
-      tab: 'beginner',
-      emoji: '🌱',
-      heading: 'Beginner',
-      blurb: 'Notes on the staff, key signatures, intervals, scales, and the chords that set tonal music in motion.',
-      badge: 'Beginner',
-      badgeClass: 'theory-level-badge-beginner',
-    },
-    {
-      tab: 'intermediate',
-      emoji: '🎹',
-      heading: 'Intermediate',
-      blurb: 'The Circle of Fifths, diatonic harmony, voice leading, secondary dominants, and the blues.',
-      badge: 'Intermediate',
-      badgeClass: 'theory-level-badge-intermediate',
-    },
-    {
-      tab: 'advanced',
-      emoji: '🎷',
-      heading: 'Advanced',
-      blurb: 'Modulation, modes as tonal centers, extended chords, tritone substitution, counterpoint, and reharmonization.',
-      badge: 'Advanced',
-      badgeClass: 'theory-level-badge-advanced',
-    },
-  ]
+function TheoryDashboard({ onSelectTab }: { onSelectTab: (tab: Tab) => void }) {
+  const comingSoon = TOTAL_TOPICS - AVAILABLE_TOPICS.length
 
   return (
-    <div className="theory-overview">
-      <div className="theory-overview-hero">
-        <h2 className="theory-overview-title">Understand the language behind the music</h2>
-        <p className="theory-overview-body">
-          From reading a note on the staff to the harmonic tricks that make jazz sound like jazz —
-          work through the levels in order or jump straight to whatever catches your curiosity.
-          Every lesson is interactive, visual, and built to stick.
-        </p>
+    <div className="theory-dashboard">
+      {/* Stats row */}
+      <div className="stat-grid">
+        <div className="stat-card">
+          <div className="stat-value">{AVAILABLE_TOPICS.length}</div>
+          <div className="stat-label">Topics available now</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-value">{comingSoon}</div>
+          <div className="stat-label">Topics coming soon</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-value">{LEVELS.length}</div>
+          <div className="stat-label">Levels</div>
+        </div>
       </div>
 
-      <div className="theory-overview-cards">
-        {LEVEL_CARDS.map(({ tab, emoji, heading, blurb, badge, badgeClass }) => (
-          <button
-            key={tab}
-            type="button"
-            className="theory-overview-card"
-            onClick={() => onSelectTab(tab)}
-          >
-            <span className="theory-overview-card-emoji">{emoji}</span>
-            <div className="theory-overview-card-body">
-              <span className={`theory-level-badge ${badgeClass}`}>{badge}</span>
-              <h3 className="theory-overview-card-heading">{heading}</h3>
-              <p className="theory-overview-card-blurb">{blurb}</p>
-              <span className="theory-overview-card-cta">Explore →</span>
+      {/* Featured / available lessons */}
+      <div className="card">
+        <h2>Start here</h2>
+        {AVAILABLE_TOPICS.length > 0 ? (
+          <>
+            <p className="muted" style={{ marginBottom: '16px' }}>
+              {AVAILABLE_TOPICS.length === 1
+                ? 'One interactive lesson is ready for you:'
+                : `${AVAILABLE_TOPICS.length} interactive lessons are ready for you:`}
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {AVAILABLE_TOPICS.map((topic) => (
+                <Link key={topic.href} to={topic.href} className="theory-dashboard-featured">
+                  <span className="theory-dashboard-featured-icon">{topic.icon}</span>
+                  <div>
+                    <p className="theory-dashboard-featured-title">{topic.title}</p>
+                    <p className="theory-dashboard-featured-desc">{topic.description}</p>
+                  </div>
+                  <span className="theory-dashboard-featured-arrow">→</span>
+                </Link>
+              ))}
             </div>
-          </button>
-        ))}
+          </>
+        ) : (
+          <p className="muted">Lessons are on the way — check back soon.</p>
+        )}
+      </div>
+
+      {/* Level breakdown */}
+      <h2 style={{ marginBottom: '12px' }}>Explore by level</h2>
+      <div className="theory-dashboard-levels">
+        {LEVELS.map((level) => {
+          const available = level.topics.filter((t) => t.available).length
+          const tab = level.name.toLowerCase() as 'beginner' | 'intermediate' | 'advanced'
+          return (
+            <button
+              key={level.name}
+              type="button"
+              className="theory-dashboard-level-card"
+              onClick={() => onSelectTab(tab)}
+            >
+              <div className="theory-dashboard-level-top">
+                <span className={LEVEL_BADGE_CLASS[level.name]}>{level.name}</span>
+                <span className="theory-dashboard-level-count">
+                  {available} / {level.topics.length}
+                </span>
+              </div>
+              <p className="theory-dashboard-level-tagline">{level.tagline}</p>
+              <div className="theory-dashboard-level-bar">
+                <div
+                  className="theory-dashboard-level-bar-fill"
+                  style={{ width: `${(available / level.topics.length) * 100}%` }}
+                />
+              </div>
+              <span className="theory-overview-card-cta">Browse topics →</span>
+            </button>
+          )
+        })}
       </div>
     </div>
   )
@@ -321,10 +343,10 @@ function LevelTab({ level }: { level: Level }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function TheoryHome() {
-  const [activeTab, setActiveTab] = useState<Tab>('overview')
+  const [activeTab, setActiveTab] = useState<Tab>('dashboard')
 
   const TAB_LABELS: Array<{ id: Tab; label: string }> = [
-    { id: 'overview',     label: 'Overview' },
+    { id: 'dashboard',    label: 'Dashboard' },
     { id: 'beginner',     label: 'Beginner' },
     { id: 'intermediate', label: 'Intermediate' },
     { id: 'advanced',     label: 'Advanced' },
@@ -345,7 +367,7 @@ export function TheoryHome() {
             role="tab"
             aria-selected={activeTab === id}
             className={`theory-tab-btn${activeTab === id ? ' active' : ''}${
-              id !== 'overview' ? ` theory-tab-btn-${id}` : ''
+              id !== 'dashboard' ? ` theory-tab-btn-${id}` : ''
             }`}
             onClick={() => setActiveTab(id)}
           >
@@ -356,9 +378,9 @@ export function TheoryHome() {
 
       {/* Tab content */}
       <div className="theory-tab-content">
-        {activeTab === 'overview' && <OverviewTab onSelectTab={setActiveTab} />}
-        {activeTab !== 'overview' && (
-          <LevelTab level={LEVELS.find(l => l.name === TAB_TO_LEVEL[activeTab as 'beginner' | 'intermediate' | 'advanced'])!} />
+        {activeTab === 'dashboard' && <TheoryDashboard onSelectTab={setActiveTab} />}
+        {activeTab !== 'dashboard' && (
+          <LevelTab level={LEVELS.find((l) => l.name === TAB_TO_LEVEL[activeTab as 'beginner' | 'intermediate' | 'advanced'])!} />
         )}
       </div>
     </div>
