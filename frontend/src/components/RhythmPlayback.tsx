@@ -200,7 +200,7 @@ export function RhythmPlayback({
           staffAnchorsRef.current,
           onsets,
           staffWidthRef.current - 10,
-          beatMs,
+          measureDurationMs - lastOnsetMs,
           () => {
             setPhase('done')
             if (isFirstPlay) {
