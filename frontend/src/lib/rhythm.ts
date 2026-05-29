@@ -125,11 +125,23 @@ export function buildCountingBeats(
 ): CountingBeat[] {
   const msPerBeat = 60000 / bpm
   const total = totalBeats(pattern)
-  const grid = pattern.events.some(e => e.duration === '16') ? 0.25 : 0.5
 
-  const notePositions = new Set(
-    expectedOnsets(pattern).map(o => Math.round(o.beat * 10000))
+  // Determine the counting grid from actual onset beat positions.
+  // This correctly handles dotted notes (e.g. dotted quarter → 8th-note grid)
+  // without relying on duration type alone.
+  const onsets = expectedOnsets(pattern)
+  const onsetBeats = onsets.map(o => o.beat)
+  const needsSixteenth = onsetBeats.some(
+    b => Math.abs(b * 4 - Math.round(b * 4)) < 0.001 &&
+         Math.abs(b * 2 - Math.round(b * 2)) > 0.01
   )
+  const needsEighth = onsetBeats.some(
+    b => Math.abs(b * 2 - Math.round(b * 2)) < 0.001 &&
+         Math.abs(b - Math.round(b)) > 0.01
+  )
+  const grid = needsSixteenth ? 0.25 : needsEighth ? 0.5 : 1.0
+
+  const notePositions = new Set(onsets.map(o => Math.round(o.beat * 10000)))
 
   const beats: CountingBeat[] = []
   let pos = 0
