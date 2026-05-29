@@ -257,34 +257,6 @@ function TheoryDashboard() {
         </div>
       </div>
 
-      {/* Featured / available lessons */}
-      <div className="card">
-        <h2>Start here</h2>
-        {AVAILABLE_TOPICS.length > 0 ? (
-          <>
-            <p className="muted" style={{ marginBottom: '16px' }}>
-              {AVAILABLE_TOPICS.length === 1
-                ? 'One interactive lesson is ready for you:'
-                : `${AVAILABLE_TOPICS.length} interactive lessons are ready for you:`}
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {AVAILABLE_TOPICS.map((topic) => (
-                <Link key={topic.href} to={topic.href} className="theory-dashboard-featured">
-                  <span className="theory-dashboard-featured-icon">{topic.icon}</span>
-                  <div>
-                    <p className="theory-dashboard-featured-title">{topic.title}</p>
-                    <p className="theory-dashboard-featured-desc">{topic.description}</p>
-                  </div>
-                  <span className="theory-dashboard-featured-arrow">→</span>
-                </Link>
-              ))}
-            </div>
-          </>
-        ) : (
-          <p className="muted">Lessons are on the way — check back soon.</p>
-        )}
-      </div>
-
       {/* Level breakdown */}
       <h2 style={{ marginBottom: '12px' }}>Explore by level</h2>
       <div className="theory-dashboard-levels">
