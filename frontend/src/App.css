@@ -1218,6 +1218,54 @@ a.theory-card:hover {
   border: 1px solid var(--line);
 }
 
+.theory-level-section {
+  margin-bottom: 48px;
+}
+
+.theory-level-header {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1.5px solid var(--line);
+}
+
+.theory-level-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 3px 12px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+
+.theory-level-badge-beginner {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.theory-level-badge-intermediate {
+  background: #ede9fe;
+  color: #6d28d9;
+  border: 1px solid #ddd6fe;
+}
+
+.theory-level-badge-advanced {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.theory-level-tagline {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
 /* ---------------------------------------------------------------- circle of fifths */
 
 .cof-page {}
