@@ -1082,7 +1082,30 @@
 .rp-wrap {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 16px;
+}
+
+/* Metronome + status text side-by-side, centred */
+.rp-status-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.rp-status-text {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin: 0;
+  max-width: 28ch;
+  line-height: 1.4;
+}
+
+/* Staff centred in the modal */
+.rp-staff-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
 }
 
 .rp-actions {

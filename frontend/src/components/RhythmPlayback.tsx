@@ -12,6 +12,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Metronome } from './Metronome'
 import { RhythmStaff } from './RhythmStaff'
 import type { DotMarker, NoteAnchor } from './RhythmStaff'
 import { tickEngine } from '../lib/audio'
@@ -225,39 +226,38 @@ export function RhythmPlayback({
     dots.push({ eventIndex: onsets[playingIndex].eventIndex, kind: 'playing' })
   }
 
+  const isActive = phase === 'count-in' || phase === 'playing'
+
   return (
     <div className="rp-wrap">
-      <div className="player-info-row">
-        <span className="player-info-text">
+      {/* Metronome + status — centred */}
+      <div className="rp-status-row">
+        <Metronome bpm={bpm} running={isActive} />
+        <p className="rp-status-text">
           {phase === 'count-in' && (
-            <span>
-              {countInBeat !== null
-                ? `Count-in — ${countInBeat}`
-                : 'Counting in — the answer plays on the downbeat…'}
-            </span>
+            countInBeat !== null
+              ? `Count-in — ${countInBeat}`
+              : 'Counting in — the answer plays on the downbeat…'
           )}
-          {phase === 'playing' && (
-            <span>Listen — hear how the rhythm fits the underlying beat.</span>
-          )}
-          {phase === 'done' && (
-            <span className="muted">
-              {hasDoneFirstPlay ? 'Playback complete.' : ''}
-            </span>
-          )}
-        </span>
+          {phase === 'playing' && 'Listen — hear how the rhythm fits the underlying beat.'}
+          {phase === 'done' && (hasDoneFirstPlay ? 'Playback complete.' : '')}
+        </p>
       </div>
 
-      <RhythmStaff
-        pattern={pattern}
-        timeSigTop={timeSigTop}
-        timeSigBottom={timeSigBottom}
-        dots={dots}
-        playheadX={playheadX}
-        onRendered={(width, anchors) => {
-          staffWidthRef.current = width
-          staffAnchorsRef.current = anchors
-        }}
-      />
+      {/* Staff — centred */}
+      <div className="rp-staff-wrap">
+        <RhythmStaff
+          pattern={pattern}
+          timeSigTop={timeSigTop}
+          timeSigBottom={timeSigBottom}
+          dots={dots}
+          playheadX={playheadX}
+          onRendered={(width, anchors) => {
+            staffWidthRef.current = width
+            staffAnchorsRef.current = anchors
+          }}
+        />
+      </div>
 
       {countingBeats.length > 0 && (
         <p className="playback-count-label">
