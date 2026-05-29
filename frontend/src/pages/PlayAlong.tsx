@@ -130,7 +130,11 @@ export function PlayAlong() {
 
       {/* Scrolling notation reel */}
       <div className="pa-reel-viewport">
-        <div className="pa-cursor-line" aria-hidden="true" />
+        <div
+          key={beatIndex ?? -1}
+          className={`pa-cursor-line${beatIndex !== null ? ' pa-cursor-pulse' : ''}`}
+          aria-hidden="true"
+        />
         <div
           className={`pa-reel-track${isPaused ? ' paused' : ''}`}
           style={{

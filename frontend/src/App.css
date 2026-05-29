@@ -2057,6 +2057,9 @@ a.theory-card:hover {
   align-items: center;
   position: relative;
   z-index: 2;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
 }
 
 .player-wrap .player-header {
@@ -2982,9 +2985,19 @@ a.theory-card:hover {
   bottom: 0;
   width: 2px;
   background: var(--accent);
-  opacity: 0.4;
+  opacity: 0.35;
   z-index: 2;
   pointer-events: none;
+}
+
+@keyframes pa-cursor-beat {
+  0%   { opacity: 0.95; background: #7dd3fc; width: 3px; }
+  60%  { opacity: 0.55; background: var(--accent); width: 2px; }
+  100% { opacity: 0.35; background: var(--accent); width: 2px; }
+}
+
+.pa-cursor-pulse {
+  animation: pa-cursor-beat 0.38s ease-out forwards;
 }
 
 @keyframes pa-scroll {
