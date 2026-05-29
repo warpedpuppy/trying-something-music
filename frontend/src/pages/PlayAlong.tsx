@@ -4,6 +4,7 @@ import { generateReel, type GeneratedMeasure } from '../lib/rhythmGenerator'
 import { tickEngine } from '../lib/audio'
 import { RhythmPlayback } from '../components/RhythmPlayback'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { triggerRainbowBurst } from '../lib/rippleEngine'
 
 // ── Reel configuration ────────────────────────────────────────────────────────
 
@@ -30,6 +31,7 @@ export function PlayAlong() {
   const [isPaused, setIsPaused] = useState(false)
   const [reviewMeasure, setReviewMeasure] = useState<GeneratedMeasure | null>(null)
   const tapFlashTimer = useRef<number | null>(null)
+  const tapBtnRef = useRef<HTMLButtonElement>(null)
 
   const msPerMeasure = (4 * 60000) / bpm
   const reelDurationMs = REEL_UNIQUE * msPerMeasure
@@ -76,6 +78,10 @@ export function PlayAlong() {
     setTapFlash(true)
     if (tapFlashTimer.current) window.clearTimeout(tapFlashTimer.current)
     tapFlashTimer.current = window.setTimeout(() => setTapFlash(false), 130)
+    if (tapBtnRef.current) {
+      const r = tapBtnRef.current.getBoundingClientRect()
+      triggerRainbowBurst(r.left + r.width / 2, r.top + r.height / 2)
+    }
   }
 
   useEffect(() => () => { tickEngine.cancelAll() }, [])
@@ -145,6 +151,7 @@ export function PlayAlong() {
       {/* Controls row */}
       <div className="pa-controls-row">
         <button
+          ref={tapBtnRef}
           type="button"
           className={`pa-tap-btn${tapFlash ? ' flash' : ''}${isPaused ? ' pa-tap-btn-muted' : ''}`}
           onClick={handleTap}
