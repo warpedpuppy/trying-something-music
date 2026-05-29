@@ -24,7 +24,7 @@ import { Learn } from './pages/Learn'
 import { Login } from './pages/Login'
 import { PlayAlong } from './pages/PlayAlong'
 import { Register } from './pages/Register'
-import { TheoryHome } from './pages/theory/TheoryHome'
+import { TheoryHome, TheoryLevelPage } from './pages/theory/TheoryHome'
 import { CircleOfFifths } from './pages/theory/CircleOfFifths'
 import './App.css'
 
@@ -55,6 +55,9 @@ function App() {
 
             {/* theory section */}
             <Route path="/theory" element={<TheoryHome />} />
+            <Route path="/theory/beginner"     element={<TheoryLevelPage levelName="Beginner" />} />
+            <Route path="/theory/intermediate" element={<TheoryLevelPage levelName="Intermediate" />} />
+            <Route path="/theory/advanced"     element={<TheoryLevelPage levelName="Advanced" />} />
             <Route path="/theory/circle-of-fifths" element={<CircleOfFifths />} />
 
             {/* admin */}

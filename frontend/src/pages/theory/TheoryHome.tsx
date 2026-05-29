@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 interface Topic {
   title: string
@@ -9,15 +8,13 @@ interface Topic {
   available: boolean
 }
 
-interface Level {
+export interface Level {
   name: 'Beginner' | 'Intermediate' | 'Advanced'
   tagline: string
   topics: Topic[]
 }
 
-type Tab = 'dashboard' | 'beginner' | 'intermediate' | 'advanced'
-
-const LEVELS: Level[] = [
+export const LEVELS: Level[] = [
   // ── Beginner ──────────────────────────────────────────────────────────────
   {
     name: 'Beginner',
@@ -192,22 +189,22 @@ const LEVELS: Level[] = [
 
 // ── Derived stats ─────────────────────────────────────────────────────────────
 
-const ALL_TOPICS = LEVELS.flatMap((l) => l.topics)
+const ALL_TOPICS     = LEVELS.flatMap((l) => l.topics)
 const AVAILABLE_TOPICS = ALL_TOPICS.filter((t) => t.available)
-const TOTAL_TOPICS = ALL_TOPICS.length
+const TOTAL_TOPICS   = ALL_TOPICS.length
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const LEVEL_BADGE_CLASS: Record<Level['name'], string> = {
+export const LEVEL_BADGE_CLASS: Record<Level['name'], string> = {
   Beginner:     'theory-level-badge theory-level-badge-beginner',
   Intermediate: 'theory-level-badge theory-level-badge-intermediate',
   Advanced:     'theory-level-badge theory-level-badge-advanced',
 }
 
-const TAB_TO_LEVEL: Record<'beginner' | 'intermediate' | 'advanced', Level['name']> = {
-  beginner:     'Beginner',
-  intermediate: 'Intermediate',
-  advanced:     'Advanced',
+const LEVEL_ROUTE: Record<Level['name'], string> = {
+  Beginner:     '/theory/beginner',
+  Intermediate: '/theory/intermediate',
+  Advanced:     '/theory/advanced',
 }
 
 function TopicCard({ topic }: { topic: Topic }) {
@@ -238,7 +235,8 @@ function TopicCard({ topic }: { topic: Topic }) {
 
 // ── Theory Dashboard ──────────────────────────────────────────────────────────
 
-function TheoryDashboard({ onSelectTab }: { onSelectTab: (tab: Tab) => void }) {
+function TheoryDashboard() {
+  const navigate = useNavigate()
   const comingSoon = TOTAL_TOPICS - AVAILABLE_TOPICS.length
 
   return (
@@ -292,13 +290,12 @@ function TheoryDashboard({ onSelectTab }: { onSelectTab: (tab: Tab) => void }) {
       <div className="theory-dashboard-levels">
         {LEVELS.map((level) => {
           const available = level.topics.filter((t) => t.available).length
-          const tab = level.name.toLowerCase() as 'beginner' | 'intermediate' | 'advanced'
           return (
             <button
               key={level.name}
               type="button"
               className="theory-dashboard-level-card"
-              onClick={() => onSelectTab(tab)}
+              onClick={() => navigate(LEVEL_ROUTE[level.name])}
             >
               <div className="theory-dashboard-level-top">
                 <span className={LEVEL_BADGE_CLASS[level.name]}>{level.name}</span>
@@ -322,9 +319,9 @@ function TheoryDashboard({ onSelectTab }: { onSelectTab: (tab: Tab) => void }) {
   )
 }
 
-// ── Level tab ─────────────────────────────────────────────────────────────────
+// ── Level section (shared between level pages) ────────────────────────────────
 
-function LevelTab({ level }: { level: Level }) {
+export function LevelSection({ level }: { level: Level }) {
   return (
     <section className="theory-level-section">
       <div className="theory-level-header">
@@ -340,49 +337,22 @@ function LevelTab({ level }: { level: Level }) {
   )
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+// ── Route-level pages ─────────────────────────────────────────────────────────
 
+/** /theory — the dashboard */
 export function TheoryHome() {
-  const [activeTab, setActiveTab] = useState<Tab>('dashboard')
-
-  const TAB_LABELS: Array<{ id: Tab; label: string }> = [
-    { id: 'dashboard',    label: 'Dashboard' },
-    { id: 'beginner',     label: 'Beginner' },
-    { id: 'intermediate', label: 'Intermediate' },
-    { id: 'advanced',     label: 'Advanced' },
-  ]
-
   return (
     <div>
       <section className="theory-hero">
         <h1>Music Theory</h1>
       </section>
-
-      {/* Tab bar */}
-      <div className="theory-tabs" role="tablist">
-        {TAB_LABELS.map(({ id, label }) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === id}
-            className={`theory-tab-btn${activeTab === id ? ' active' : ''}${
-              id !== 'dashboard' ? ` theory-tab-btn-${id}` : ''
-            }`}
-            onClick={() => setActiveTab(id)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab content */}
-      <div className="theory-tab-content">
-        {activeTab === 'dashboard' && <TheoryDashboard onSelectTab={setActiveTab} />}
-        {activeTab !== 'dashboard' && (
-          <LevelTab level={LEVELS.find((l) => l.name === TAB_TO_LEVEL[activeTab as 'beginner' | 'intermediate' | 'advanced'])!} />
-        )}
-      </div>
+      <TheoryDashboard />
     </div>
   )
+}
+
+/** /theory/beginner | /theory/intermediate | /theory/advanced */
+export function TheoryLevelPage({ levelName }: { levelName: Level['name'] }) {
+  const level = LEVELS.find((l) => l.name === levelName)!
+  return <LevelSection level={level} />
 }

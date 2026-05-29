@@ -292,6 +292,9 @@ export function NavBar() {
             {inTheory && (
               <div className="mobile-nav-sub">
                 <NavLink to="/theory" end className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Dashboard</NavLink>
+                <NavLink to="/theory/beginner" className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Beginner</NavLink>
+                <NavLink to="/theory/intermediate" className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Intermediate</NavLink>
+                <NavLink to="/theory/advanced" className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Advanced</NavLink>
                 <button
                   type="button"
                   className="mobile-nav-link sub subnav-welcome-btn"
@@ -357,6 +360,15 @@ export function NavBar() {
               <>
                 <NavLink to="/theory" end className={({ isActive }) => isActive ? 'subnav-link active' : 'subnav-link'}>
                   Dashboard
+                </NavLink>
+                <NavLink to="/theory/beginner" className={({ isActive }) => isActive ? 'subnav-link active' : 'subnav-link'}>
+                  Beginner
+                </NavLink>
+                <NavLink to="/theory/intermediate" className={({ isActive }) => isActive ? 'subnav-link active' : 'subnav-link'}>
+                  Intermediate
+                </NavLink>
+                <NavLink to="/theory/advanced" className={({ isActive }) => isActive ? 'subnav-link active' : 'subnav-link'}>
+                  Advanced
                 </NavLink>
                 <button
                   type="button"

@@ -1330,131 +1330,10 @@
   margin: 0;
 }
 
-/* ── theory tab bar ─────────────────────────────────────────────────────────── */
-
-.theory-tabs {
-  display: flex;
-  gap: 4px;
-  padding: 4px;
-  background: var(--surface-2, #f3f4f6);
-  border-radius: 14px;
-  margin-bottom: 32px;
-  width: fit-content;
-}
-
-.theory-tab-btn {
-  background: none;
-  border: none;
-  padding: 8px 20px;
-  border-radius: 10px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--muted);
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-  white-space: nowrap;
-}
-
-.theory-tab-btn:hover {
-  background: rgba(0, 0, 0, 0.05);
-  color: var(--ink);
-}
-
-.theory-tab-btn.active {
-  background: #fff;
-  color: var(--ink);
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.10);
-}
-
-.theory-tab-btn-beginner.active     { color: #15803d; }
-.theory-tab-btn-intermediate.active { color: #6d28d9; }
-.theory-tab-btn-advanced.active     { color: #b45309; }
-
-.theory-tab-content {
-  animation: theory-fade-in 0.18s ease;
-}
-
-@keyframes theory-fade-in {
+/* shared fade-in-up animation (used by theory pages and Play Along pause hint) */
+@keyframes fade-in-up {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
-}
-
-/* ── theory overview tab ────────────────────────────────────────────────────── */
-
-.theory-overview {
-  display: flex;
-  flex-direction: column;
-  gap: 40px;
-}
-
-.theory-overview-hero {
-  max-width: 600px;
-}
-
-.theory-overview-title {
-  font-size: clamp(1.4rem, 2.5vw, 1.9rem);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  color: var(--ink);
-  margin: 0 0 12px;
-}
-
-.theory-overview-body {
-  color: var(--muted);
-  font-size: 1rem;
-  line-height: 1.7;
-  margin: 0;
-}
-
-.theory-overview-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 16px;
-}
-
-.theory-overview-card {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 16px;
-  padding: 24px;
-  background: #fff;
-  border: 1.5px solid var(--line, #e5e7eb);
-  border-radius: 16px;
-  cursor: pointer;
-  text-align: left;
-  transition: border-color 0.15s, box-shadow 0.15s, transform 0.12s;
-}
-
-.theory-overview-card:hover {
-  border-color: var(--accent);
-  box-shadow: 0 4px 20px rgba(67, 97, 238, 0.12);
-  transform: translateY(-2px);
-}
-
-.theory-overview-card-emoji {
-  font-size: 2rem;
-  line-height: 1;
-}
-
-.theory-overview-card-body {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.theory-overview-card-heading {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--ink);
-  margin: 4px 0 0;
-}
-
-.theory-overview-card-blurb {
-  font-size: 0.875rem;
-  color: var(--muted);
-  line-height: 1.55;
-  margin: 0;
 }
 
 .theory-overview-card-cta {
@@ -3179,7 +3058,7 @@ a.theory-card:hover {
   font-weight: 500;
   margin: -4px 0 4px;
   text-align: center;
-  animation: theory-fade-in 0.2s ease;
+  animation: fade-in-up 0.2s ease;
 }
 
 /* Controls row: TAP + pause button side-by-side */
