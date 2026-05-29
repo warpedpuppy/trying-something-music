@@ -2969,6 +2969,21 @@ a.theory-card:hover {
   margin: -16px 0 0;
 }
 
+/* "Tap to begin" prompt shown before first tap */
+.pa-tap-prompt {
+  color: var(--accent);
+  font-size: 0.92rem;
+  font-weight: 600;
+  margin: -16px 0 0;
+  letter-spacing: 0.02em;
+  animation: pa-prompt-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pa-prompt-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.45; }
+}
+
 /* scrolling reel */
 .pa-reel-viewport {
   position: relative;
@@ -3002,15 +3017,20 @@ a.theory-card:hover {
   animation: pa-cursor-beat 0.38s ease-out forwards;
 }
 
-@keyframes pa-scroll {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
-}
-
+/* Reel track — position is driven by requestAnimationFrame in PlayAlong.tsx,
+   not by a CSS animation, so the speed can update live as the user taps. */
 .pa-reel-track {
   display: flex;
-  animation: pa-scroll linear infinite;
   will-change: transform;
+}
+
+/* Reel viewport slides in from the right when the game starts */
+@keyframes pa-reel-slide-in {
+  from { transform: translateX(110%); }
+  to   { transform: translateX(0); }
+}
+.pa-reel-viewport.pa-reel-entering {
+  animation: pa-reel-slide-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .pa-measure-block {
@@ -3182,11 +3202,6 @@ a.theory-card:hover {
 .pa-stop-btn-pill:hover {
   background: rgba(0,0,0,0.05);
   color: var(--ink);
-}
-
-/* Paused reel — freezes animation in place */
-.pa-reel-track.paused {
-  animation-play-state: paused;
 }
 
 /* Pause hint message */
