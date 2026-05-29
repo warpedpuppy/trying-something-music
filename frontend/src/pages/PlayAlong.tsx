@@ -158,8 +158,7 @@ export function PlayAlong() {
           ref={tapBtnRef}
           type="button"
           className={`pa-tap-btn${tapFlash ? ' flash' : ''}${isPaused ? ' pa-tap-btn-muted' : ''}`}
-          onClick={handleTap}
-          onTouchStart={e => { e.preventDefault(); handleTap() }}
+          onPointerDown={e => { e.preventDefault(); handleTap() }}
           aria-label="Tap"
           disabled={isPaused}
         >
