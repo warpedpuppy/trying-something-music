@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { renderPattern } from '../lib/vexflowPattern'
 import { generateReel, type GeneratedMeasure } from '../lib/rhythmGenerator'
 import { tickEngine } from '../lib/audio'
+import { RhythmPlayback } from '../components/RhythmPlayback'
 
 // ── Reel configuration ────────────────────────────────────────────────────────
 
@@ -24,6 +25,8 @@ export function PlayAlong() {
   const [bpm, setBpm] = useState(80)
   const [beatIndex, setBeatIndex] = useState<number | null>(null)
   const [tapFlash, setTapFlash] = useState(false)
+  const [isPaused, setIsPaused] = useState(false)
+  const [reviewMeasure, setReviewMeasure] = useState<GeneratedMeasure | null>(null)
   const tapFlashTimer = useRef<number | null>(null)
 
   const msPerMeasure = (4 * 60000) / bpm
@@ -32,13 +35,33 @@ export function PlayAlong() {
   function startPlaying() {
     tickEngine.cancelAll()
     tickEngine.startMetronome(bpm, (index) => setBeatIndex(index % 4))
+    setIsPaused(false)
     setStage('playing')
   }
 
   function stopPlaying() {
     tickEngine.cancelAll()
     setBeatIndex(null)
+    setIsPaused(false)
     setStage('bpm-setup')
+  }
+
+  function handlePause() {
+    if (isPaused) {
+      // Resume
+      setIsPaused(false)
+      tickEngine.startMetronome(bpm, (index) => setBeatIndex(index % 4))
+    } else {
+      // Pause
+      setIsPaused(true)
+      tickEngine.cancelAll()
+      setBeatIndex(null)
+    }
+  }
+
+  function handleMeasureClick(measure: GeneratedMeasure) {
+    if (!isPaused) return
+    setReviewMeasure(measure)
   }
 
   function handleTap() {
@@ -55,6 +78,35 @@ export function PlayAlong() {
 
   return (
     <div className="pa-playing">
+      {/* Review modal — same RhythmPlayback component used in ExercisePlayer */}
+      {reviewMeasure && (
+        <div
+          className="modal-overlay"
+          onClick={(e) => { if (e.target === e.currentTarget) setReviewMeasure(null) }}
+        >
+          <div className="modal-panel">
+            <div className="modal-header">
+              <h2 className="modal-title">Hear this measure</h2>
+              <button
+                type="button"
+                className="modal-close"
+                aria-label="Close"
+                onClick={() => setReviewMeasure(null)}
+              >
+                ✕
+              </button>
+            </div>
+            <RhythmPlayback
+              pattern={{ events: reviewMeasure.events }}
+              timeSigTop={reviewMeasure.timeSigTop}
+              timeSigBottom={reviewMeasure.timeSigBottom}
+              bpm={bpm}
+              onClose={() => setReviewMeasure(null)}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Beat dots */}
       <div className="pa-beat-row" aria-label="Beat indicator">
         {[0, 1, 2, 3].map(i => (
@@ -63,11 +115,15 @@ export function PlayAlong() {
       </div>
       <p className="pa-bpm-label">{bpm} BPM</p>
 
+      {isPaused && (
+        <p className="pa-pause-hint">Click a measure to hear it explained</p>
+      )}
+
       {/* Scrolling notation reel */}
       <div className="pa-reel-viewport">
         <div className="pa-cursor-line" aria-hidden="true" />
         <div
-          className="pa-reel-track"
+          className={`pa-reel-track${isPaused ? ' paused' : ''}`}
           style={{
             width: `${REEL.length * SLOT_PX}px`,
             animationDuration: `${reelDurationMs}ms`,
@@ -76,28 +132,37 @@ export function PlayAlong() {
           {REEL.map((item, i) => (
             <NotationBlock
               key={i}
-              events={item.events}
-              timeSigTop={item.timeSigTop}
-              timeSigBottom={item.timeSigBottom}
-              label={item.label}
-              level={item.level}
-              showClef={item.showClef}
-              showTimeSig={item.showTimeSig}
+              measure={item}
+              interactive={isPaused}
+              onClick={() => handleMeasureClick(item)}
             />
           ))}
         </div>
       </div>
 
-      {/* Tap button */}
-      <button
-        type="button"
-        className={`pa-tap-btn${tapFlash ? ' flash' : ''}`}
-        onClick={handleTap}
-        onTouchStart={e => { e.preventDefault(); handleTap() }}
-        aria-label="Tap"
-      >
-        TAP
-      </button>
+      {/* Controls row */}
+      <div className="pa-controls-row">
+        <button
+          type="button"
+          className={`pa-tap-btn${tapFlash ? ' flash' : ''}${isPaused ? ' pa-tap-btn-muted' : ''}`}
+          onClick={handleTap}
+          onTouchStart={e => { e.preventDefault(); handleTap() }}
+          aria-label="Tap"
+          disabled={isPaused}
+        >
+          TAP
+        </button>
+
+        <button
+          type="button"
+          className={`pa-pause-btn${isPaused ? ' active' : ''}`}
+          onClick={handlePause}
+          aria-label={isPaused ? 'Resume' : 'Pause'}
+          title={isPaused ? 'Resume' : 'Pause'}
+        >
+          {isPaused ? '▶' : '⏸'}
+        </button>
+      </div>
 
       <button type="button" className="link-button pa-stop-btn" onClick={stopPlaying}>
         Stop
@@ -121,6 +186,7 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
         <li>Watch the notation scroll by</li>
         <li>Tap the big button on every note</li>
         <li>Patterns get gradually more challenging — and the time signature changes!</li>
+        <li>Pause any time and click a measure to hear it played back</li>
       </ul>
       <button type="button" className="btn-primary pa-cta" onClick={onStart}>
         Get started
@@ -191,26 +257,23 @@ function BpmSetup({ bpm, setBpm, onStart }: {
 // ── Notation block ────────────────────────────────────────────────────────────
 
 interface NotationBlockProps {
-  events: import('../api/types').PatternEvent[]
-  timeSigTop: number
-  timeSigBottom: number
-  label: string
-  level: number
-  showClef: boolean
-  showTimeSig: boolean
+  measure: GeneratedMeasure
+  interactive: boolean
+  onClick: () => void
 }
 
-function NotationBlock({ events, timeSigTop, timeSigBottom, label, level, showClef, showTimeSig }: NotationBlockProps) {
+function NotationBlock({ measure, interactive, onClick }: NotationBlockProps) {
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
     try {
-      renderPattern(el, { events }, timeSigTop, timeSigBottom, {
+      renderPattern(el, { events: measure.events }, measure.timeSigTop, measure.timeSigBottom, {
         fixedTotalWidth: SLOT_PX,
-        showClef,
-        showTimeSignature: showTimeSig,
+        showClef: measure.showClef,
+        showTimeSignature: measure.showTimeSig,
+        seamless: true,
       })
     } catch {
       // silently ignore render errors (e.g. in test environments)
@@ -219,14 +282,21 @@ function NotationBlock({ events, timeSigTop, timeSigBottom, label, level, showCl
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const levelDots = '●'.repeat(level) + '○'.repeat(5 - level)
+  const levelDots = '●'.repeat(measure.level) + '○'.repeat(5 - measure.level)
 
   return (
-    <div className="pa-measure-block">
+    <div
+      className={`pa-measure-block${interactive ? ' interactive' : ''}`}
+      onClick={interactive ? onClick : undefined}
+      role={interactive ? 'button' : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      onKeyDown={interactive ? (e) => { if (e.key === 'Enter' || e.key === ' ') onClick() } : undefined}
+      aria-label={interactive ? `Hear measure: ${measure.label}` : undefined}
+    >
       <div ref={containerRef} className="pa-notation-container" />
       <div className="pa-measure-footer">
-        <span className="pa-measure-label">{label}</span>
-        <span className="pa-measure-level" aria-label={`Level ${level}`}>{levelDots}</span>
+        <span className="pa-measure-label">{measure.label}</span>
+        <span className="pa-measure-level" aria-label={`Level ${measure.level}`}>{levelDots}</span>
       </div>
     </div>
   )

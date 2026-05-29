@@ -990,6 +990,84 @@
   text-align: center;
 }
 
+/* ---------------------------------------------------------------- modal overlay */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.modal-panel {
+  background: var(--surface, #fff);
+  border-radius: 20px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.22);
+  padding: 28px 32px 32px;
+  width: 100%;
+  max-width: 640px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.modal-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s;
+}
+
+.modal-close:hover {
+  background: var(--line, #e5e7eb);
+  color: var(--ink);
+}
+
+/* ---------------------------------------------------------------- shared RhythmPlayback component */
+
+.rp-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rp-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.rp-close-row {
+  display: flex;
+  justify-content: center;
+  padding-top: 4px;
+}
+
 .result-legend {
   display: flex;
   gap: 16px;
@@ -1144,6 +1222,140 @@
   font-size: 1.05rem;
   line-height: 1.65;
   margin: 0;
+}
+
+/* ── theory tab bar ─────────────────────────────────────────────────────────── */
+
+.theory-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--surface-2, #f3f4f6);
+  border-radius: 14px;
+  margin-bottom: 32px;
+  width: fit-content;
+}
+
+.theory-tab-btn {
+  background: none;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.theory-tab-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--ink);
+}
+
+.theory-tab-btn.active {
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.10);
+}
+
+.theory-tab-btn-beginner.active     { color: #15803d; }
+.theory-tab-btn-intermediate.active { color: #6d28d9; }
+.theory-tab-btn-advanced.active     { color: #b45309; }
+
+.theory-tab-content {
+  animation: theory-fade-in 0.18s ease;
+}
+
+@keyframes theory-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── theory overview tab ────────────────────────────────────────────────────── */
+
+.theory-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.theory-overview-hero {
+  max-width: 600px;
+}
+
+.theory-overview-title {
+  font-size: clamp(1.4rem, 2.5vw, 1.9rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  margin: 0 0 12px;
+}
+
+.theory-overview-body {
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 0;
+}
+
+.theory-overview-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.theory-overview-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 24px;
+  background: #fff;
+  border: 1.5px solid var(--line, #e5e7eb);
+  border-radius: 16px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.12s;
+}
+
+.theory-overview-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 4px 20px rgba(67, 97, 238, 0.12);
+  transform: translateY(-2px);
+}
+
+.theory-overview-card-emoji {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.theory-overview-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.theory-overview-card-heading {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 4px 0 0;
+}
+
+.theory-overview-card-blurb {
+  font-size: 0.875rem;
+  color: var(--muted);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.theory-overview-card-cta {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin-top: 4px;
 }
 
 .theory-grid {
@@ -2644,12 +2856,22 @@ a.theory-card:hover {
   flex-shrink: 0;
   width: 380px;  /* must match SLOT_PX in PlayAlong.tsx */
   padding: 16px 0 12px;
-  border-right: 1px solid rgba(0,0,0,0.07);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
   background: #fff;
+  /* no border-right — seamless VexFlow barlines handle the visual separation */
+}
+
+/* Clickable measure while paused */
+.pa-measure-block.interactive {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.pa-measure-block.interactive:hover {
+  background: #f0f4ff;
 }
 
 /* VexFlow renders an SVG into this div — let it size itself */
@@ -2717,5 +2939,64 @@ a.theory-card:hover {
 .pa-stop-btn {
   font-size: 0.85rem;
   color: var(--muted);
+}
+
+/* Paused reel — freezes animation in place */
+.pa-reel-track.paused {
+  animation-play-state: paused;
+}
+
+/* Pause hint message */
+.pa-pause-hint {
+  font-size: 0.875rem;
+  color: var(--accent);
+  font-style: italic;
+  font-weight: 500;
+  margin: -4px 0 4px;
+  text-align: center;
+  animation: theory-fade-in 0.2s ease;
+}
+
+/* Controls row: TAP + pause button side-by-side */
+.pa-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+/* Muted TAP button when paused */
+.pa-tap-btn-muted {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Pause / resume button */
+.pa-pause-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: var(--surface-2, #f3f4f6);
+  border: 1.5px solid var(--line, #e5e7eb);
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  color: var(--ink);
+}
+
+.pa-pause-btn:hover {
+  background: var(--accent-faint, #eef2ff);
+  border-color: var(--accent);
+  transform: scale(1.06);
+}
+
+.pa-pause-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(67, 97, 238, 0.35);
 }
 

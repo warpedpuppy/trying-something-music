@@ -60,9 +60,17 @@ export function renderPattern(
   pattern: Pattern,
   timeSigTop: number,
   timeSigBottom: number,
-  options: { showTimeSignature?: boolean; showClef?: boolean; scale?: number; fixedTotalWidth?: number } = {},
+  options: {
+    showTimeSignature?: boolean
+    showClef?: boolean
+    scale?: number
+    fixedTotalWidth?: number
+    /** When true, staves fill the full fixedTotalWidth with no side margins.
+     *  Eliminates the ~20px gap between adjacent blocks in a seamless reel. */
+    seamless?: boolean
+  } = {},
 ): RenderResult {
-  const { showTimeSignature = true, showClef = true, fixedTotalWidth } = options
+  const { showTimeSignature = true, showClef = true, fixedTotalWidth, seamless = false } = options
   container.innerHTML = ''
 
   const beatsPerMeasure = timeSigTop * (4 / timeSigBottom)
@@ -70,6 +78,10 @@ export function renderPattern(
 
   const measureWidths = measures.map((measure, measureIndex) => {
     if (fixedTotalWidth) {
+      if (seamless) {
+        // Fill the full width with no side margin — eliminates gaps between reel blocks.
+        return Math.floor(fixedTotalWidth / measures.length)
+      }
       // Distribute the fixed canvas width evenly across all measures.
       // 20px total horizontal margin (10 left + 10 right) is reserved.
       return Math.floor((fixedTotalWidth - 20) / measures.length)
@@ -86,7 +98,7 @@ export function renderPattern(
 
   const allNotes: StaveNote[] = []
   const noteEventIndexes: number[] = []
-  let x = 10
+  let x = (fixedTotalWidth && seamless) ? 0 : 10
 
   measures.forEach((measure, measureIndex) => {
     const stave = new Stave(x, STAVE_Y, measureWidths[measureIndex])

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 interface Topic {
@@ -13,6 +14,8 @@ interface Level {
   tagline: string
   topics: Topic[]
 }
+
+type Tab = 'overview' | 'beginner' | 'intermediate' | 'advanced'
 
 const LEVELS: Level[] = [
   // ── Beginner ──────────────────────────────────────────────────────────────
@@ -195,6 +198,12 @@ const LEVEL_BADGE_CLASS: Record<Level['name'], string> = {
   Advanced:     'theory-level-badge theory-level-badge-advanced',
 }
 
+const TAB_TO_LEVEL: Record<'beginner' | 'intermediate' | 'advanced', Level['name']> = {
+  beginner:     'Beginner',
+  intermediate: 'Intermediate',
+  advanced:     'Advanced',
+}
+
 function TopicCard({ topic }: { topic: Topic }) {
   if (topic.available) {
     return (
@@ -221,33 +230,137 @@ function TopicCard({ topic }: { topic: Topic }) {
   )
 }
 
+// ── Overview tab ──────────────────────────────────────────────────────────────
+
+function OverviewTab({ onSelectTab }: { onSelectTab: (tab: Tab) => void }) {
+  const LEVEL_CARDS: Array<{
+    tab: 'beginner' | 'intermediate' | 'advanced'
+    emoji: string
+    heading: string
+    blurb: string
+    badge: string
+    badgeClass: string
+  }> = [
+    {
+      tab: 'beginner',
+      emoji: '🌱',
+      heading: 'Beginner',
+      blurb: 'Notes on the staff, key signatures, intervals, scales, and the chords that set tonal music in motion.',
+      badge: 'Beginner',
+      badgeClass: 'theory-level-badge-beginner',
+    },
+    {
+      tab: 'intermediate',
+      emoji: '🎹',
+      heading: 'Intermediate',
+      blurb: 'The Circle of Fifths, diatonic harmony, voice leading, secondary dominants, and the blues.',
+      badge: 'Intermediate',
+      badgeClass: 'theory-level-badge-intermediate',
+    },
+    {
+      tab: 'advanced',
+      emoji: '🎷',
+      heading: 'Advanced',
+      blurb: 'Modulation, modes as tonal centers, extended chords, tritone substitution, counterpoint, and reharmonization.',
+      badge: 'Advanced',
+      badgeClass: 'theory-level-badge-advanced',
+    },
+  ]
+
+  return (
+    <div className="theory-overview">
+      <div className="theory-overview-hero">
+        <h2 className="theory-overview-title">Understand the language behind the music</h2>
+        <p className="theory-overview-body">
+          From reading a note on the staff to the harmonic tricks that make jazz sound like jazz —
+          work through the levels in order or jump straight to whatever catches your curiosity.
+          Every lesson is interactive, visual, and built to stick.
+        </p>
+      </div>
+
+      <div className="theory-overview-cards">
+        {LEVEL_CARDS.map(({ tab, emoji, heading, blurb, badge, badgeClass }) => (
+          <button
+            key={tab}
+            type="button"
+            className="theory-overview-card"
+            onClick={() => onSelectTab(tab)}
+          >
+            <span className="theory-overview-card-emoji">{emoji}</span>
+            <div className="theory-overview-card-body">
+              <span className={`theory-level-badge ${badgeClass}`}>{badge}</span>
+              <h3 className="theory-overview-card-heading">{heading}</h3>
+              <p className="theory-overview-card-blurb">{blurb}</p>
+              <span className="theory-overview-card-cta">Explore →</span>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Level tab ─────────────────────────────────────────────────────────────────
+
+function LevelTab({ level }: { level: Level }) {
+  return (
+    <section className="theory-level-section">
+      <div className="theory-level-header">
+        <span className={LEVEL_BADGE_CLASS[level.name]}>{level.name}</span>
+        <p className="theory-level-tagline">{level.tagline}</p>
+      </div>
+      <div className="theory-grid">
+        {level.topics.map((topic) => (
+          <TopicCard key={topic.title} topic={topic} />
+        ))}
+      </div>
+    </section>
+  )
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function TheoryHome() {
+  const [activeTab, setActiveTab] = useState<Tab>('overview')
+
+  const TAB_LABELS: Array<{ id: Tab; label: string }> = [
+    { id: 'overview',     label: 'Overview' },
+    { id: 'beginner',     label: 'Beginner' },
+    { id: 'intermediate', label: 'Intermediate' },
+    { id: 'advanced',     label: 'Advanced' },
+  ]
+
   return (
     <div>
       <section className="theory-hero">
         <h1>Music Theory</h1>
-        <p>
-          Understand the language behind the music — from reading a note on the staff
-          to the harmonic tricks that make jazz sound like jazz. Work through the levels
-          in order or jump to whatever catches your curiosity.
-        </p>
       </section>
 
-      {LEVELS.map((level) => (
-        <section key={level.name} className="theory-level-section">
-          <div className="theory-level-header">
-            <span className={LEVEL_BADGE_CLASS[level.name]}>{level.name}</span>
-            <p className="theory-level-tagline">{level.tagline}</p>
-          </div>
-          <div className="theory-grid">
-            {level.topics.map((topic) => (
-              <TopicCard key={topic.title} topic={topic} />
-            ))}
-          </div>
-        </section>
-      ))}
+      {/* Tab bar */}
+      <div className="theory-tabs" role="tablist">
+        {TAB_LABELS.map(({ id, label }) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === id}
+            className={`theory-tab-btn${activeTab === id ? ' active' : ''}${
+              id !== 'overview' ? ` theory-tab-btn-${id}` : ''
+            }`}
+            onClick={() => setActiveTab(id)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      <div className="theory-tab-content">
+        {activeTab === 'overview' && <OverviewTab onSelectTab={setActiveTab} />}
+        {activeTab !== 'overview' && (
+          <LevelTab level={LEVELS.find(l => l.name === TAB_TO_LEVEL[activeTab as 'beginner' | 'intermediate' | 'advanced'])!} />
+        )}
+      </div>
     </div>
   )
 }
