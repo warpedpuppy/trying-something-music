@@ -16,7 +16,7 @@ import { Metronome } from './Metronome'
 import { RhythmStaff } from './RhythmStaff'
 import type { DotMarker, NoteAnchor } from './RhythmStaff'
 import { tickEngine } from '../lib/audio'
-import { buildCountingBeats, expectedOnsets, onsetTimesMs } from '../lib/rhythm'
+import { buildCountingBeats, expectedOnsets, onsetTimesMs, totalBeats } from '../lib/rhythm'
 import type { CountingBeat, Onset } from '../lib/rhythm'
 import type { Pattern } from '../api/types'
 
@@ -150,6 +150,12 @@ export function RhythmPlayback({
     const beatMs = 60000 / bpm
     const offsets = onsetTimesMs(pattern, bpm)
 
+    // Tail long enough to let the metronome finish the measure — critical for
+    // whole notes (offset[last]=0, so the default 600 ms cut it off after beat 1).
+    const measureDurationMs = totalBeats(pattern) * beatMs
+    const lastOnsetMs = offsets.length > 0 ? offsets[offsets.length - 1] : 0
+    const tailMs = Math.max(600, measureDurationMs - lastOnsetMs + 100)
+
     tickEngine.startMetronome(bpm, (index, wallTimeMs) => {
       // Count-in display
       if (index < countInBeats) {
@@ -168,7 +174,7 @@ export function RhythmPlayback({
             tickEngine.stopMetronome()
             setPlayingIndex(null)
           },
-          600,
+          tailMs,
           startDelayMs,
         )
 

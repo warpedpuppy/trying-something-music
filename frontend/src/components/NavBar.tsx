@@ -165,12 +165,13 @@ export function NavBar() {
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const [showWelcome, setShowWelcome] = useState(false)
+  const [mobileSection, setMobileSection] = useState<'rhythm' | 'theory' | null>(null)
 
   const inRhythm = location.pathname.startsWith('/rhythm')
   const inTheory = location.pathname.startsWith('/theory')
 
-  useEffect(() => { setMenuOpen(false) }, [location.pathname])
-  // Close welcome modal on navigation
+  // Close welcome modal on navigation; do NOT auto-close the mobile menu on navigation
+  // so the user can switch sections without it snapping shut.
   useEffect(() => { setShowWelcome(false) }, [location.pathname])
 
   function handleLogout() {
@@ -250,7 +251,15 @@ export function NavBar() {
           type="button"
           className={`navbar-hamburger${menuOpen ? ' open' : ''}`}
           aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-          onClick={() => setMenuOpen(o => !o)}
+          onClick={() => {
+            setMenuOpen(o => {
+              if (!o) {
+                // Opening — auto-expand whichever section the user is already in
+                setMobileSection(inRhythm ? 'rhythm' : inTheory ? 'theory' : null)
+              }
+              return !o
+            })
+          }}
         >
           <span />
           <span />
@@ -262,18 +271,21 @@ export function NavBar() {
       {menuOpen && (
         <div className="navbar-mobile-menu">
           <nav className="mobile-nav-links">
-            <Link
-              to={user ? '/rhythm/dashboard' : '/rhythm/learn'}
-              className={`mobile-nav-link${inRhythm ? ' active' : ''}`}
+            {/* Rhythm accordion — tapping the heading expands/collapses; sub-links navigate */}
+            <button
+              type="button"
+              className={`mobile-nav-link mobile-nav-accordion${inRhythm ? ' active' : ''}${mobileSection === 'rhythm' ? ' expanded' : ''}`}
+              onClick={() => setMobileSection(s => s === 'rhythm' ? null : 'rhythm')}
             >
               Rhythm
-            </Link>
-            {inRhythm && (
+              <span className="mobile-nav-chevron">{mobileSection === 'rhythm' ? '▲' : '▼'}</span>
+            </button>
+            {mobileSection === 'rhythm' && (
               <div className="mobile-nav-sub">
-                {user && <NavLink to="/rhythm/dashboard" className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Dashboard</NavLink>}
-                {user && <NavLink to="/rhythm/exercises" className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Exercises</NavLink>}
-                <NavLink to="/rhythm/learn" className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Learn</NavLink>
-                <NavLink to="/rhythm/play-along" className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Play Along</NavLink>
+                {user && <NavLink to="/rhythm/dashboard" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Dashboard</NavLink>}
+                {user && <NavLink to="/rhythm/exercises" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Exercises</NavLink>}
+                <NavLink to="/rhythm/learn" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Learn</NavLink>
+                <NavLink to="/rhythm/play-along" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Play Along</NavLink>
                 <button
                   type="button"
                   className="mobile-nav-link sub subnav-welcome-btn"
@@ -283,18 +295,22 @@ export function NavBar() {
                 </button>
               </div>
             )}
-            <Link
-              to="/theory"
-              className={`mobile-nav-link${inTheory ? ' active' : ''}`}
+
+            {/* Theory accordion */}
+            <button
+              type="button"
+              className={`mobile-nav-link mobile-nav-accordion${inTheory ? ' active' : ''}${mobileSection === 'theory' ? ' expanded' : ''}`}
+              onClick={() => setMobileSection(s => s === 'theory' ? null : 'theory')}
             >
               Theory
-            </Link>
-            {inTheory && (
+              <span className="mobile-nav-chevron">{mobileSection === 'theory' ? '▲' : '▼'}</span>
+            </button>
+            {mobileSection === 'theory' && (
               <div className="mobile-nav-sub">
-                <NavLink to="/theory" end className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Dashboard</NavLink>
-                <NavLink to="/theory/beginner" className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Beginner</NavLink>
-                <NavLink to="/theory/intermediate" className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Intermediate</NavLink>
-                <NavLink to="/theory/advanced" className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Advanced</NavLink>
+                <NavLink to="/theory" end onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Dashboard</NavLink>
+                <NavLink to="/theory/beginner" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Beginner</NavLink>
+                <NavLink to="/theory/intermediate" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Intermediate</NavLink>
+                <NavLink to="/theory/advanced" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Advanced</NavLink>
                 <button
                   type="button"
                   className="mobile-nav-link sub subnav-welcome-btn"
@@ -304,7 +320,8 @@ export function NavBar() {
                 </button>
               </div>
             )}
-            <Link to="/about" className="mobile-nav-link">About</Link>
+
+            <Link to="/about" className="mobile-nav-link" onClick={() => setMenuOpen(false)}>About</Link>
           </nav>
           <div className="mobile-nav-user">
             {user ? (

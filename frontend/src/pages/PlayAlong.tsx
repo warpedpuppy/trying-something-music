@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { renderPattern } from '../lib/vexflowPattern'
 import { generateReel, type GeneratedMeasure } from '../lib/rhythmGenerator'
 import { tickEngine } from '../lib/audio'
+import { onsetTimesMs } from '../lib/rhythm'
 import { RhythmPlayback } from '../components/RhythmPlayback'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { triggerRainbowBurst } from '../lib/rippleEngine'
@@ -19,6 +20,7 @@ const REEL: GeneratedMeasure[] = [...REEL_LIBRARY, ...REEL_LIBRARY]
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Stage = 'welcome' | 'bpm-setup' | 'playing'
+type TapFace = { id: number; type: 'hit' | 'miss'; x: number; y: number }
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -30,8 +32,14 @@ export function PlayAlong() {
   const [tapFlash, setTapFlash] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const [reviewMeasure, setReviewMeasure] = useState<GeneratedMeasure | null>(null)
+  const [faces, setFaces] = useState<TapFace[]>([])
   const tapFlashTimer = useRef<number | null>(null)
   const tapBtnRef = useRef<HTMLButtonElement>(null)
+  const reelViewportRef = useRef<HTMLDivElement>(null)
+  // Reel elapsed-time tracking (needed for tap accuracy)
+  const reelStartRef = useRef<number>(0)      // wall clock when last started/resumed
+  const reelElapsedRef = useRef<number>(0)    // accumulated elapsed before last pause
+  const faceIdRef = useRef<number>(0)
 
   const msPerMeasure = (4 * 60000) / bpm
   const reelDurationMs = REEL_UNIQUE * msPerMeasure
@@ -39,6 +47,8 @@ export function PlayAlong() {
   function startPlaying() {
     tickEngine.cancelAll()
     tickEngine.startMetronome(bpm, (index) => setBeatIndex(index % 4))
+    reelStartRef.current = performance.now()
+    reelElapsedRef.current = 0
     setIsPaused(false)
     setStage('playing')
   }
@@ -52,11 +62,13 @@ export function PlayAlong() {
 
   function handlePause() {
     if (isPaused) {
-      // Resume
+      // Resume — record new start without resetting accumulated elapsed
+      reelStartRef.current = performance.now()
       setIsPaused(false)
       tickEngine.startMetronome(bpm, (index) => setBeatIndex(index % 4))
     } else {
-      // Pause
+      // Pause — accumulate elapsed time
+      reelElapsedRef.current += performance.now() - reelStartRef.current
       setIsPaused(true)
       tickEngine.cancelAll()
       setBeatIndex(null)
@@ -73,6 +85,40 @@ export function PlayAlong() {
     setReviewMeasure(measure)
   }
 
+  function checkTapAccuracy() {
+    // Total reel elapsed ms (accounts for pauses)
+    const elapsed = reelElapsedRef.current + (performance.now() - reelStartRef.current)
+    if (elapsed < 0) return
+
+    const tmod = elapsed % reelDurationMs
+    const pxPerMs = SLOT_PX / msPerMeasure
+    const scrollPx = tmod * pxPerMs
+
+    // Cursor line sits at 22% of the viewport width
+    const cursorLeft = window.innerWidth * 0.22
+    const reelPosPx = cursorLeft + scrollPx
+
+    const measureIdx = Math.floor(reelPosPx / SLOT_PX) % REEL_UNIQUE
+    const posInMeasure = (reelPosPx % SLOT_PX) / SLOT_PX
+    const timeInMeasureMs = posInMeasure * msPerMeasure
+
+    const measure = REEL_LIBRARY[measureIdx]
+    const onsets = onsetTimesMs({ events: measure.events }, bpm)
+
+    const HIT_WINDOW_MS = 165
+    const hit = onsets.some(t => Math.abs(t - timeInMeasureMs) < HIT_WINDOW_MS)
+
+    // Find face spawn position: center on cursor, vertically inside the reel viewport
+    const vpEl = reelViewportRef.current
+    const rect = vpEl?.getBoundingClientRect()
+    const faceX = window.innerWidth * 0.22
+    const faceY = rect ? rect.top + rect.height * 0.4 : window.innerHeight * 0.45
+
+    const id = ++faceIdRef.current
+    setFaces(f => [...f, { id, type: hit ? 'hit' : 'miss', x: faceX, y: faceY }])
+    window.setTimeout(() => setFaces(f => f.filter(x => x.id !== id)), 1300)
+  }
+
   function handleTap() {
     tickEngine.tick('tap')
     setTapFlash(true)
@@ -82,6 +128,7 @@ export function PlayAlong() {
       const r = tapBtnRef.current.getBoundingClientRect()
       triggerRainbowBurst(r.left + r.width / 2, r.top + r.height / 2)
     }
+    checkTapAccuracy()
   }
 
   useEffect(() => () => { tickEngine.cancelAll() }, [])
@@ -129,7 +176,7 @@ export function PlayAlong() {
       <p className="pa-bpm-label">{bpm} BPM</p>
 
       {/* Scrolling notation reel */}
-      <div className="pa-reel-viewport">
+      <div className="pa-reel-viewport" ref={reelViewportRef}>
         <div
           key={beatIndex ?? -1}
           className={`pa-cursor-line${beatIndex !== null ? ' pa-cursor-pulse' : ''}`}
@@ -162,9 +209,12 @@ export function PlayAlong() {
           aria-label="Tap"
           disabled={isPaused}
         >
-          TAP
+          <span className="pa-tap-btn-label">TAP</span>
+          <span className="pa-tap-btn-ring" aria-hidden="true" />
         </button>
+      </div>
 
+      <div className="pa-secondary-controls">
         <button
           type="button"
           className={`pa-pause-btn${isPaused ? ' active' : ''}`}
@@ -172,13 +222,24 @@ export function PlayAlong() {
           aria-label={isPaused ? 'Resume' : 'Pause'}
           title={isPaused ? 'Resume' : 'Pause'}
         >
-          {isPaused ? '▶' : '⏸'}
+          {isPaused ? '▶ Resume' : '⏸ Pause'}
+        </button>
+        <button type="button" className="pa-stop-btn-pill" onClick={stopPlaying}>
+          ■ Stop
         </button>
       </div>
 
-      <button type="button" className="link-button pa-stop-btn" onClick={stopPlaying}>
-        Stop
-      </button>
+      {/* Floating tap-accuracy faces (fixed position, outside reel clipping) */}
+      {faces.map(f => (
+        <span
+          key={f.id}
+          className={`pa-face pa-face-${f.type}`}
+          style={{ left: f.x, top: f.y }}
+          aria-hidden="true"
+        >
+          {f.type === 'hit' ? '😊' : '😞'}
+        </span>
+      ))}
     </div>
   )
 }
