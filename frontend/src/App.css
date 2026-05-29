@@ -1086,18 +1086,23 @@
   gap: 16px;
 }
 
-/* Metronome + status text side-by-side, centred */
+/* Metronome above, status text below — column keeps text-width changes
+   from shifting the metronome horizontally */
 .rp-status-row {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 8px;
 }
 
 .rp-status-text {
   font-size: 0.9rem;
   color: var(--muted);
   margin: 0;
-  max-width: 28ch;
+  text-align: center;
+  /* fixed height prevents the surrounding layout from jumping
+     as the message switches between count-in / playing / done */
+  min-height: 2.8em;
   line-height: 1.4;
 }
 
