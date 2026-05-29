@@ -741,10 +741,10 @@
 
 .staff-playhead {
   position: absolute;
-  z-index: 1;
-  top: 38px;    /* padding-top(18) + STAVE_Y(20) = top staff line */
+  z-index: 2;
+  top: 0;       /* span full canvas height — same technique as PlayAlong cursor line */
+  bottom: 0;
   width: 2px;
-  height: 40px; /* 4 line-spacings × 10px = full staff height */
   background: #f97316;
   opacity: 0.5;
   border-radius: 1px;
@@ -1125,6 +1125,14 @@
   width: 100%;
   display: flex;
   justify-content: center;
+}
+
+/* Let the figure shrink to the SVG's natural width so justify-content: center
+   actually centres it. max-width: 100% keeps it from overflowing on mobile.
+   The ResizeObserver still fires correctly because offsetWidth = SVG width. */
+.rp-staff-wrap .rhythm-staff {
+  width: auto;
+  max-width: 100%;
 }
 
 .rp-actions {
