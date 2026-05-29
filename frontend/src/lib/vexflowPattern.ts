@@ -65,31 +65,48 @@ export function renderPattern(
     showClef?: boolean
     scale?: number
     fixedTotalWidth?: number
+    /**
+     * When set, the staff will not exceed this pixel width. If the natural
+     * width (based on note count) is smaller it is used as-is; if it would
+     * overflow the measures are redistributed to fit within maxWidth.
+     * Use this to make the staff responsive to its container.
+     */
+    maxWidth?: number
     /** When true, staves fill the full fixedTotalWidth with no side margins.
      *  Eliminates the ~20px gap between adjacent blocks in a seamless reel. */
     seamless?: boolean
   } = {},
 ): RenderResult {
-  const { showTimeSignature = true, showClef = true, fixedTotalWidth, seamless = false } = options
+  const { showTimeSignature = true, showClef = true, fixedTotalWidth, maxWidth, seamless = false } = options
   container.innerHTML = ''
 
   const beatsPerMeasure = timeSigTop * (4 / timeSigBottom)
   const measures = splitIntoMeasures(pattern, beatsPerMeasure)
 
-  const measureWidths = measures.map((measure, measureIndex) => {
-    if (fixedTotalWidth) {
-      if (seamless) {
-        // Fill the full width with no side margin — eliminates gaps between reel blocks.
-        return Math.floor(fixedTotalWidth / measures.length)
-      }
-      // Distribute the fixed canvas width evenly across all measures.
-      // 20px total horizontal margin (10 left + 10 right) is reserved.
-      return Math.floor((fixedTotalWidth - 20) / measures.length)
-    }
+  // Natural per-measure widths (based on note density)
+  const naturalMeasureWidths = measures.map((measure, measureIndex) => {
     const base = Math.max(140, measure.events.length * 64)
     return measureIndex === 0 ? base + 80 : base
   })
-  const totalWidth = fixedTotalWidth ?? (measureWidths.reduce((a, b) => a + b, 0) + 20)
+  const naturalTotalWidth = naturalMeasureWidths.reduce((a, b) => a + b, 0) + 20
+
+  // Resolve the effective total width
+  const effectiveTotalWidth = fixedTotalWidth
+    ?? (maxWidth && naturalTotalWidth > maxWidth ? maxWidth : naturalTotalWidth)
+
+  const redistribute = fixedTotalWidth != null || (maxWidth != null && naturalTotalWidth > maxWidth)
+
+  const measureWidths = measures.map((_, measureIndex) => {
+    if (redistribute) {
+      if (seamless) {
+        return Math.floor(effectiveTotalWidth / measures.length)
+      }
+      return Math.floor((effectiveTotalWidth - 20) / measures.length)
+    }
+    return naturalMeasureWidths[measureIndex]
+  })
+
+  const totalWidth = effectiveTotalWidth
   const height = STAVE_Y + STAVE_HEIGHT + 30
 
   const renderer = new Renderer(container, Renderer.Backends.SVG)

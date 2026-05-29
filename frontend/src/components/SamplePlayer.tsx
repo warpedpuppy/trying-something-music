@@ -1,14 +1,26 @@
+/**
+ * SamplePlayer — lightweight exercise player used on the Learn page.
+ *
+ * Available to logged-out users; no server round-trip.  Scoring is done
+ * entirely client-side via scoreTapsFree.
+ *
+ * The "I give up" experience uses the same <RhythmPlayback> modal as
+ * ExercisePlayer so both code paths are always identical.  If you change
+ * the modal UI, change it once in RhythmPlayback.tsx.
+ */
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { Pattern } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { Metronome } from './Metronome'
+import { RhythmPlayback } from './RhythmPlayback'
 import { RhythmStaff } from './RhythmStaff'
 import type { DotMarker } from './RhythmStaff'
 import { TapButton } from './TapButton'
 import { useTapCapture } from '../hooks/useTapCapture'
 import { tickEngine } from '../lib/audio'
-import { expectedOnsets, onsetTimesMs, tapCount } from '../lib/rhythm'
+import { expectedOnsets, tapCount } from '../lib/rhythm'
 import { scoreTapsFree } from '../lib/scoring'
 import type { ScoreResult } from '../lib/scoring'
 
@@ -22,19 +34,20 @@ export interface SampleExercise {
   pattern: Pattern
 }
 
-type Phase = 'idle' | 'count-in' | 'capturing' | 'playback' | 'result'
+type Phase = 'idle' | 'count-in' | 'capturing' | 'result'
 
 export function SamplePlayer({ exercise }: { exercise: SampleExercise }) {
   const { user } = useAuth()
-  const [phase, setPhase] = useState<Phase>('idle')
-  const [result, setResult] = useState<ScoreResult | null>(null)
+  const [phase, setPhase]           = useState<Phase>('idle')
+  const [result, setResult]         = useState<ScoreResult | null>(null)
   const [countInBeat, setCountInBeat] = useState<number | null>(null)
-  const [playingIndex, setPlayingIndex] = useState<number | null>(null)
   const [staffWidth, setStaffWidth] = useState<number | undefined>()
+  const [showGiveUpModal, setShowGiveUpModal] = useState(false)
+
   const captureOpenTimerRef = useRef<number | null>(null)
 
   const onsets = useMemo(() => expectedOnsets(exercise.pattern), [exercise.pattern])
-  const taps = tapCount(exercise.pattern)
+  const taps   = tapCount(exercise.pattern)
 
   const clearCaptureTimer = useCallback(() => {
     if (captureOpenTimerRef.current !== null) {
@@ -43,11 +56,9 @@ export function SamplePlayer({ exercise }: { exercise: SampleExercise }) {
     }
   }, [])
 
-  useEffect(() => {
-    return () => {
-      clearCaptureTimer()
-      tickEngine.cancelAll()
-    }
+  useEffect(() => () => {
+    clearCaptureTimer()
+    tickEngine.cancelAll()
   }, [clearCaptureTimer])
 
   const handleComplete = useCallback(
@@ -69,11 +80,9 @@ export function SamplePlayer({ exercise }: { exercise: SampleExercise }) {
 
   function handleStart() {
     setResult(null)
-    setPlayingIndex(null)
     setCountInBeat(null)
     tapCapture.reset()
 
-    // Count-in length: numerator of time sig; doubled when numerator < 4
     const countInBeats = exercise.time_sig_top < 4
       ? exercise.time_sig_top * 2
       : exercise.time_sig_top
@@ -86,7 +95,6 @@ export function SamplePlayer({ exercise }: { exercise: SampleExercise }) {
         if (index < countInBeats) setCountInBeat(index + 1)
 
         if (index === countInBeats - 1) {
-          // Last beat: open capture window, then transition phase via timer
           clearCaptureTimer()
           captureOpenTimerRef.current = window.setTimeout(() => tapCapture.start(), beatMs / 2)
           window.setTimeout(() => {
@@ -94,28 +102,20 @@ export function SamplePlayer({ exercise }: { exercise: SampleExercise }) {
             setPhase('capturing')
           }, beatMs)
         }
-        // index === countInBeats is never reached: stopAfterBeats = countInBeats
       },
       countInBeats, // stopAfterBeats — plays exactly countInBeats clicks, no more
     )
   }
 
+  // ── Give-up: stop everything and open the shared RhythmPlayback modal ──────
+
   function handleGiveUp() {
     clearCaptureTimer()
-    tickEngine.stopMetronome()
+    tickEngine.cancelAll()
     tapCapture.reset()
-    setResult(null)
     setCountInBeat(null)
-    setPhase('playback')
-    const offsets = onsetTimesMs(exercise.pattern, exercise.tempo_bpm)
-    tickEngine.playSchedule(
-      offsets,
-      (i) => setPlayingIndex(i),
-      () => {
-        setPlayingIndex(null)
-        setPhase('idle')
-      },
-    )
+    setPhase('idle')
+    setShowGiveUpModal(true)
   }
 
   function handleReset() {
@@ -125,31 +125,31 @@ export function SamplePlayer({ exercise }: { exercise: SampleExercise }) {
     setPhase('idle')
     setResult(null)
     setCountInBeat(null)
-    setPlayingIndex(null)
   }
+
+  // ── Tap button label / behaviour ──────────────────────────────────────────
 
   const tapLabel =
-    phase === 'idle' ? 'START' :
+    phase === 'idle'     ? 'START' :
     phase === 'count-in' ? (countInBeat !== null ? String(countInBeat) : '…') :
     phase === 'capturing' ? 'TAP' :
-    phase === 'result' ? 'AGAIN' :
-    '…'
+    phase === 'result'   ? 'AGAIN' : '…'
 
-  const tapSublabel =
-    phase === 'capturing' ? `${tapCapture.taps.length} / ${taps}` : undefined
+  const tapSublabel = phase === 'capturing'
+    ? `${tapCapture.taps.length} / ${taps}`
+    : undefined
 
-  const tapDisabled = phase === 'count-in' || phase === 'playback'
+  const tapDisabled = phase === 'count-in'
 
   function handleTapButton() {
-    if (phase === 'idle') handleStart()
+    if (phase === 'idle')      handleStart()
     else if (phase === 'capturing') tapCapture.tap()
-    else if (phase === 'result') handleReset()
+    else if (phase === 'result')    handleReset()
   }
 
+  // ── Dot overlays on the staff ────────────────────────────────────────────
+
   const dots: DotMarker[] = useMemo(() => {
-    if (phase === 'playback' && playingIndex !== null && onsets[playingIndex]) {
-      return [{ eventIndex: onsets[playingIndex].eventIndex, kind: 'playing' }]
-    }
     if (phase === 'result' && result) {
       return result.noteResults.flatMap((note) => {
         const onset = onsets[note.index]
@@ -159,25 +159,60 @@ export function SamplePlayer({ exercise }: { exercise: SampleExercise }) {
       })
     }
     return []
-  }, [phase, playingIndex, result, onsets])
+  }, [phase, result, onsets])
 
   const showMetronome = phase === 'count-in'
 
+  // ── Render ────────────────────────────────────────────────────────────────
+
   return (
     <div className="player-wrap">
-      {/* Compact info row: small metronome + status on the same line */}
+
+      {/* Give-up modal — identical to ExercisePlayer's modal */}
+      {showGiveUpModal && (
+        <div
+          className="modal-overlay"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowGiveUpModal(false) }}
+        >
+          <div className="modal-panel">
+            <div className="modal-header">
+              <h2 className="modal-title">Hear the rhythm</h2>
+              <button
+                type="button"
+                className="modal-close"
+                aria-label="Close"
+                onClick={() => setShowGiveUpModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+            <RhythmPlayback
+              pattern={exercise.pattern}
+              timeSigTop={exercise.time_sig_top}
+              timeSigBottom={exercise.time_sig_bottom}
+              bpm={exercise.tempo_bpm}
+              onClose={() => setShowGiveUpModal(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Compact info row: small metronome + status text */}
       <div className="player-info-row">
         {showMetronome && <Metronome bpm={exercise.tempo_bpm} running compact />}
         <span className="player-info-text">
           {phase === 'idle' && <span className="muted">{exercise.hint}</span>}
-          {phase === 'count-in' && <span>Feel the beat at {exercise.tempo_bpm} BPM, then tap freely</span>}
+          {phase === 'count-in' && (
+            <span>Feel the beat at {exercise.tempo_bpm} BPM, then tap freely</span>
+          )}
           {phase === 'capturing' && <span className="muted">Tap freely at your own tempo.</span>}
-          {phase === 'playback' && <span>Listen — this is the rhythm the notation is asking for.</span>}
           {phase === 'result' && result && (
             <span className={result.passed ? 'text-success' : 'text-warn'}>
               <strong>{result.passed ? 'Passed!' : 'Not quite.'}</strong>{' '}
               Accuracy: {Math.round(result.accuracy * 100)}%.{' '}
-              {result.passed ? 'Great feel for the rhythm.' : 'The dots show where each tap landed.'}
+              {result.passed
+                ? 'Great feel for the rhythm.'
+                : 'The dots show where each tap landed.'}
             </span>
           )}
         </span>
@@ -219,7 +254,7 @@ export function SamplePlayer({ exercise }: { exercise: SampleExercise }) {
         )}
       </div>
 
-      {/* Login nudge — only when logged out and exercise is finished */}
+      {/* Login nudge — only when logged out and a result is showing */}
       {phase === 'result' && !user && (
         <div className="sample-login-nudge">
           <Link to="/register" className="button-primary">
@@ -227,6 +262,7 @@ export function SamplePlayer({ exercise }: { exercise: SampleExercise }) {
           </Link>
         </div>
       )}
+
     </div>
   )
 }

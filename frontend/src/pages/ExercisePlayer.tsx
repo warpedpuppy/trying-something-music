@@ -8,6 +8,7 @@ import { RhythmStaff } from '../components/RhythmStaff'
 import type { DotMarker } from '../components/RhythmStaff'
 import { TapButton } from '../components/TapButton'
 import { useTapCapture } from '../hooks/useTapCapture'
+import { usePageTitle } from '../hooks/usePageTitle'
 import { tickEngine } from '../lib/audio'
 import { expectedOnsets, tapsToPattern } from '../lib/rhythm'
 
@@ -29,6 +30,7 @@ export function ExercisePlayer() {
   const downbeatEpochRef = useRef(0)
   const captureOpenTimerRef = useRef<number | null>(null)
 
+  usePageTitle(exercise?.title ?? 'Exercise')
   const onsets = useMemo(() => (exercise ? expectedOnsets(exercise.pattern) : []), [exercise])
 
   const clearCaptureOpenTimer = useCallback(() => {

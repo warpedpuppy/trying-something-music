@@ -2,8 +2,10 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 export function Login() {
+  usePageTitle('Log In')
   const { login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()

@@ -1,0 +1,10 @@
+# Trying Something — robots.txt
+#
+# PRE-LAUNCH: block all crawlers until the site is ready.
+# At launch, delete the Disallow line below and uncomment
+# the Sitemap line (update the URL first).
+#
+User-agent: *
+Disallow: /
+
+# Sitemap: https://tryingsomething.com/sitemap.xml

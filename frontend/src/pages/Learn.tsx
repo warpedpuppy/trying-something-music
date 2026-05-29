@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthContext'
 import { NotationExample } from '../components/NotationExample'
 import { SamplePlayer } from '../components/SamplePlayer'
 import type { SampleExercise } from '../components/SamplePlayer'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 interface LearnSection {
   slug: string
@@ -333,6 +334,7 @@ const SAMPLES: Record<SampleTab, SampleExercise> = {
 const TAB_LABELS: Record<SampleTab, string> = { easy: 'Easy', medium: 'Medium', hard: 'Hard' }
 
 export function Learn() {
+  usePageTitle('Learn Rhythm Notation')
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<SampleTab>('easy')
   const location = useLocation()

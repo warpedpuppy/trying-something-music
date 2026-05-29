@@ -5,6 +5,7 @@ import { api } from '../api/client'
 import type { ExerciseListItem } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { skipToLevel } from '../lib/progression'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 const LEVEL_NAMES: Record<number, string> = {
   1: 'Quarter & half notes',
@@ -25,6 +26,7 @@ const SKIP_OPTIONS = [
 ]
 
 export function ExerciseList() {
+  usePageTitle('Exercises')
   const { user } = useAuth()
   const [exercises, setExercises] = useState<ExerciseListItem[] | null>(null)
   const [error, setError]         = useState<string | null>(null)

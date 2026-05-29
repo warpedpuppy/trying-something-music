@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { Pattern, Verdict } from '../api/types'
 import { renderPattern } from '../lib/vexflowPattern'
 import type { NoteAnchor } from '../lib/vexflowPattern'
@@ -39,32 +39,63 @@ interface RhythmStaffProps {
 }
 
 /** Engraved notation with optional colored feedback dots floating above the notes. */
-export function RhythmStaff({ pattern, timeSigTop, timeSigBottom, dots = [], caption, playheadX, onRendered }: RhythmStaffProps) {
+export function RhythmStaff({
+  pattern,
+  timeSigTop,
+  timeSigBottom,
+  dots = [],
+  caption,
+  playheadX,
+  onRendered,
+}: RhythmStaffProps) {
+  const figureRef    = useRef<HTMLElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const [anchors, setAnchors] = useState<NoteAnchor[]>([])
+  const onRenderedRef = useRef(onRendered)
+  onRenderedRef.current = onRendered   // keep ref fresh without triggering re-renders
+
+  const [anchors, setAnchors]       = useState<NoteAnchor[]>([])
   const [renderError, setRenderError] = useState<string | null>(null)
 
-  useEffect(() => {
+  // Render (or re-render) the staff, clamping to the figure's available width.
+  const doRender = (availableWidth: number) => {
     const container = containerRef.current
-    if (!container) {
-      return
-    }
+    if (!container) return
     try {
-      const result = renderPattern(container, pattern, timeSigTop, timeSigBottom)
+      const result = renderPattern(container, pattern, timeSigTop, timeSigBottom, {
+        maxWidth: availableWidth > 0 ? availableWidth : undefined,
+      })
       setAnchors(result.anchors)
-      onRendered?.(result.width, result.anchors)
+      onRenderedRef.current?.(result.width, result.anchors)
       setRenderError(null)
-    } catch (error) {
-      setRenderError(error instanceof Error ? error.message : 'Could not render notation')
+    } catch (err) {
+      setRenderError(err instanceof Error ? err.message : 'Could not render notation')
     }
+  }
+
+  useLayoutEffect(() => {
+    const figure = figureRef.current
+    if (!figure) return
+
+    // Initial render using the figure's current layout width.
+    doRender(figure.offsetWidth)
+
+    // Re-render whenever the figure is resized (e.g. window resize, modal open).
+    const ro = new ResizeObserver(entries => {
+      const w = entries[0]?.contentRect.width ?? figure.offsetWidth
+      doRender(w)
+    })
+    ro.observe(figure)
+    return () => ro.disconnect()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pattern, timeSigTop, timeSigBottom])
+  // Note: onRendered deliberately omitted — it's kept fresh via ref above.
 
   if (renderError) {
     return <p className="error-text">Notation error: {renderError}</p>
   }
 
   return (
-    <figure className="rhythm-staff">
+    <figure className="rhythm-staff" ref={figureRef as React.RefObject<HTMLElement>}>
       <div className="rhythm-staff-canvas">
         <div ref={containerRef} />
         {playheadX != null && (
@@ -72,9 +103,7 @@ export function RhythmStaff({ pattern, timeSigTop, timeSigBottom, dots = [], cap
         )}
         {dots.map((dot, i) => {
           const anchor = anchors.find((a) => a.eventIndex === dot.eventIndex)
-          if (!anchor) {
-            return null
-          }
+          if (!anchor) return null
           return (
             <span
               key={`${dot.eventIndex}-${dot.kind}-${i}`}

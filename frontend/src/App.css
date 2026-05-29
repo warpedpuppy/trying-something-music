@@ -723,13 +723,20 @@
 
 /* ---------------------------------------------------------------- notation */
 
-.rhythm-staff { margin: 0; }
+.rhythm-staff {
+  margin: 0;
+  /* Fill the available horizontal space so ResizeObserver can measure it.
+     The staff re-renders at this width, so it never overflows. */
+  width: 100%;
+  min-width: 0;   /* allow shrinking in flex/grid parents */
+}
 
 .rhythm-staff-canvas {
   position: relative;
-  overflow-x: auto;
+  overflow-x: auto;   /* safety net — should never be needed after responsive fix */
   padding-top: 18px;
   isolation: isolate;
+  width: 100%;
 }
 
 .staff-playhead {
@@ -1032,25 +1039,32 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 16px;
 }
 
 .modal-panel {
   background: var(--surface, #fff);
   border-radius: 20px;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.22);
-  padding: 28px 32px 32px;
+  padding: 16px 20px 20px;
   width: 100%;
   max-width: 640px;
-  max-height: 90vh;
+  max-height: 92vh;
   overflow-y: auto;
+  overflow-x: hidden;   /* staff is now responsive; belt-and-suspenders */
+  box-sizing: border-box;
+}
+
+@media (max-width: 480px) {
+  .modal-overlay { padding: 8px; }
+  .modal-panel   { padding: 14px 14px 18px; border-radius: 16px; }
 }
 
 .modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 }
 
 .modal-title {
@@ -1083,7 +1097,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 8px;
 }
 
 /* Metronome above, status text below — column keeps text-width changes
@@ -1092,7 +1106,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
 }
 
 .rp-status-text {
@@ -1102,7 +1116,7 @@
   text-align: center;
   /* fixed height prevents the surrounding layout from jumping
      as the message switches between count-in / playing / done */
-  min-height: 2.8em;
+  min-height: 1.4em;
   line-height: 1.4;
 }
 
@@ -1117,13 +1131,13 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .rp-close-row {
   display: flex;
   justify-content: center;
-  padding-top: 4px;
+  padding-top: 0;
 }
 
 /* ---------------------------------------------------------------- welcome modal content */
@@ -3149,5 +3163,938 @@ a.theory-card:hover {
   border-color: var(--accent);
   color: #fff;
   box-shadow: 0 4px 16px rgba(67, 97, 238, 0.35);
+}
+
+/* ================================================================ coming soon / landing page */
+
+.cs-root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(ellipse 90% 55% at 50% -10%, rgba(108,99,255,0.13) 0%, transparent 58%),
+    radial-gradient(ellipse 60% 40% at 10% 110%,  rgba(67,97,238,0.07)  0%, transparent 52%),
+    var(--paper);
+}
+
+/* Hero */
+
+.cs-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 56px 24px 40px;
+  gap: 20px;
+}
+
+.cs-badge {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6C63FF;
+  background: rgba(108,99,255,0.1);
+  border: 1px solid rgba(108,99,255,0.2);
+  border-radius: 100px;
+  padding: 5px 16px;
+}
+
+.cs-logo {
+  /* height controlled by prop; margin handled by flex gap */
+}
+
+.cs-sub {
+  font-size: clamp(1rem, 2.5vw, 1.2rem);
+  color: var(--muted);
+  max-width: 540px;
+  line-height: 1.7;
+  margin: 0;
+}
+
+/* Decorative staff divider */
+
+.cs-staff-divider {
+  color: var(--line);
+  padding: 0 0 24px;
+  overflow: hidden;
+  max-height: 60px;
+}
+
+.cs-staff-divider svg {
+  width: 100%;
+  display: block;
+}
+
+/* Feature cards */
+
+.cs-features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 24px;
+  padding: 0 24px 56px;
+  max-width: 940px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.cs-feature-card {
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  padding: 28px 28px 32px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--line);
+  border-top-width: 3px;
+}
+
+.cs-feature-rhythm { border-top-color: var(--accent); }
+.cs-feature-theory  { border-top-color: #6C63FF; }
+
+.cs-feature-icon {
+  font-size: 2.2rem;
+  line-height: 1;
+  margin-bottom: 10px;
+}
+
+.cs-feature-card h2 {
+  font-size: 1.3rem;
+  margin: 0 0 10px;
+  color: var(--ink);
+}
+
+.cs-feature-intro {
+  font-size: 0.92rem;
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0 0 18px;
+}
+
+.cs-feature-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.cs-feature-list li {
+  font-size: 0.875rem;
+  color: var(--muted);
+  line-height: 1.5;
+  padding-left: 1.4em;
+  position: relative;
+}
+
+.cs-feature-list li::before {
+  content: '→';
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+  font-size: 0.8rem;
+  top: 0.05em;
+}
+
+.cs-feature-theory .cs-feature-list li::before { color: #6C63FF; }
+
+/* Footer */
+
+.cs-footer {
+  margin-top: auto;
+  text-align: center;
+  padding: 20px 24px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  border-top: 1px solid var(--line);
+}
+
+@media (max-width: 600px) {
+  .cs-hero { padding: 40px 20px 28px; gap: 16px; }
+  .cs-features { padding: 0 16px 48px; gap: 16px; }
+  .cs-feature-card { padding: 22px 20px 26px; }
+}
+
+/* ================================================================ Notes & Staff quiz  (.nq-*) */
+
+.nq-root {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 28px 16px 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+/* Page header */
+
+.nq-page-header {
+  text-align: center;
+}
+
+.nq-page-header h1 {
+  margin: 0 0 6px;
+  font-size: 1.75rem;
+}
+
+.nq-page-sub {
+  color: var(--muted);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+/* Mode selector */
+
+.nq-mode-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.nq-mode-btn {
+  border: 1px solid var(--line);
+  background: var(--card);
+  border-radius: 100px;
+  padding: 6px 16px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+
+.nq-mode-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+.nq-mode-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* Score strip */
+
+.nq-score-row {
+  display: flex;
+  gap: 28px;
+  justify-content: center;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px 24px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.nq-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.nq-stat-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.nq-stat-denom {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.nq-stat-label {
+  font-size: 0.68rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Staff / VexFlow area */
+
+.nq-staff-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.nq-staff-svg {
+  width: 100%;
+  max-width: 300px;
+  line-height: 0;
+  border-radius: var(--radius);
+  padding: 4px;
+  transition: background 0.18s;
+}
+
+.nq-staff-svg svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.nq-staff-correct { background: rgba(5, 150, 105, 0.08); }
+.nq-staff-wrong   { background: rgba(220, 38,  38, 0.06); }
+
+.nq-clef-label {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* Question prompt */
+
+.nq-question {
+  font-size: 1rem;
+  color: var(--muted);
+  margin: 0;
+  text-align: center;
+}
+
+/* Answer buttons — 2×2 grid */
+
+.nq-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.nq-choice {
+  height: 68px;
+  font-size: 1.6rem;
+  font-weight: 800;
+  border-radius: var(--radius);
+  border: 2px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s, background 0.12s, transform 0.08s, box-shadow 0.12s;
+  letter-spacing: 0.02em;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.nq-choice:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.nq-choice:active:not(:disabled) { transform: translateY(0); }
+
+/* Answer feedback states */
+
+.nq-correct {
+  background: #059669 !important;
+  border-color: #059669 !important;
+  color: #fff !important;
+  box-shadow: 0 4px 16px rgba(5,150,105,0.35) !important;
+}
+
+.nq-wrong {
+  background: #dc2626 !important;
+  border-color: #dc2626 !important;
+  color: #fff !important;
+  box-shadow: 0 4px 16px rgba(220,38,38,0.3) !important;
+}
+
+/* Correct answer highlighted when user chose the wrong one */
+.nq-reveal {
+  background: rgba(5,150,105,0.10) !important;
+  border-color: #059669 !important;
+  color: #059669 !important;
+}
+
+/* Mnemonic hint */
+
+.nq-hint {
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-style: italic;
+  text-align: center;
+  margin: 0;
+  max-width: 340px;
+}
+
+@media (max-width: 420px) {
+  .nq-root { gap: 16px; }
+  .nq-choice { height: 60px; font-size: 1.4rem; }
+  .nq-choices { gap: 10px; }
+  .nq-mode-row { gap: 6px; }
+  .nq-mode-btn { padding: 5px 12px; font-size: 0.78rem; }
+}
+
+/* ================================================================ Theory Topic Layout  (.tt-*) */
+
+/* ── Page wrapper ────────────────────────────────────────────────── */
+
+.tt-page {
+  max-width: 780px;
+  margin: 0 auto;
+}
+
+.tt-page-header {
+  margin-bottom: 24px;
+}
+
+.tt-page-header h1 {
+  margin: 0 0 6px;
+}
+
+.tt-page-sub {
+  margin: 0;
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+/* ── Tab shell ───────────────────────────────────────────────────── */
+
+.tt-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.tt-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--line);
+}
+
+.tt-tab {
+  padding: 9px 22px;
+  border: none;
+  background: none;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.14s, border-color 0.14s;
+  border-radius: 6px 6px 0 0;
+}
+
+.tt-tab:hover { color: var(--ink); }
+
+.tt-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* ── Tab panels ─────────────────────────────────────────────────── */
+
+.tt-panel {
+  padding: 24px 0 0;
+}
+
+.tt-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+  margin-bottom: 20px;
+  transition: background 0.14s;
+}
+
+.tt-back-btn:hover { background: var(--accent-faint); }
+
+.tt-help-row {
+  margin-top: 28px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: center;
+}
+
+.tt-help-link {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.14s;
+}
+
+.tt-help-link:hover { color: var(--accent); }
+
+/* ── Learn body & content ────────────────────────────────────────── */
+
+.tt-learn-body { /* intentionally minimal — just a pass-through wrapper */ }
+
+.tt-learn {
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+  max-width: 700px;
+}
+
+.tt-learn-section h2 {
+  margin: 0 0 12px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tt-learn-section p {
+  margin: 0 0 10px;
+  line-height: 1.75;
+}
+
+.tt-learn-section p:last-child { margin-bottom: 0; }
+
+.tt-clef-glyph {
+  font-size: 1.05em;
+  opacity: 0.75;
+}
+
+.tt-learn-tip {
+  background: var(--accent-faint);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 10px 14px;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  margin-top: 14px !important;
+  margin-bottom: 0 !important;
+}
+
+.tt-learn-list {
+  margin: 10px 0 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  line-height: 1.7;
+}
+
+.tt-learn-list li { padding-left: 4px; }
+
+.tt-learn-list-bullets {
+  list-style: disc;
+  margin: 10px 0 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  line-height: 1.7;
+}
+
+.tt-learn-list-bullets li { padding-left: 4px; }
+
+/* ── Mnemonic cards ─────────────────────────────────────────────── */
+
+.tt-mnemonic-pair {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.tt-mnemonic-card {
+  flex: 1;
+  min-width: 200px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: var(--shadow-xs);
+}
+
+.tt-mnemonic-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 0;
+}
+
+.tt-notes-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tt-note-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 0.92rem;
+  font-weight: 700;
+  border: 2px solid transparent;
+  line-height: 1;
+}
+
+.tt-pill-line {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.tt-pill-space {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+.tt-mnemonic-phrase {
+  font-size: 0.87rem;
+  color: var(--muted);
+  font-style: italic;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ── Key signature table ────────────────────────────────────────── */
+
+.tt-sig-table {
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  font-size: 0.9rem;
+}
+
+.tt-sig-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1.2fr 2.6fr;
+  padding: 9px 16px;
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+}
+
+.tt-sig-row:last-child { border-bottom: none; }
+.tt-sig-row:nth-child(even) { background: var(--surface); }
+
+.tt-sig-header {
+  background: var(--ink) !important;
+  color: #fff;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.tt-sig-key { font-weight: 700; }
+
+.tt-sig-notes {
+  color: var(--muted);
+  font-size: 0.85em;
+}
+
+/* ── Roman numeral pills ────────────────────────────────────────── */
+
+.tt-roman-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.tt-roman-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.tt-roman-major {
+  background: var(--accent-faint);
+  color: var(--accent);
+  border: 1.5px solid rgba(67,97,238,0.25);
+}
+
+.tt-roman-minor {
+  background: var(--surface);
+  color: var(--muted);
+  border: 1.5px solid var(--line);
+}
+
+.tt-roman-note {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 10px 0 0;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .tt-tab { padding: 7px 14px; font-size: 0.85rem; }
+  .tt-mnemonic-pair { flex-direction: column; }
+  .tt-mnemonic-card { min-width: unset; }
+  .tt-roman-pill { min-width: 40px; font-size: 0.9rem; height: 36px; }
+  .tt-sig-row { padding: 8px 12px; font-size: 0.83rem; }
+}
+
+/* ================================================================ Shared quiz question card  (.theory-q-*) */
+
+.theory-q-card {
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  padding: 22px 28px 18px;
+  text-align: center;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  box-shadow: var(--shadow-xs);
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.theory-q-correct {
+  border-color: var(--green) !important;
+  background: rgba(5,150,105,0.05) !important;
+}
+
+.theory-q-wrong {
+  border-color: var(--red) !important;
+  background: rgba(220,38,38,0.04) !important;
+}
+
+.theory-q-main {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--ink);
+}
+
+.theory-q-sub {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
+.theory-q-verdict {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-top: 10px;
+}
+
+/* Roman numeral pair (cadences) */
+.theory-q-pair {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+}
+
+.theory-q-arrow {
+  font-size: 1.4rem;
+  color: var(--muted);
+  margin: 0 4px;
+}
+
+.theory-q-numeral {
+  font-size: 2.4rem;
+  font-weight: 800;
+  font-family: Georgia, 'Times New Roman', serif;
+  color: var(--ink);
+  line-height: 1;
+}
+
+/* Three-note chord display */
+.theory-q-chord {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  align-items: flex-end;
+}
+
+.theory-q-note {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.theory-q-note-name {
+  font-size: 1.7rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.theory-q-note-role {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+}
+
+/* Chord progression display */
+.theory-q-prog {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 4px auto 16px;
+}
+
+.theory-q-prog-chord {
+  font-size: 1.25rem;
+  font-weight: 800;
+  font-family: Georgia, serif;
+  padding: 8px 14px;
+  background: var(--surface);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  min-width: 48px;
+  text-align: center;
+  color: var(--ink);
+}
+
+.theory-q-prog-blank {
+  border: 2px dashed var(--accent) !important;
+  background: var(--accent-faint) !important;
+  color: var(--accent) !important;
+  min-width: 56px;
+}
+
+.theory-q-prog-reveal-correct {
+  border-color: var(--green) !important;
+  background: rgba(5,150,105,0.1) !important;
+  color: var(--green) !important;
+}
+
+.theory-q-prog-reveal-wrong {
+  border-color: var(--red) !important;
+  background: rgba(220,38,38,0.08) !important;
+  color: var(--red) !important;
+}
+
+.theory-q-prog-sep {
+  color: var(--muted);
+  font-size: 1.1rem;
+  font-weight: 600;
+  padding: 0 2px;
+}
+
+/* ================================================================ Scales page extras  (.scales-*) */
+
+.scales-pattern {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-wrap: wrap;
+  margin: 14px 0;
+  justify-content: center;
+}
+
+.scales-step {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.scales-step-note {
+  font-size: 1.1rem;
+  font-weight: 700;
+  min-width: 28px;
+  text-align: center;
+}
+
+.scales-step-arrow {
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 3px 7px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-radius: 4px;
+  margin: 0 4px;
+  letter-spacing: 0.02em;
+}
+
+.scales-step-arrow.scales-half {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* Mini scale strip inside the quiz card */
+.scales-mini-strip {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.scales-mini-note {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 6px;
+  border-radius: 6px;
+  background: var(--surface);
+  min-width: 32px;
+  transition: background 0.15s;
+}
+
+.scales-mini-note.scales-mini-target {
+  background: var(--accent-faint);
+  outline: 2px solid var(--accent);
+}
+
+.scales-mini-notename {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.scales-mini-deg {
+  font-size: 0.6rem;
+  color: var(--muted);
+  line-height: 1;
+}
+
+@media (max-width: 480px) {
+  .theory-q-card { padding: 16px 16px 14px; }
+  .theory-q-main { font-size: 1.6rem; }
+  .theory-q-numeral { font-size: 2rem; }
+  .theory-q-note-name { font-size: 1.4rem; }
+  .theory-q-prog-chord { font-size: 1rem; padding: 6px 10px; min-width: 38px; }
+  .scales-mini-note { min-width: 26px; padding: 4px; }
+  .scales-mini-notename { font-size: 0.7rem; }
 }
 

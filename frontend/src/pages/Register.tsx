@@ -2,8 +2,10 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 export function Register() {
+  usePageTitle('Sign Up')
   const { register } = useAuth()
   const navigate = useNavigate()
   const [username, setUsername] = useState('')

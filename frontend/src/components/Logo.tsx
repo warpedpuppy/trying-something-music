@@ -13,8 +13,10 @@ interface LogoProps {
  * Layout: music-note icon on the left, "trying" / "something" stacked vertically.
  */
 export function Logo({ showTagline = false, height = 38, className }: LogoProps) {
-  const viewBox = showTagline ? '0 0 415 200' : '0 0 415 160'
-  const aspectW = showTagline ? 415 / 200 : 415 / 160
+  // Tagline version needs a wider canvas — "LEARN MUSIC. REWIRE YOUR BRAIN."
+  // with letter-spacing 4.5 extends well past the 415-unit mark.
+  const viewBox = showTagline ? '0 0 500 200' : '0 0 415 160'
+  const aspectW = showTagline ? 500 / 200 : 415 / 160
   const width = Math.round(height * aspectW)
 
   return (

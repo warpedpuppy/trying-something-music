@@ -4,6 +4,7 @@ import { api } from '../api/client'
 import type { NextExercise, ProgressSummary } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { computeBadges, type Badge } from '../lib/badges'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 function BadgeItem({ badge }: { badge: Badge }) {
   const gradId = `bg-${badge.id}`
@@ -46,6 +47,7 @@ function BadgeItem({ badge }: { badge: Badge }) {
 }
 
 export function Dashboard() {
+  usePageTitle('Your Dashboard')
   const { user } = useAuth()
   const [progress, setProgress] = useState<ProgressSummary | null>(null)
   const [next, setNext]         = useState<NextExercise | null>(null)

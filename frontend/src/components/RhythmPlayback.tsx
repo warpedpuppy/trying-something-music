@@ -232,7 +232,7 @@ export function RhythmPlayback({
     <div className="rp-wrap">
       {/* Metronome + status — centred */}
       <div className="rp-status-row">
-        <Metronome bpm={bpm} running={isActive} />
+        <Metronome bpm={bpm} running={isActive} compact />
         <p className="rp-status-text">
           {phase === 'count-in' && (
             countInBeat !== null

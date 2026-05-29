@@ -1,6 +1,8 @@
 import { MusicNoteCanvas } from '../components/MusicNoteCanvas'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 export function About() {
+  usePageTitle('About')
   return (
     <div>
       {/* Hero banner with music-note animation */}

@@ -3,6 +3,7 @@ import { renderPattern } from '../lib/vexflowPattern'
 import { generateReel, type GeneratedMeasure } from '../lib/rhythmGenerator'
 import { tickEngine } from '../lib/audio'
 import { RhythmPlayback } from '../components/RhythmPlayback'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 // ── Reel configuration ────────────────────────────────────────────────────────
 
@@ -21,6 +22,7 @@ type Stage = 'welcome' | 'bpm-setup' | 'playing'
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function PlayAlong() {
+  usePageTitle('Play Along')
   const [stage, setStage] = useState<Stage>('welcome')
   const [bpm, setBpm] = useState(80)
   const [beatIndex, setBeatIndex] = useState<number | null>(null)
