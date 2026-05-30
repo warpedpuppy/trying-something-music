@@ -15,7 +15,6 @@ import {
   measureAtCursor,
   totalMeasuresPassed,
   onsetDueMs,
-  shouldShowDownbeat,
 } from '../lib/playAlongTiming'
 import {
   loadPlayAlongConfig,
@@ -58,7 +57,6 @@ export function PlayAlong() {
   const [bpm, setBpm]               = useState(cfg.startBpm)
   const [beatIndex, setBeatIndex]   = useState<number | null>(null)
   const [tapFlash, setTapFlash]     = useState(false)
-  const [showDownbeat, setShowDownbeat] = useState(false)
   const [reviewMeasure, setReviewMeasure] = useState<GeneratedMeasure | null>(null)
 
   // Green (hit) and orange (miss) dots, keyed by looped measure index
@@ -67,9 +65,6 @@ export function PlayAlong() {
 
   // BPM notification banner
   const [bpmNotif, setBpmNotif]     = useState<number | null>(null)
-
-  // Arrow x-position in pixels (set from VexFlow anchor of first note)
-  const [arrowX, setArrowX]         = useState<number | null>(null)
 
   // DOM refs
   const tapBtnRef       = useRef<HTMLButtonElement>(null)
@@ -213,7 +208,6 @@ export function PlayAlong() {
             tickEngine.startMetronome(newBpm, idx => {
               const b = idx % beatsInMeasure
               setBeatIndex(b)
-              setShowDownbeat(shouldShowDownbeat('playing', b))
             }, undefined, beatsInMeasure)
           }
         }
@@ -245,7 +239,6 @@ export function PlayAlong() {
     setHitMap({})
     setMissMap({})
     setBpmNotif(null)
-    setShowDownbeat(true)
     const beats = reelRef.current[0]?.timeSigTop ?? 4
     setBeatsInMeasure(beats)
     phaseRef.current = 'static'
@@ -255,7 +248,6 @@ export function PlayAlong() {
     tickEngine.startMetronome(cfg.startBpm, idx => {
       const b = idx % beats
       setBeatIndex(b)
-      setShowDownbeat(shouldShowDownbeat('static', b))
     }, undefined, beats)
   }
 
@@ -282,11 +274,9 @@ export function PlayAlong() {
     const beats = reelRef.current[0]?.timeSigTop ?? 4
     tickEngine.cancelAll()
     setBeatIndex(0)
-    setShowDownbeat(true)
     tickEngine.startMetronome(bpmRef.current, idx => {
       const b = idx % beats
       setBeatIndex(b)
-      setShowDownbeat(shouldShowDownbeat('playing', b))
     }, undefined, beats)
   }
 
@@ -299,14 +289,12 @@ export function PlayAlong() {
     consecutiveMissesRef.current = 0
     setHitMap({})
     setMissMap({})
-    setShowDownbeat(true)
     const beats = reelRef.current[0]?.timeSigTop ?? 4
     // Restart metronome from beat 0 so the player gets a fresh count-in.
     setBeatIndex(0)
     tickEngine.startMetronome(bpmRef.current, idx => {
       const b = idx % beats
       setBeatIndex(b)
-      setShowDownbeat(shouldShowDownbeat('static', b))
     }, undefined, beats)
   }
 
@@ -317,14 +305,7 @@ export function PlayAlong() {
     phaseRef.current = 'welcome'
     setPhase('welcome')
     setBeatIndex(null)
-    setShowDownbeat(false)
   }
-
-  // ── Arrow x from VexFlow anchor of first note ─────────────────────────────
-
-  const handleFirstAnchor = useCallback((anchorX: number) => {
-    setArrowX(anchorX)
-  }, [])
 
   // ── Tap handler ───────────────────────────────────────────────────────────
 
@@ -393,7 +374,6 @@ export function PlayAlong() {
       tickEngine.startMetronome(bpmRef.current, idx => {
         const b = idx % beats
         setBeatIndex(b)
-        setShowDownbeat(shouldShowDownbeat(phaseRef.current === 'playing' ? 'playing' : 'static', b))
       }, undefined, beats)
     }, 50)
   }
@@ -408,9 +388,6 @@ export function PlayAlong() {
   // Compute the initial reel translateX for the static phase
   const vpWidth       = reelViewportRef.current?.offsetWidth ?? window.innerWidth
   const staticTX      = vpWidth * CURSOR_FRAC   // set in CSS instead; this is a fallback
-
-  // Arrow screen-x: cursor position + first-note offset within the measure
-  const arrowScreenX  = vpWidth * CURSOR_FRAC + (arrowX ?? 80)
 
   return (
     <div className="pa-playing">
@@ -461,19 +438,8 @@ export function PlayAlong() {
       {/* Scrolling notation reel */}
       <div className="pa-reel-viewport" ref={reelViewportRef} style={{ position: 'relative' }}>
 
-        {/* Downbeat arrow — static: above first note; playing: flashes on beat 1 */}
-        {showDownbeat && (
-          <div
-            className="pa-downbeat-arrow"
-            aria-hidden="true"
-            style={{ left: arrowScreenX }}
-          >
-            ▼
-          </div>
-        )}
-
-        {/* Cursor / read-line — aligned with the downbeat arrow */}
-        <div className="pa-cursor-line" aria-hidden="true" style={{ left: arrowScreenX }} />
+        {/* Cursor / read-line */}
+        <div className="pa-cursor-line" aria-hidden="true" />
 
         <div
           ref={reelTrackRef}
@@ -491,7 +457,6 @@ export function PlayAlong() {
               onClick={() => handleMeasureClick(item)}
               hitNoteIndices={hitMap[i]}
               missNoteIndices={missMap[i]}
-              onFirstAnchor={i === 0 ? handleFirstAnchor : undefined}
             />
           ))}
         </div>
@@ -573,7 +538,6 @@ interface NotationBlockProps {
   onClick: () => void
   hitNoteIndices?: number[]
   missNoteIndices?: number[]
-  onFirstAnchor?: (x: number) => void
 }
 
 const NotationBlock = memo(function NotationBlock({
@@ -581,10 +545,10 @@ const NotationBlock = memo(function NotationBlock({
   onClick,
   hitNoteIndices,
   missNoteIndices,
-  onFirstAnchor,
 }: NotationBlockProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const anchorsRef   = useRef<Map<number, number>>(new Map())
+  const containerRef   = useRef<HTMLDivElement>(null)
+  const anchorsRef     = useRef<Map<number, number>>(new Map())
+  const [firstAnchorX, setFirstAnchorX] = useState<number | null>(null)
 
   useEffect(() => {
     const el = containerRef.current
@@ -601,9 +565,9 @@ const NotationBlock = memo(function NotationBlock({
       result.anchors.forEach(a => map.set(a.eventIndex, a.x))
       anchorsRef.current = map
 
-      // Report the first note's x to the parent (for arrow positioning)
-      if (onFirstAnchor && result.anchors.length > 0) {
-        onFirstAnchor(result.anchors[0].x)
+      // Track the first note's x for the beat-1 arrow
+      if (result.anchors.length > 0) {
+        setFirstAnchorX(result.anchors[0].x)
       }
     } catch {
       // silently ignore render errors
@@ -623,6 +587,10 @@ const NotationBlock = memo(function NotationBlock({
       aria-label={`Hear measure: ${measure.label}`}
     >
       <div className="pa-notation-wrapper">
+        {/* Beat-1 arrow — always visible above the first note of this measure */}
+        {firstAnchorX !== null && (
+          <div className="pa-beat1-arrow" aria-hidden="true" style={{ left: firstAnchorX }}>▼</div>
+        )}
         <div ref={containerRef} className="pa-notation-container" />
 
         {/* Green hit dots */}

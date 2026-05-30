@@ -3059,6 +3059,17 @@ a.theory-card:hover {
   to   { opacity: 1; transform: translateX(-50%) translateY(0)    scale(1);    }
 }
 
+/* Per-measure beat-1 marker — scrolls with the reel, always above note 1 */
+.pa-beat1-arrow {
+  position: absolute;
+  top: 2px;
+  transform: translateX(-50%);
+  font-size: 1.1rem;
+  color: #f97316;
+  pointer-events: none;
+  z-index: 6;
+}
+
 /* Vertical read-line at 25% from left of the reel viewport */
 .pa-cursor-line {
   position: absolute;
