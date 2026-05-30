@@ -92,8 +92,8 @@ const TWO_BEAT: { minLevel: number; fill: Fill }[] = [
 
 /** Fills consuming exactly 4 quarter-note beats (4/4 only). */
 const FOUR_BEAT: { minLevel: number; fill: Fill }[] = [
-  { minLevel: 1, fill: [n('w')] },
-  { minLevel: 2, fill: [r('w')] },
+  { minLevel: 3, fill: [n('w')] },   // whole note: level 3+ only (appears ~measure 14)
+  { minLevel: 4, fill: [r('w')] },   // whole rest: level 4+ only
 ]
 
 // ── Fill a measure ────────────────────────────────────────────────────────────
@@ -229,8 +229,15 @@ export function generateReel(count: number, baseSeed = 1337): GeneratedMeasure[]
   let prevSigKey = ''
 
   for (let i = 0; i < count; i++) {
-    // Difficulty ramps 1→5 over 20 measures, then repeats
-    const level = Math.min(5, Math.floor((i % 20) / 4) + 1)
+    // Difficulty ramp across the 24-measure reel:
+    //   0–9  → level 1 (quarters, halves, rests only — no 8ths, no whole notes)
+    //  10–19 → level 2 (adds eighth-note pairs)
+    //  20–21 → level 3 (adds whole notes, dotted figures)
+    //  22–23 → level 4 (adds syncopation)
+    const level = i < 10 ? 1
+                : i < 20 ? 2
+                : i < 22 ? 3
+                : 4
 
     // Separate RNG streams for time-sig choice vs. note choices (avoids correlation)
     const timeSigRng = mulberry32(baseSeed + i * 7 + 3)
