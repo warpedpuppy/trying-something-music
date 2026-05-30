@@ -587,16 +587,20 @@ const NotationBlock = memo(function NotationBlock({
       aria-label={`Hear measure: ${measure.label}`}
     >
       <div className="pa-notation-wrapper">
-        {/* Beat-1 arrow — visible above beat 1 when it's a note (not a rest) */}
+        {/* Beat-1 arrow — orange normally, green when beat 1 was hit */}
         {firstAnchorX !== null && measure.events[0]?.type === 'note' && (
-          <div className="pa-beat1-arrow" aria-hidden="true" style={{ left: firstAnchorX }}>▼</div>
+          <div
+            className={`pa-beat1-arrow${hitNoteIndices?.includes(0) ? ' hit' : ''}`}
+            aria-hidden="true"
+            style={{ left: firstAnchorX }}
+          >▼</div>
         )}
         <div ref={containerRef} className="pa-notation-container" />
 
-        {/* Green hit dots */}
+        {/* Green hit dots — skip index 0, handled by the beat-1 arrow above */}
         {hitNoteIndices && hitNoteIndices.length > 0 && (
           <div className="pa-dots-layer" aria-hidden="true">
-            {hitNoteIndices.map(idx => {
+            {hitNoteIndices.filter(idx => idx !== 0).map(idx => {
               const x = anchorsRef.current.get(idx)
               return x !== undefined
                 ? <div key={`h${idx}`} className="pa-hit-dot" style={{ left: x }} />

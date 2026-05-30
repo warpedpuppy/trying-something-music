@@ -3068,6 +3068,10 @@ a.theory-card:hover {
   color: #f97316;
   pointer-events: none;
   z-index: 6;
+  transition: color 0.15s ease;
+}
+.pa-beat1-arrow.hit {
+  color: #22c55e;   /* green-500 */
 }
 
 /* Vertical read-line at 25% from left of the reel viewport */
