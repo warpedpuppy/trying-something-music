@@ -12,6 +12,7 @@ import { triggerRainbowBurst } from '../lib/rippleEngine'
 const SLOT_PX = 380          // fixed pixel width of every rendered measure
 const REEL_UNIQUE = 24       // how many unique measures to generate before looping
 const DEFAULT_BPM = 40       // tempo before user establishes their own
+const ENTRY_DURATION_MS = 1400  // ms for the reel to scroll in from off-screen right
 
 // Built once at module load — deterministic, no re-generation on re-render
 const REEL_LIBRARY: GeneratedMeasure[] = generateReel(REEL_UNIQUE, 1337)
@@ -35,7 +36,6 @@ export function PlayAlong() {
   const [isPaused, setIsPaused]         = useState(false)
   const [reviewMeasure, setReviewMeasure] = useState<GeneratedMeasure | null>(null)
   const [faces, setFaces]               = useState<TapFace[]>([])
-  const [reelEntering, setReelEntering] = useState(false)
 
   // DOM refs
   const tapBtnRef      = useRef<HTMLButtonElement>(null)
@@ -46,6 +46,7 @@ export function PlayAlong() {
   const reelStartRef   = useRef<number>(0)       // wall clock of last start/resume
   const reelElapsedRef = useRef<number>(0)        // accumulated ms before last pause
   const bpmRef         = useRef<number>(DEFAULT_BPM)  // mirrors bpm state for RAF / closures
+  const entryStartRef  = useRef<number>(0)        // wall clock when reel entered screen
 
   // Tap-tempo refs
   const tapTimesRef       = useRef<number[]>([])  // timestamps of recent taps
@@ -69,8 +70,15 @@ export function PlayAlong() {
       const loopMs       = REEL_UNIQUE * msPerMeasure
       const scrollPx     = (elapsed % loopMs) * (SLOT_PX / msPerMeasure)
 
+      // Entry offset: reel slides in from off-screen right over ENTRY_DURATION_MS
+      const entryElapsed  = performance.now() - entryStartRef.current
+      const entryFraction = Math.min(entryElapsed / ENTRY_DURATION_MS, 1)
+      // easeOutCubic so it decelerates as it arrives
+      const entryEased    = 1 - Math.pow(1 - entryFraction, 3)
+      const entryOffset   = (1 - entryEased) * window.innerWidth
+
       if (reelTrackRef.current) {
-        reelTrackRef.current.style.transform = `translateX(-${scrollPx}px)`
+        reelTrackRef.current.style.transform = `translateX(${-scrollPx + entryOffset}px)`
       }
       rafId = requestAnimationFrame(frame)
     }
@@ -99,15 +107,16 @@ export function PlayAlong() {
 
   function startScrolling() {
     tickEngine.cancelAll()
-    bpmRef.current         = DEFAULT_BPM
+    bpmRef.current            = DEFAULT_BPM
     setBpm(DEFAULT_BPM)
-    reelStartRef.current   = performance.now()
-    reelElapsedRef.current = 0
+    const now                 = performance.now()
+    reelStartRef.current      = now
+    reelElapsedRef.current    = 0
+    entryStartRef.current     = now   // reel slides in from off-screen right
     hasFirstTappedRef.current = false
-    tapTimesRef.current    = []
+    tapTimesRef.current       = []
     setBeatIndex(null)
     setIsPaused(false)
-    setReelEntering(true)
     setStage('scrolling')
   }
 
@@ -282,9 +291,8 @@ export function PlayAlong() {
 
       {/* ── Scrolling notation reel ───────────────────────────────────── */}
       <div
-        className={`pa-reel-viewport${reelEntering ? ' pa-reel-entering' : ''}`}
+        className="pa-reel-viewport"
         ref={reelViewportRef}
-        onAnimationEnd={() => setReelEntering(false)}
       >
         {/* Cursor / downbeat line */}
         <div
