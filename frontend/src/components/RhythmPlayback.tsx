@@ -145,6 +145,8 @@ export function RhythmPlayback({
     setPlayingIndex(null)
     setCountInBeat(null)
     setPhase('count-in')
+    // Park the playhead at the first note so the orange line is visible from the start
+    setPlayheadX(staffAnchorsRef.current[0]?.x ?? 0)
 
     const countInBeats = timeSigTop
     const beatMs = 60000 / bpm

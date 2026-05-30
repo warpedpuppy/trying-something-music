@@ -381,7 +381,21 @@ export function PlayAlong() {
   // ── Measure click → review modal ─────────────────────────────────────────
 
   function handleMeasureClick(measure: GeneratedMeasure) {
+    tickEngine.stopMetronome()   // pause background beat while modal is open
     setReviewMeasure(measure)
+  }
+
+  function closeReviewModal() {
+    setReviewMeasure(null)
+    // Restart the PlayAlong metronome after RhythmPlayback has cancelled all audio
+    const beats = reelRef.current[0]?.timeSigTop ?? 4
+    window.setTimeout(() => {
+      tickEngine.startMetronome(bpmRef.current, idx => {
+        const b = idx % beats
+        setBeatIndex(b)
+        setShowDownbeat(shouldShowDownbeat(phaseRef.current === 'playing' ? 'playing' : 'static', b))
+      }, undefined, beats)
+    }, 50)
   }
 
   // ── Cleanup ───────────────────────────────────────────────────────────────
@@ -405,20 +419,20 @@ export function PlayAlong() {
       {reviewMeasure && (
         <div
           className="modal-overlay"
-          onClick={e => { if (e.target === e.currentTarget) setReviewMeasure(null) }}
+          onClick={e => { if (e.target === e.currentTarget) closeReviewModal() }}
         >
           <div className="modal-panel">
             <div className="modal-header">
               <h2 className="modal-title">Hear this measure</h2>
               <button type="button" className="modal-close" aria-label="Close"
-                onClick={() => setReviewMeasure(null)}>✕</button>
+                onClick={closeReviewModal}>✕</button>
             </div>
             <RhythmPlayback
               pattern={{ events: reviewMeasure.events }}
               timeSigTop={reviewMeasure.timeSigTop}
               timeSigBottom={reviewMeasure.timeSigBottom}
               bpm={bpm}
-              onClose={() => setReviewMeasure(null)}
+              onClose={closeReviewModal}
             />
           </div>
         </div>
