@@ -14,6 +14,9 @@ export interface RenderResult {
   width: number
   height: number
   anchors: NoteAnchor[]
+  /** Maps each note's event index → its rendered SVG <g> element.
+   *  Populated via StaveNote.getSVGElement() (VexFlow 5) after drawing. */
+  noteElements: Map<number, Element>
 }
 
 interface MeasureGroup {
@@ -173,5 +176,14 @@ export function renderPattern(
     y: STAVE_Y,
   }))
 
-  return { width: totalWidth, height, anchors }
+  // Capture rendered SVG elements for each note (VexFlow 5: getSVGElement uses ID lookup)
+  const noteElements = new Map<number, Element>()
+  allNotes.forEach((note, i) => {
+    const svgEl = note.getSVGElement()
+    if (svgEl) {
+      noteElements.set(noteEventIndexes[i], svgEl)
+    }
+  })
+
+  return { width: totalWidth, height, anchors, noteElements }
 }

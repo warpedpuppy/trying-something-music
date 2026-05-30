@@ -520,36 +520,37 @@ const NotationBlock = memo(function NotationBlock({
   onClick,
   hitNoteIndices,
 }: NotationBlockProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
+  const containerRef    = useRef<HTMLDivElement>(null)
+  const noteElementsRef = useRef<Map<number, Element>>(new Map())
 
-  // Render VexFlow once on mount
+  // Render VexFlow once on mount; capture SVG element refs for coloring
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
     try {
-      renderPattern(el, { events: measure.events }, measure.timeSigTop, measure.timeSigBottom, {
+      const result = renderPattern(el, { events: measure.events }, measure.timeSigTop, measure.timeSigBottom, {
         fixedTotalWidth: SLOT_PX,
         showClef: measure.showClef,
         showTimeSignature: measure.showTimeSig,
         seamless: true,
       })
+      noteElementsRef.current = result.noteElements
     } catch {
       // silently ignore render errors
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Color hit note heads green whenever hitNoteIndices changes
+  // Color hit note heads green using the captured SVG element refs
   useEffect(() => {
-    if (!containerRef.current || !hitNoteIndices || hitNoteIndices.length === 0) return
-    const noteGroups = containerRef.current.querySelectorAll('.vf-stavenote')
+    if (!hitNoteIndices || hitNoteIndices.length === 0) return
     hitNoteIndices.forEach(eventIndex => {
-      const group = noteGroups[eventIndex]
-      if (!group) return
-      group.querySelectorAll<SVGElement>('[fill]:not([fill="none"])').forEach(el => {
+      const svgEl = noteElementsRef.current.get(eventIndex)
+      if (!svgEl) return
+      svgEl.querySelectorAll<SVGElement>('[fill]:not([fill="none"])').forEach(el => {
         el.setAttribute('fill', NOTE_HIT_COLOR)
       })
-      group.querySelectorAll<SVGElement>('[stroke]:not([stroke="none"])').forEach(el => {
+      svgEl.querySelectorAll<SVGElement>('[stroke]:not([stroke="none"])').forEach(el => {
         el.setAttribute('stroke', NOTE_HIT_COLOR)
       })
     })
