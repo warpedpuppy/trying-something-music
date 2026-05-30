@@ -214,7 +214,7 @@ export function PlayAlong() {
               const b = idx % beatsInMeasure
               setBeatIndex(b)
               setShowDownbeat(shouldShowDownbeat('playing', b))
-            })
+            }, undefined, beatsInMeasure)
           }
         }
       }
@@ -256,7 +256,7 @@ export function PlayAlong() {
       const b = idx % beats
       setBeatIndex(b)
       setShowDownbeat(shouldShowDownbeat('static', b))
-    })
+    }, undefined, beats)
   }
 
   // ── Static → Playing ──────────────────────────────────────────────────────
@@ -287,7 +287,7 @@ export function PlayAlong() {
       const b = idx % beats
       setBeatIndex(b)
       setShowDownbeat(shouldShowDownbeat('playing', b))
-    })
+    }, undefined, beats)
   }
 
   // ── Reset to Static ───────────────────────────────────────────────────────
@@ -307,7 +307,7 @@ export function PlayAlong() {
       const b = idx % beats
       setBeatIndex(b)
       setShowDownbeat(shouldShowDownbeat('static', b))
-    })
+    }, undefined, beats)
   }
 
   // ── Stop → Welcome ────────────────────────────────────────────────────────
@@ -458,8 +458,8 @@ export function PlayAlong() {
           </div>
         )}
 
-        {/* Cursor / read-line */}
-        <div className="pa-cursor-line" aria-hidden="true" />
+        {/* Cursor / read-line — aligned with the downbeat arrow */}
+        <div className="pa-cursor-line" aria-hidden="true" style={{ left: arrowScreenX }} />
 
         <div
           ref={reelTrackRef}

@@ -6,14 +6,15 @@
  * (which cannot otherwise be "unscheduled" once committed to the AudioContext).
  */
 
-type TickKind = 'tap' | 'playback' | 'metronome'
+type TickKind = 'tap' | 'playback' | 'metronome' | 'metronome-accent'
 
-const CLICK_PEAK_GAIN: Record<TickKind, number> = { tap: 0.4, playback: 0.4, metronome: 0.2 }
-const CLICK_FREQUENCY: Record<TickKind, number> = { tap: 1000, playback: 1500, metronome: 620 }
+const CLICK_PEAK_GAIN: Record<TickKind, number> = { tap: 0.4, playback: 0.4, metronome: 0.2, 'metronome-accent': 0.22 }
+const CLICK_FREQUENCY: Record<TickKind, number> = { tap: 1000, playback: 1500, metronome: 620, 'metronome-accent': 620 }
 const CLICK_WAVE: Record<TickKind, OscillatorType> = {
   tap: 'square',
   playback: 'square',
   metronome: 'triangle',
+  'metronome-accent': 'triangle',
 }
 
 export interface ScheduledPlayback {
@@ -84,6 +85,7 @@ export class TickEngine {
     bpm: number,
     onBeat?: (index: number, wallTimeMs: number) => void,
     stopAfterBeats?: number,
+    beatsPerMeasure = 4,
   ): void {
     this.stopMetronome()
     const context = this.ensureContext()
@@ -103,7 +105,8 @@ export class TickEngine {
           return
         }
 
-        this.click(context, this.nextMetronomeBeat, 'metronome')
+        const isDownbeat = beatIndex % beatsPerMeasure === 0
+        this.click(context, this.nextMetronomeBeat, isDownbeat ? 'metronome-accent' : 'metronome')
 
         if (onBeat) {
           const delayMs = Math.max(0, (this.nextMetronomeBeat - context.currentTime) * 1000)
