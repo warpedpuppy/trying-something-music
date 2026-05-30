@@ -11,7 +11,7 @@ import { triggerRainbowBurst } from '../lib/rippleEngine'
 
 const SLOT_PX = 380          // fixed pixel width of every rendered measure
 const REEL_UNIQUE = 24       // how many unique measures to generate before looping
-const DEFAULT_BPM = 80       // tempo before user establishes their own
+const DEFAULT_BPM = 40       // tempo before user establishes their own
 
 // Built once at module load — deterministic, no re-generation on re-render
 const REEL_LIBRARY: GeneratedMeasure[] = generateReel(REEL_UNIQUE, 1337)
