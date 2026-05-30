@@ -289,7 +289,7 @@ export const theoryAudio = new TheoryAudioEngine()
 
 // ── Chord library (C major key) ───────────────────────────────────────────────
 
-const { C3, D3, F3, G3, A3, C4, D4, E4, F4, G4, A4, B4, C5, D5, F5, G5 } = MIDI
+const { C3, D3, F3, G3, A3, C4, D4, E4, F4, G4, A4, B4, C5, D5, F5 } = MIDI
 
 /**
  * Common chords in C major with bass note + upper voicing.
@@ -310,51 +310,51 @@ export const CHORDS_C = {
 export const CADENCE_SEQUENCES = {
   /** V → I  (authentic / perfect authentic with V7) */
   authentic: [
-    { notes: CHORDS_C.V7.notes as number[], holdSec: 1.6, label: 'V⁷' },
-    { notes: CHORDS_C.I.notes  as number[], holdSec: 2.2, label: 'I'  },
+    { notes: [...CHORDS_C.V7.notes], holdSec: 1.6, label: 'V⁷' },
+    { notes: [...CHORDS_C.I.notes], holdSec: 2.2, label: 'I'  },
   ],
   /** IV → I  (plagal / "Amen") */
   plagal: [
-    { notes: CHORDS_C.IV.notes as number[], holdSec: 1.6, label: 'IV' },
-    { notes: CHORDS_C.I.notes  as number[], holdSec: 2.2, label: 'I'  },
+    { notes: [...CHORDS_C.IV.notes], holdSec: 1.6, label: 'IV' },
+    { notes: [...CHORDS_C.I.notes], holdSec: 2.2, label: 'I'  },
   ],
   /** I → V  (half cadence — phrase ends unresolved) */
   half: [
-    { notes: CHORDS_C.I.notes as number[], holdSec: 1.4, label: 'I' },
-    { notes: CHORDS_C.V.notes as number[], holdSec: 2.4, label: 'V' },
+    { notes: [...CHORDS_C.I.notes], holdSec: 1.4, label: 'I' },
+    { notes: [...CHORDS_C.V.notes], holdSec: 2.4, label: 'V' },
   ],
   /** V → vi  (deceptive) — give a I first so the ear has context */
   deceptive: [
-    { notes: CHORDS_C.I.notes  as number[], holdSec: 0.9, label: 'I'  },
-    { notes: CHORDS_C.V7.notes as number[], holdSec: 1.4, label: 'V⁷' },
-    { notes: CHORDS_C.vi.notes as number[], holdSec: 2.2, label: 'vi' },
+    { notes: [...CHORDS_C.I.notes], holdSec: 0.9, label: 'I'  },
+    { notes: [...CHORDS_C.V7.notes], holdSec: 1.4, label: 'V⁷' },
+    { notes: [...CHORDS_C.vi.notes], holdSec: 2.2, label: 'vi' },
   ],
 } as const
 
 /** Pre-built progression sequences. */
 export const PROGRESSION_SEQUENCES: Record<string, ChordStep[]> = {
   'I-IV-V-I': [
-    { notes: CHORDS_C.I.notes  as number[], holdSec: 1.2, label: 'I'  },
-    { notes: CHORDS_C.IV.notes as number[], holdSec: 1.2, label: 'IV' },
-    { notes: CHORDS_C.V.notes  as number[], holdSec: 1.2, label: 'V'  },
-    { notes: CHORDS_C.I.notes  as number[], holdSec: 2.0, label: 'I'  },
+    { notes: [...CHORDS_C.I.notes], holdSec: 1.2, label: 'I'  },
+    { notes: [...CHORDS_C.IV.notes], holdSec: 1.2, label: 'IV' },
+    { notes: [...CHORDS_C.V.notes], holdSec: 1.2, label: 'V'  },
+    { notes: [...CHORDS_C.I.notes], holdSec: 2.0, label: 'I'  },
   ],
   'I-V-vi-IV': [
-    { notes: CHORDS_C.I.notes  as number[], holdSec: 1.2, label: 'I'  },
-    { notes: CHORDS_C.V.notes  as number[], holdSec: 1.2, label: 'V'  },
-    { notes: CHORDS_C.vi.notes as number[], holdSec: 1.2, label: 'vi' },
-    { notes: CHORDS_C.IV.notes as number[], holdSec: 2.0, label: 'IV' },
+    { notes: [...CHORDS_C.I.notes], holdSec: 1.2, label: 'I'  },
+    { notes: [...CHORDS_C.V.notes], holdSec: 1.2, label: 'V'  },
+    { notes: [...CHORDS_C.vi.notes], holdSec: 1.2, label: 'vi' },
+    { notes: [...CHORDS_C.IV.notes], holdSec: 2.0, label: 'IV' },
   ],
   'I-vi-IV-V': [
-    { notes: CHORDS_C.I.notes  as number[], holdSec: 1.2, label: 'I'  },
-    { notes: CHORDS_C.vi.notes as number[], holdSec: 1.2, label: 'vi' },
-    { notes: CHORDS_C.IV.notes as number[], holdSec: 1.2, label: 'IV' },
-    { notes: CHORDS_C.V.notes  as number[], holdSec: 2.0, label: 'V'  },
+    { notes: [...CHORDS_C.I.notes], holdSec: 1.2, label: 'I'  },
+    { notes: [...CHORDS_C.vi.notes], holdSec: 1.2, label: 'vi' },
+    { notes: [...CHORDS_C.IV.notes], holdSec: 1.2, label: 'IV' },
+    { notes: [...CHORDS_C.V.notes], holdSec: 2.0, label: 'V'  },
   ],
   'ii-V-I': [
-    { notes: CHORDS_C.ii.notes  as number[], holdSec: 1.2, label: 'ii' },
-    { notes: CHORDS_C.V7.notes  as number[], holdSec: 1.2, label: 'V⁷' },
-    { notes: CHORDS_C.I.notes   as number[], holdSec: 2.0, label: 'I'  },
+    { notes: [...CHORDS_C.ii.notes], holdSec: 1.2, label: 'ii' },
+    { notes: [...CHORDS_C.V7.notes], holdSec: 1.2, label: 'V⁷' },
+    { notes: [...CHORDS_C.I.notes], holdSec: 2.0, label: 'I'  },
   ],
 }
 

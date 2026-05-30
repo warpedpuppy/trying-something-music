@@ -80,7 +80,6 @@ export function PlayAlong() {
   const phaseRef        = useRef<Phase>('welcome')
   const bpmRef          = useRef(cfg.startBpm)
   const startTimeRef    = useRef<number>(0)     // performance.now() at play start
-  const elapsedRef      = useRef<number>(0)     // tracks paused time (not used here yet)
 
   // Game progression refs
   const consecutiveMissesRef  = useRef(0)
