@@ -12,7 +12,10 @@ import { triggerRainbowBurst } from '../lib/rippleEngine'
 const SLOT_PX = 380          // fixed pixel width of every rendered measure
 const REEL_UNIQUE = 24       // how many unique measures to generate before looping
 const DEFAULT_BPM = 40       // tempo before user establishes their own
-const ENTRY_DURATION_MS = 1400  // ms for the reel to scroll in from off-screen right
+// Entry sweep: content rushes in from off-screen right at V_ENTRY_INIT px/ms,
+// decelerating quadratically to match the BPM scroll speed exactly on arrival —
+// so there is zero velocity discontinuity when the scroll phase takes over.
+const V_ENTRY_INIT = 0.3     // px/ms (300 px/s) — initial sweep speed
 
 // Built once at module load — deterministic, no re-generation on re-render
 const REEL_LIBRARY: GeneratedMeasure[] = generateReel(REEL_UNIQUE, 1337)
@@ -46,7 +49,12 @@ export function PlayAlong() {
   const reelStartRef   = useRef<number>(0)       // wall clock of last start/resume
   const reelElapsedRef = useRef<number>(0)        // accumulated ms before last pause
   const bpmRef         = useRef<number>(DEFAULT_BPM)  // mirrors bpm state for RAF / closures
-  const entryStartRef  = useRef<number>(0)        // wall clock when reel entered screen
+  // Entry-animation refs — quadratic sweep from off-screen right to position 0
+  const entryStartRef  = useRef<number>(0)   // wall clock when entry began
+  const entryDurRef    = useRef<number>(0)   // total entry duration (ms)
+  const entryARef      = useRef<number>(0)   // quadratic coefficient a (px/ms²)
+  const entryBRef      = useRef<number>(0)   // quadratic coefficient b (px/ms)
+  const entryP0Ref     = useRef<number>(0)   // starting offset (px) = viewport width
 
   // Tap-tempo refs
   const tapTimesRef       = useRef<number[]>([])  // timestamps of recent taps
@@ -65,21 +73,33 @@ export function PlayAlong() {
 
     let rafId: number
     const frame = () => {
-      const elapsed      = reelElapsedRef.current + (performance.now() - reelStartRef.current)
+      const now          = performance.now()
       const msPerMeasure = (4 * 60_000) / bpmRef.current
       const loopMs       = REEL_UNIQUE * msPerMeasure
-      const scrollPx     = (elapsed % loopMs) * (SLOT_PX / msPerMeasure)
+      const entryElapsed = now - entryStartRef.current
 
-      // Entry offset: reel slides in from off-screen right over ENTRY_DURATION_MS
-      const entryElapsed  = performance.now() - entryStartRef.current
-      const entryFraction = Math.min(entryElapsed / ENTRY_DURATION_MS, 1)
-      // easeOutCubic so it decelerates as it arrives
-      const entryEased    = 1 - Math.pow(1 - entryFraction, 3)
-      const entryOffset   = (1 - entryEased) * window.innerWidth
-
-      if (reelTrackRef.current) {
-        reelTrackRef.current.style.transform = `translateX(${-scrollPx + entryOffset}px)`
+      if (entryElapsed < entryDurRef.current) {
+        // ── Entry phase ──────────────────────────────────────────────────────
+        // Quadratic position: starts at +vpWidth (off-screen right), arrives at 0
+        // with velocity exactly matching the BPM scroll speed → zero jerk at handoff.
+        const t   = entryElapsed
+        const pos = entryARef.current * t * t + entryBRef.current * t + entryP0Ref.current
+        if (reelTrackRef.current) {
+          reelTrackRef.current.style.transform = `translateX(${pos}px)`
+        }
+        // Keep scroll clock at "just now" so it starts from 0 when entry ends.
+        reelStartRef.current   = now
+        reelElapsedRef.current = 0
+      } else {
+        // ── Scroll phase ─────────────────────────────────────────────────────
+        // Normal BPM-driven left-scroll; entry is done, content is at position 0.
+        const elapsed  = reelElapsedRef.current + (now - reelStartRef.current)
+        const scrollPx = (elapsed % loopMs) * (SLOT_PX / msPerMeasure)
+        if (reelTrackRef.current) {
+          reelTrackRef.current.style.transform = `translateX(-${scrollPx}px)`
+        }
       }
+
       rafId = requestAnimationFrame(frame)
     }
 
@@ -107,12 +127,31 @@ export function PlayAlong() {
 
   function startScrolling() {
     tickEngine.cancelAll()
-    bpmRef.current            = DEFAULT_BPM
+    bpmRef.current = DEFAULT_BPM
     setBpm(DEFAULT_BPM)
+
+    // Compute quadratic entry: content starts at +vpWidth (off-screen right),
+    // decelerates from V_ENTRY_INIT to vScroll (BPM speed) over duration T.
+    // Formula: pos(t) = a·t² + b·t + P0
+    //   P(0)  = P0       (off-screen right)
+    //   P(T)  = 0        (arrived at natural scroll start)
+    //   P'(T) = -vScroll (arrives at exactly the BPM scroll velocity → no jerk)
+    // → T = 2·P0 / (V_ENTRY_INIT + vScroll),  a = (V_ENTRY_INIT−vScroll)/(2T),  b = −V_ENTRY_INIT
+    const vpWidth      = window.innerWidth   // reelViewportRef not mounted yet at this point
+    const msPerMeasure = (4 * 60_000) / DEFAULT_BPM
+    const vScroll      = SLOT_PX / msPerMeasure          // px/ms at default BPM
+    const T            = 2 * vpWidth / (V_ENTRY_INIT + vScroll)
+    const a            = (V_ENTRY_INIT - vScroll) / (2 * T)
+    const b            = -V_ENTRY_INIT
+
     const now                 = performance.now()
+    entryStartRef.current     = now
+    entryDurRef.current       = T
+    entryARef.current         = a
+    entryBRef.current         = b
+    entryP0Ref.current        = vpWidth
     reelStartRef.current      = now
     reelElapsedRef.current    = 0
-    entryStartRef.current     = now   // reel slides in from off-screen right
     hasFirstTappedRef.current = false
     tapTimesRef.current       = []
     setBeatIndex(null)
