@@ -587,8 +587,8 @@ const NotationBlock = memo(function NotationBlock({
       aria-label={`Hear measure: ${measure.label}`}
     >
       <div className="pa-notation-wrapper">
-        {/* Beat-1 arrow — always visible above the first note of this measure */}
-        {firstAnchorX !== null && (
+        {/* Beat-1 arrow — visible above beat 1 when it's a note (not a rest) */}
+        {firstAnchorX !== null && measure.events[0]?.type === 'note' && (
           <div className="pa-beat1-arrow" aria-hidden="true" style={{ left: firstAnchorX }}>▼</div>
         )}
         <div ref={containerRef} className="pa-notation-container" />
