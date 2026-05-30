@@ -36,7 +36,7 @@ export const MIDI = {
 /** A single chord event in a sequence. */
 export interface ChordStep {
   /** MIDI note numbers sounding simultaneously. */
-  notes: number[]
+  notes: readonly number[]
   /** Duration this chord is held before the next chord starts (seconds). */
   holdSec: number
   /** Optional label displayed over the chord (e.g. "V⁷"). */
