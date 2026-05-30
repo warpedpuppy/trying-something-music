@@ -98,17 +98,12 @@ export function PlayAlong() {
         reelTrackRef.current.style.transform = `translateX(${-scrollPx}px)`
       }
 
-      // ── Enable tap button once the first measure is fully on screen ───────
-      if (!tapEnabledRef.current) {
-        const vpW = reelViewportRef.current?.offsetWidth ?? window.innerWidth
-        // Right edge of measure 0 reaches right edge of viewport when scrollPx = SLOT_PX - vpW.
-        // On narrow screens where vpW < SLOT_PX the measure can never be "fully" on screen,
-        // so fall back to enabling once any part of it is visible (scrollPx >= -vpW + 10).
-        const threshold = vpW >= SLOT_PX ? SLOT_PX - vpW : -vpW + 10
-        if (scrollPx >= threshold) {
-          tapEnabledRef.current = true
-          setTapEnabled(true)
-        }
+      // ── Enable tap button once the 4-beat count-in is complete ──────────
+      // elapsed goes from -entryMs → 0 over the count-in period.
+      // At elapsed ≥ 0 the first measure is fully on screen.
+      if (!tapEnabledRef.current && elapsed >= 0) {
+        tapEnabledRef.current = true
+        setTapEnabled(true)
       }
 
       // ── Auto BPM progression (only while playing, elapsed > 0) ───────────
@@ -152,19 +147,21 @@ export function PlayAlong() {
     bpmRef.current = DEFAULT_BPM
     setBpm(DEFAULT_BPM)
 
-    // Negative elapsed puts the reel off-screen to the right.
-    // entryMs = how long it takes to scroll one viewport-width at BPM pace.
-    const msPerMeasure = (4 * 60_000) / DEFAULT_BPM
-    const entryMs      = window.innerWidth * msPerMeasure / SLOT_PX
+    // Entry = exactly 4 quarter-note beats at the starting BPM.
+    // The reel scrolls one measure-width (SLOT_PX) during those 4 beats,
+    // arriving at its natural start position (elapsed = 0) right on beat 5.
+    // At that point the first measure is completely on screen.
+    const msPerMeasure              = (4 * 60_000) / DEFAULT_BPM
+    const entryMs                   = msPerMeasure   // 4 beats = 1 measure duration
 
-    const now                   = performance.now()
-    reelStartRef.current        = now
-    reelElapsedRef.current      = -entryMs
-    prevMeasureIndexRef.current = -1
-    bpmIncreaseAtRef.current    = BPM_INCREASE_EVERY
-    hasFirstTappedRef.current   = false
-    tapTimesRef.current         = []
-    tapEnabledRef.current       = false
+    const now                       = performance.now()
+    reelStartRef.current            = now
+    reelElapsedRef.current          = -entryMs
+    prevMeasureIndexRef.current     = -1
+    bpmIncreaseAtRef.current        = BPM_INCREASE_EVERY
+    hasFirstTappedRef.current       = false
+    tapTimesRef.current             = []
+    tapEnabledRef.current           = false
     setBeatIndex(null)
     setIsPaused(false)
     setHitNoteMap({})
@@ -172,6 +169,10 @@ export function PlayAlong() {
     setTapEnabled(false)
     stageRef.current = 'scrolling'
     setStage('scrolling')
+
+    // Start the metronome immediately so the user hears a 4-beat count-in
+    // while the first measure scrolls onto the screen.
+    tickEngine.startMetronome(DEFAULT_BPM, idx => setBeatIndex(idx % 4))
   }
 
   // ── Stop → back to Welcome ────────────────────────────────────────────────
@@ -200,9 +201,8 @@ export function PlayAlong() {
     if (isPaused) {
       reelStartRef.current = performance.now()
       setIsPaused(false)
-      if (stageRef.current === 'playing') {
-        tickEngine.startMetronome(bpmRef.current, (index) => setBeatIndex(index % 4))
-      }
+      // Metronome runs during both count-in (scrolling) and play phases.
+      tickEngine.startMetronome(bpmRef.current, (index) => setBeatIndex(index % 4))
     } else {
       reelElapsedRef.current += performance.now() - reelStartRef.current
       setIsPaused(true)
@@ -369,7 +369,7 @@ export function PlayAlong() {
 
     if (!hasFirstTappedRef.current) {
       hasFirstTappedRef.current = true
-      tickEngine.startMetronome(bpmRef.current, (index) => setBeatIndex(index % 4))
+      // Metronome already started in startScrolling(); just advance the stage.
       stageRef.current = 'playing'
       setStage('playing')
       // First tap = assumed to be the first note: green it unconditionally
@@ -427,7 +427,7 @@ export function PlayAlong() {
       {/* ── Tempo / prompt label ──────────────────────────────────────── */}
       {stage === 'playing'
         ? <p className="pa-bpm-label">{bpm} BPM</p>
-        : <p className="pa-tap-prompt">Tap the button to begin</p>
+        : <p className="pa-tap-prompt">{tapEnabled ? 'Tap along!' : 'Listen…'}</p>
       }
 
       {/* ── Auto BPM increase notification ───────────────────────────── */}
@@ -545,27 +545,29 @@ const NotationBlock = memo(function NotationBlock({
   hitNoteIndices,
 }: NotationBlockProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  /** eventIndex → SVG x position of the note head, captured once on mount. */
+  const anchorsRef   = useRef<Map<number, number>>(new Map())
 
-  // Re-render VexFlow whenever hitNoteIndices changes.
-  // Color is applied via note.setStyle() BEFORE drawing — VexFlow's own API,
-  // baked into the SVG at render time.  No post-draw DOM patching needed.
+  // Render VexFlow once on mount and capture note-head x positions.
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
     try {
-      renderPattern(el, { events: measure.events }, measure.timeSigTop, measure.timeSigBottom, {
-        fixedTotalWidth: SLOT_PX,
-        showClef: measure.showClef,
-        showTimeSignature: measure.showTimeSig,
-        seamless: true,
-        hitNoteIndices,
-      })
+      const result = renderPattern(
+        el,
+        { events: measure.events },
+        measure.timeSigTop,
+        measure.timeSigBottom,
+        { fixedTotalWidth: SLOT_PX, showClef: measure.showClef, showTimeSignature: measure.showTimeSig, seamless: true },
+      )
+      const map = new Map<number, number>()
+      result.anchors.forEach(a => map.set(a.eventIndex, a.x))
+      anchorsRef.current = map
     } catch {
       // silently ignore render errors
     }
-  // measure is stable for a given block; eslint would complain but it's correct.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hitNoteIndices])
+  }, [])
 
   const levelDots = '●'.repeat(measure.level) + '○'.repeat(5 - measure.level)
 
@@ -578,7 +580,21 @@ const NotationBlock = memo(function NotationBlock({
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick() }}
       aria-label={`Hear measure: ${measure.label}`}
     >
-      <div ref={containerRef} className="pa-notation-container" />
+      {/* Wrapper gives a positioning context for the hit-dot overlay. */}
+      <div className="pa-notation-wrapper">
+        <div ref={containerRef} className="pa-notation-container" />
+        {/* Green dots above correctly-tapped note heads. */}
+        {hitNoteIndices && hitNoteIndices.length > 0 && (
+          <div className="pa-dots-layer" aria-hidden="true">
+            {hitNoteIndices.map(eventIdx => {
+              const x = anchorsRef.current.get(eventIdx)
+              return x !== undefined
+                ? <div key={eventIdx} className="pa-hit-dot" style={{ left: x }} />
+                : null
+            })}
+          </div>
+        )}
+      </div>
       <span className="pa-measure-hint">click to pause &amp; analyze</span>
       <div className="pa-measure-footer">
         <span className="pa-measure-label">{measure.label}</span>
