@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { renderPattern } from '../lib/vexflowPattern'
 import { generateReel, type GeneratedMeasure } from '../lib/rhythmGenerator'
 import { tickEngine } from '../lib/audio'
@@ -6,131 +6,224 @@ import { expectedOnsets } from '../lib/rhythm'
 import { RhythmPlayback } from '../components/RhythmPlayback'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { triggerRainbowBurst } from '../lib/rippleEngine'
+import {
+  SLOT_PX,
+  CURSOR_FRAC,
+  msPerMeasure,
+  msPerBeat,
+  reelTranslateX,
+  measureAtCursor,
+  totalMeasuresPassed,
+  onsetDueMs,
+  shouldShowDownbeat,
+} from '../lib/playAlongTiming'
+import {
+  loadPlayAlongConfig,
+  reelLevel,
+  type PlayAlongConfig,
+} from '../lib/playAlongConfig'
 
-// ── Reel configuration ────────────────────────────────────────────────────────
+// ── Reel setup ────────────────────────────────────────────────────────────────
 
-const SLOT_PX            = 380   // fixed pixel width of every rendered measure
-const REEL_UNIQUE        = 24    // how many unique measures before looping
-const DEFAULT_BPM        = 40    // starting tempo
-const MAX_BPM            = 80    // auto-increase ceiling
-const BPM_INCREASE_EVERY = 100   // measures between auto BPM bumps
-const HIT_WINDOW_MS      = 175   // tap-accuracy tolerance (ms)
+const REEL_UNIQUE = 24
+const HIT_WINDOW_MS = 175
 
-// Built once at module load — deterministic, no re-generation on re-render
-const REEL_LIBRARY: GeneratedMeasure[] = generateReel(REEL_UNIQUE, 1337)
-// Doubled for seamless looping
-const REEL: GeneratedMeasure[] = [...REEL_LIBRARY, ...REEL_LIBRARY]
+function buildReel(level: number, seed = 1337): GeneratedMeasure[] {
+  return generateReel(REEL_UNIQUE, seed + level * 100)
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Stage = 'welcome' | 'scrolling' | 'playing'
-type TapFace = { id: number; type: 'hit' | 'miss'; x: number; y: number }
+type Phase = 'welcome' | 'static' | 'playing'
+
+/** A note onset that the game is tracking for hit/miss. */
+interface PendingOnset {
+  measureAbsIdx: number   // absolute (non-looped) measure index
+  measureLoopIdx: number  // 0..REEL_UNIQUE-1
+  eventIndex: number      // index within the measure's events array
+  beatQuarters: number    // beat position in quarter-note units
+  dueMs: number           // elapsed ms when this note is at the cursor
+  resolved: boolean       // hit or miss already recorded
+}
 
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function PlayAlong() {
   usePageTitle('Play Along')
 
-  const [stage, setStage]               = useState<Stage>('welcome')
-  const [bpm, setBpm]                   = useState(DEFAULT_BPM)
-  const [beatIndex, setBeatIndex]       = useState<number | null>(null)
-  const [tapFlash, setTapFlash]         = useState(false)
-  const [isPaused, setIsPaused]         = useState(false)
+  // Config loaded from localStorage (admin-editable)
+  const [cfg] = useState<PlayAlongConfig>(loadPlayAlongConfig)
+
+  const [phase, setPhase]           = useState<Phase>('welcome')
+  const [bpm, setBpm]               = useState(cfg.startBpm)
+  const [beatIndex, setBeatIndex]   = useState<number | null>(null)
+  const [tapFlash, setTapFlash]     = useState(false)
+  const [showDownbeat, setShowDownbeat] = useState(false)
   const [reviewMeasure, setReviewMeasure] = useState<GeneratedMeasure | null>(null)
-  const [faces, setFaces]               = useState<TapFace[]>([])
-  const [bpmNotif, setBpmNotif]         = useState<number | null>(null)
-  // Map from reel measure index (0-REEL_UNIQUE) to array of hit event indices
-  const [hitNoteMap, setHitNoteMap]     = useState<Record<number, number[]>>({})
-  // Tap button is disabled until the first measure is fully visible on screen
-  const [tapEnabled, setTapEnabled]     = useState(false)
+
+  // Green (hit) and orange (miss) dots, keyed by looped measure index
+  const [hitMap,  setHitMap]  = useState<Record<number, number[]>>({})
+  const [missMap, setMissMap] = useState<Record<number, number[]>>({})
+
+  // BPM notification banner
+  const [bpmNotif, setBpmNotif]     = useState<number | null>(null)
+
+  // Arrow x-position in pixels (set from VexFlow anchor of first note)
+  const [arrowX, setArrowX]         = useState<number | null>(null)
 
   // DOM refs
   const tapBtnRef       = useRef<HTMLButtonElement>(null)
   const reelViewportRef = useRef<HTMLDivElement>(null)
   const reelTrackRef    = useRef<HTMLDivElement>(null)
 
-  // Timing refs
-  const reelStartRef   = useRef<number>(0)
-  const reelElapsedRef = useRef<number>(0)
-  // ↑ reelElapsedRef starts NEGATIVE — the reel begins off-screen right and
-  //   scrolls in at BPM pace until elapsed reaches 0 (natural start position).
-  //   No separate entry animation; a single unified BPM-speed scroll throughout.
-  const bpmRef         = useRef<number>(DEFAULT_BPM)
-  const stageRef       = useRef<Stage>('welcome')
+  // RAF / timing refs
+  const phaseRef        = useRef<Phase>('welcome')
+  const bpmRef          = useRef(cfg.startBpm)
+  const startTimeRef    = useRef<number>(0)     // performance.now() at play start
+  const elapsedRef      = useRef<number>(0)     // tracks paused time (not used here yet)
 
-  // BPM auto-progression refs
-  const prevMeasureIndexRef = useRef<number>(-1)
-  const bpmIncreaseAtRef    = useRef<number>(BPM_INCREASE_EVERY)
-  const bpmNotifTimerRef    = useRef<number | null>(null)
+  // Game progression refs
+  const consecutiveMissesRef  = useRef(0)
+  const successfulMeasuresRef = useRef(0)
+  const prevCompletedRef      = useRef(-1)       // last absolute measure we scored
+  const bpmNotifTimerRef      = useRef<number | null>(null)
 
-  // Tap refs
-  const tapTimesRef       = useRef<number[]>([])
-  const hasFirstTappedRef = useRef<boolean>(false)
+  // Current measure beat dots
+  const [beatsInMeasure, setBeatsInMeasure] = useState(4)
+  const prevMeasureLoopIdxRef = useRef(-1)
 
-  // Misc refs
-  const faceIdRef       = useRef<number>(0)
-  const tapFlashTimer   = useRef<number | null>(null)
-  const tapEnabledRef   = useRef<boolean>(false)   // mirrors tapEnabled without re-render cost
+  // Pending onsets ref (tracking upcoming notes)
+  const pendingRef = useRef<PendingOnset[]>([])
+  const reelRef    = useRef<GeneratedMeasure[]>(buildReel(reelLevel(cfg, 0)))
 
-  // ── RAF-driven reel scroll ─────────────────────────────────────────────────
-  //
-  // reelElapsedRef starts negative. The reel is off-screen right when
-  // elapsed < 0 (translateX is positive) and scrolls left at BPM pace.
-  // elapsed crosses 0 exactly when the track reaches its natural start position,
-  // then continues looping normally — one unbroken constant-speed motion.
+  // Tap timing
+  const tapTimesRef = useRef<number[]>([])
+  const tapFlashTimerRef = useRef<number | null>(null)
+
+  // ── Build pending onsets for a given absolute measure index ───────────────
+
+  const scheduleMeasure = useCallback((absIdx: number) => {
+    const loopIdx  = absIdx % REEL_UNIQUE
+    const measure  = reelRef.current[loopIdx]
+    const mspM     = msPerMeasure(bpmRef.current)
+    const bpm      = bpmRef.current
+    const onsets   = expectedOnsets({ events: measure.events })
+
+    for (const { eventIndex, beat } of onsets) {
+      pendingRef.current.push({
+        measureAbsIdx:  absIdx,
+        measureLoopIdx: loopIdx,
+        eventIndex,
+        beatQuarters:   beat,
+        dueMs:          onsetDueMs(absIdx, beat, mspM, bpm),
+        resolved:       false,
+      })
+    }
+  }, [])
+
+  // ── Pre-schedule the first several measures ───────────────────────────────
+
+  function initPending() {
+    pendingRef.current = []
+    prevCompletedRef.current = -1
+    for (let i = 0; i < 4; i++) scheduleMeasure(i)
+  }
+
+  // ── RAF-driven reel scroll ────────────────────────────────────────────────
 
   useEffect(() => {
-    if (stage === 'welcome' || isPaused) return
+    if (phase !== 'playing') return
 
     let rafId: number
     const frame = () => {
-      const now          = performance.now()
-      const msPerMeasure = (4 * 60_000) / bpmRef.current
-      const loopMs       = REEL_UNIQUE * msPerMeasure
-      const elapsed      = reelElapsedRef.current + (now - reelStartRef.current)
+      const elapsed  = performance.now() - startTimeRef.current
+      const mspM     = msPerMeasure(bpmRef.current)
+      const loopMs   = REEL_UNIQUE * mspM
+      const vpWidth  = reelViewportRef.current?.offsetWidth ?? window.innerWidth
 
-      // For negative elapsed don't loop — just use elapsed directly.
-      // translateX(-negative) = translateX(positive) = off-screen right. ✓
-      const raw      = elapsed < 0 ? elapsed : elapsed % loopMs
-      const scrollPx = raw * (SLOT_PX / msPerMeasure)
-
+      // Scroll
       if (reelTrackRef.current) {
-        reelTrackRef.current.style.transform = `translateX(${-scrollPx}px)`
+        const tx = reelTranslateX(elapsed, vpWidth, mspM, loopMs)
+        reelTrackRef.current.style.transform = `translateX(${tx}px)`
       }
 
-      // ── Enable tap button once the 4-beat count-in is complete ──────────
-      // elapsed goes from -entryMs → 0 over the count-in period.
-      // At elapsed ≥ 0 the first measure is fully on screen.
-      if (!tapEnabledRef.current && elapsed >= 0) {
-        tapEnabledRef.current = true
-        setTapEnabled(true)
+      // Beat dots: update when measure changes
+      const loopIdx = measureAtCursor(elapsed, mspM, REEL_UNIQUE)
+      if (loopIdx !== prevMeasureLoopIdxRef.current) {
+        prevMeasureLoopIdxRef.current = loopIdx
+        setBeatsInMeasure(reelRef.current[loopIdx]?.timeSigTop ?? 4)
       }
 
-      // ── Auto BPM progression (only while playing, elapsed > 0) ───────────
-      if (stageRef.current === 'playing' && bpmRef.current < MAX_BPM && elapsed > 0) {
-        const measureIndex = Math.floor(elapsed / msPerMeasure)
-        if (measureIndex > prevMeasureIndexRef.current) {
-          prevMeasureIndexRef.current = measureIndex
-          if (measureIndex >= bpmIncreaseAtRef.current) {
-            // Preserve reel scroll position at new tempo
-            const newBpm     = bpmRef.current + 1
-            const newMs      = (4 * 60_000) / newBpm
-            const newElapsed = (scrollPx / SLOT_PX) * newMs
-            reelElapsedRef.current    = newElapsed
-            reelStartRef.current      = now
-            bpmRef.current            = newBpm
-            prevMeasureIndexRef.current = Math.floor(newElapsed / newMs)
-            bpmIncreaseAtRef.current    = prevMeasureIndexRef.current + BPM_INCREASE_EVERY
+      // Pre-schedule upcoming measures
+      const absIdx = totalMeasuresPassed(elapsed, mspM)
+      // Schedule up to 4 measures ahead
+      for (let a = absIdx; a <= absIdx + 3; a++) {
+        const alreadyScheduled = pendingRef.current.some(p => p.measureAbsIdx === a)
+        if (!alreadyScheduled) scheduleMeasure(a)
+      }
 
-            // Schedule React state updates
+      // Miss detection: any onset whose window has passed without being tapped
+      const msB = msPerBeat(bpmRef.current)
+      for (const onset of pendingRef.current) {
+        if (onset.resolved) continue
+        if (elapsed > onset.dueMs + HIT_WINDOW_MS) {
+          onset.resolved = true
+          consecutiveMissesRef.current++
+          setMissMap(prev => {
+            const ex = prev[onset.measureLoopIdx] ?? []
+            if (ex.includes(onset.eventIndex)) return prev
+            return { ...prev, [onset.measureLoopIdx]: [...ex, onset.eventIndex] }
+          })
+          // Check reset
+          if (consecutiveMissesRef.current >= cfg.consecutiveMissesReset) {
+            resetToStatic()
+            return
+          }
+        }
+        void msB // suppress lint — msPerBeat used in tap handler
+      }
+
+      // Completed measure scoring: when cursor moves past a measure's last onset
+      const completed = totalMeasuresPassed(elapsed, mspM) - 1
+      if (completed > prevCompletedRef.current && completed >= 0) {
+        prevCompletedRef.current = completed
+        const compLoopIdx = completed % REEL_UNIQUE
+        const hadMiss = missMap[compLoopIdx]?.length > 0
+        if (!hadMiss) {
+          successfulMeasuresRef.current++
+          // BPM increase
+          const newLevel = reelLevel(cfg, successfulMeasuresRef.current)
+          if (newLevel > reelLevel(cfg, successfulMeasuresRef.current - 1)) {
+            // Rebuild reel with new time sigs at next loop boundary
+            reelRef.current = buildReel(newLevel, 1337)
+            // Clear dot maps (new measures, fresh start)
+            setHitMap({})
+            setMissMap({})
+          }
+          if (
+            successfulMeasuresRef.current % cfg.bpmIncreaseAfterMeasures === 0 &&
+            bpmRef.current < cfg.bpmCap
+          ) {
+            const newBpm = Math.min(bpmRef.current + cfg.bpmIncreaseAmount, cfg.bpmCap)
+            bpmRef.current = newBpm
             setBpm(newBpm)
             setBpmNotif(newBpm)
             if (bpmNotifTimerRef.current) window.clearTimeout(bpmNotifTimerRef.current)
             bpmNotifTimerRef.current = window.setTimeout(() => setBpmNotif(null), 3500)
             tickEngine.cancelAll()
-            tickEngine.startMetronome(newBpm, idx => setBeatIndex(idx % 4))
+            tickEngine.startMetronome(newBpm, idx => {
+              const b = idx % beatsInMeasure
+              setBeatIndex(b)
+              setShowDownbeat(shouldShowDownbeat('playing', b))
+            })
           }
         }
+      }
+
+      // Trim resolved onsets from the front to avoid unbounded growth
+      const cutoff = elapsed - 2000
+      while (pendingRef.current.length && pendingRef.current[0].dueMs < cutoff) {
+        pendingRef.current.shift()
       }
 
       rafId = requestAnimationFrame(frame)
@@ -138,273 +231,188 @@ export function PlayAlong() {
 
     rafId = requestAnimationFrame(frame)
     return () => cancelAnimationFrame(rafId)
-  }, [stage, isPaused])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, cfg])
 
-  // ── Start (Welcome → Scrolling) ────────────────────────────────────────────
+  // ── Start → Static ────────────────────────────────────────────────────────
 
-  function startScrolling() {
+  function startStatic() {
     tickEngine.cancelAll()
-    bpmRef.current = DEFAULT_BPM
-    setBpm(DEFAULT_BPM)
-
-    // Entry = exactly 4 quarter-note beats at the starting BPM.
-    // The reel scrolls one measure-width (SLOT_PX) during those 4 beats,
-    // arriving at its natural start position (elapsed = 0) right on beat 5.
-    // At that point the first measure is completely on screen.
-    const msPerMeasure              = (4 * 60_000) / DEFAULT_BPM
-    const entryMs                   = msPerMeasure   // 4 beats = 1 measure duration
-
-    const now                       = performance.now()
-    reelStartRef.current            = now
-    reelElapsedRef.current          = -entryMs
-    prevMeasureIndexRef.current     = -1
-    bpmIncreaseAtRef.current        = BPM_INCREASE_EVERY
-    hasFirstTappedRef.current       = false
-    tapTimesRef.current             = []
-    tapEnabledRef.current           = false
-    setBeatIndex(null)
-    setIsPaused(false)
-    setHitNoteMap({})
+    bpmRef.current = cfg.startBpm
+    setBpm(cfg.startBpm)
+    consecutiveMissesRef.current  = 0
+    successfulMeasuresRef.current = 0
+    reelRef.current = buildReel(reelLevel(cfg, 0))
+    setHitMap({})
+    setMissMap({})
     setBpmNotif(null)
-    setTapEnabled(false)
-    stageRef.current = 'scrolling'
-    setStage('scrolling')
-
-    // Start the metronome immediately so the user hears a 4-beat count-in
-    // while the first measure scrolls onto the screen.
-    tickEngine.startMetronome(DEFAULT_BPM, idx => setBeatIndex(idx % 4))
-  }
-
-  // ── Stop → back to Welcome ────────────────────────────────────────────────
-
-  function stopPlaying() {
-    tickEngine.cancelAll()
-    bpmRef.current              = DEFAULT_BPM
-    setBpm(DEFAULT_BPM)
-    setBeatIndex(null)
-    setIsPaused(false)
-    hasFirstTappedRef.current   = false
-    tapTimesRef.current         = []
-    tapEnabledRef.current       = false
-    prevMeasureIndexRef.current = -1
-    bpmIncreaseAtRef.current    = BPM_INCREASE_EVERY
-    setHitNoteMap({})
-    setBpmNotif(null)
-    setTapEnabled(false)
-    stageRef.current = 'welcome'
-    setStage('welcome')
-  }
-
-  // ── Pause / Resume ─────────────────────────────────────────────────────────
-
-  function handlePause() {
-    if (isPaused) {
-      reelStartRef.current = performance.now()
-      setIsPaused(false)
-      // Metronome runs during both count-in (scrolling) and play phases.
-      tickEngine.startMetronome(bpmRef.current, (index) => setBeatIndex(index % 4))
-    } else {
-      reelElapsedRef.current += performance.now() - reelStartRef.current
-      setIsPaused(true)
-      tickEngine.cancelAll()
-      setBeatIndex(null)
-    }
-  }
-
-  // ── Measure click → review modal ──────────────────────────────────────────
-
-  function handleMeasureClick(measure: GeneratedMeasure) {
-    if (!isPaused) {
-      reelElapsedRef.current += performance.now() - reelStartRef.current
-      setIsPaused(true)
-      tickEngine.cancelAll()
-      setBeatIndex(null)
-    }
-    setReviewMeasure(measure)
-  }
-
-  // ── Shared: get cursor position in the reel ───────────────────────────────
-  // Returns { measureIdx, posInMeasure, scrollPx } or null if cursor is before
-  // the reel (reel hasn't arrived yet).
-
-  function cursorPosition(): { measureIdx: number; posInMeasure: number; scrollPx: number } | null {
-    const elapsed      = reelElapsedRef.current + (performance.now() - reelStartRef.current)
-    const msPerMeasure = (4 * 60_000) / bpmRef.current
-    const loopMs       = REEL_UNIQUE * msPerMeasure
-    const raw          = elapsed < 0 ? elapsed : elapsed % loopMs
-    const scrollPx     = raw * (SLOT_PX / msPerMeasure)
-
-    const vpWidth    = reelViewportRef.current?.offsetWidth ?? window.innerWidth
-    const reelPosPx  = vpWidth * 0.22 + scrollPx
-    const rawIdx     = Math.floor(reelPosPx / SLOT_PX)
-    if (rawIdx < 0) return null               // reel hasn't reached cursor yet
-
-    return {
-      measureIdx:   rawIdx % REEL_UNIQUE,
-      posInMeasure: (reelPosPx % SLOT_PX) / SLOT_PX,
-      scrollPx,
-    }
-  }
-
-  // ── Tap accuracy — identify hit note, update hitNoteMap ───────────────────
-
-  function checkTapAccuracy() {
-    const pos = cursorPosition()
-    if (!pos) return
-
-    const { measureIdx, posInMeasure, scrollPx: _scrollPx } = pos
-    const msPerMeasure = (4 * 60_000) / bpmRef.current
-    const timeInMs     = posInMeasure * msPerMeasure
-    const msPerBeat    = 60_000 / bpmRef.current
-
-    const measure = REEL_LIBRARY[measureIdx]
-    const onsets  = expectedOnsets({ events: measure.events })
-
-    // Try metronome BPM first
-    let hitEventIndex = -1
-    for (const { eventIndex, beat } of onsets) {
-      if (Math.abs(beat * msPerBeat - timeInMs) < HIT_WINDOW_MS) {
-        hitEventIndex = eventIndex
-        break
-      }
-    }
-
-    // Pattern-match fallback: if user has drifted, try their detected BPM
-    if (hitEventIndex === -1 && tapTimesRef.current.length >= 2) {
-      const taps = tapTimesRef.current
-      const avgInterval = (taps[taps.length - 1] - taps[0]) / (taps.length - 1)
-      const userBpm = Math.max(30, Math.min(300, 60_000 / avgInterval))
-      if (Math.abs(userBpm - bpmRef.current) > 4) {
-        const userMsPerBeat     = 60_000 / userBpm
-        const userMsPerMeasure  = userMsPerBeat * (measure.timeSigTop ?? 4)
-        const userTimeInMs      = posInMeasure * userMsPerMeasure
-        for (const { eventIndex, beat } of onsets) {
-          if (Math.abs(beat * userMsPerBeat - userTimeInMs) < HIT_WINDOW_MS) {
-            hitEventIndex = eventIndex
-            break
-          }
-        }
-      }
-    }
-
-    const hit = hitEventIndex >= 0
-
-    // Emoji feedback
-    const vpEl  = reelViewportRef.current
-    const rect  = vpEl?.getBoundingClientRect()
-    const vpW   = reelViewportRef.current?.offsetWidth ?? window.innerWidth
-    const faceX = vpW * 0.22
-    const faceY = rect ? rect.top + rect.height * 0.4 : window.innerHeight * 0.45
-    const id    = ++faceIdRef.current
-    setFaces(f => [...f, { id, type: hit ? 'hit' : 'miss', x: faceX, y: faceY }])
-    window.setTimeout(() => setFaces(f => f.filter(x => x.id !== id)), 1300)
-
-    // Mark note green
-    if (hit) {
-      setHitNoteMap(prev => {
-        const existing = prev[measureIdx] ?? []
-        if (existing.includes(hitEventIndex)) return prev
-        return { ...prev, [measureIdx]: [...existing, hitEventIndex] }
-      })
-    }
-  }
-
-  // ── First-tap green: always green the nearest note at cursor ──────────────
-  // The first tap is presumed to be the first note of whatever measure is
-  // currently at the cursor — no timing window required.
-
-  function greenFirstNote() {
-    const pos = cursorPosition()
-    // During entry the cursor is before the reel so pos may be null.
-    // Fall back to measure 0, beat 0 — the user's first tap is assumed
-    // to be the very first note of the reel.
-    const measureIdx   = pos?.measureIdx ?? 0
-    const msPerMeasure = (4 * 60_000) / bpmRef.current
-    const timeInMs     = (pos?.posInMeasure ?? 0) * msPerMeasure
-    const msPerBeat    = 60_000 / bpmRef.current
-
-    const measure = REEL_LIBRARY[measureIdx]
-    const onsets  = expectedOnsets({ events: measure.events })
-    if (onsets.length === 0) return
-
-    // If we have a real cursor position find the closest onset; otherwise
-    // just take the first (beat 0) onset of the fallback measure.
-    let targetEventIndex = onsets[0].eventIndex
-    if (pos) {
-      let closest = onsets[0]
-      let closestDist = Math.abs(closest.beat * msPerBeat - timeInMs)
-      for (const onset of onsets) {
-        const d = Math.abs(onset.beat * msPerBeat - timeInMs)
-        if (d < closestDist) { closest = onset; closestDist = d }
-      }
-      targetEventIndex = closest.eventIndex
-    }
-
-    setHitNoteMap(prev => {
-      const existing = prev[measureIdx] ?? []
-      if (existing.includes(targetEventIndex)) return prev
-      return { ...prev, [measureIdx]: [...existing, targetEventIndex] }
+    setShowDownbeat(true)
+    const beats = reelRef.current[0]?.timeSigTop ?? 4
+    setBeatsInMeasure(beats)
+    phaseRef.current = 'static'
+    setPhase('static')
+    // Metronome runs during the static phase so the player feels the tempo
+    // before pressing START.
+    tickEngine.startMetronome(cfg.startBpm, idx => {
+      const b = idx % beats
+      setBeatIndex(b)
+      setShowDownbeat(shouldShowDownbeat('static', b))
     })
   }
 
-  // ── Tap handler ────────────────────────────────────────────────────────────
+  // ── Static → Playing ──────────────────────────────────────────────────────
+
+  function startPlaying() {
+    initPending()
+    startTimeRef.current = performance.now()
+
+    // The START click counts as tapping beat 1 of measure 0.
+    // Immediately resolve the first onset as a hit and green it.
+    const firstOnset = pendingRef.current[0]
+    if (firstOnset) {
+      firstOnset.resolved = true
+      consecutiveMissesRef.current = 0
+      setHitMap({ [firstOnset.measureLoopIdx]: [firstOnset.eventIndex] })
+    }
+
+    phaseRef.current = 'playing'
+    setPhase('playing')
+
+    // Restart the metronome from beat 0 so the first lit dot aligns with
+    // the START click — the player hears a clean downbeat as the reel begins.
+    const beats = reelRef.current[0]?.timeSigTop ?? 4
+    tickEngine.cancelAll()
+    setBeatIndex(0)
+    setShowDownbeat(true)
+    tickEngine.startMetronome(bpmRef.current, idx => {
+      const b = idx % beats
+      setBeatIndex(b)
+      setShowDownbeat(shouldShowDownbeat('playing', b))
+    })
+  }
+
+  // ── Reset to Static ───────────────────────────────────────────────────────
+
+  function resetToStatic() {
+    tickEngine.cancelAll()
+    phaseRef.current = 'static'
+    setPhase('static')
+    consecutiveMissesRef.current = 0
+    setHitMap({})
+    setMissMap({})
+    setShowDownbeat(true)
+    const beats = reelRef.current[0]?.timeSigTop ?? 4
+    // Restart metronome from beat 0 so the player gets a fresh count-in.
+    setBeatIndex(0)
+    tickEngine.startMetronome(bpmRef.current, idx => {
+      const b = idx % beats
+      setBeatIndex(b)
+      setShowDownbeat(shouldShowDownbeat('static', b))
+    })
+  }
+
+  // ── Stop → Welcome ────────────────────────────────────────────────────────
+
+  function stopToWelcome() {
+    tickEngine.cancelAll()
+    phaseRef.current = 'welcome'
+    setPhase('welcome')
+    setBeatIndex(null)
+    setShowDownbeat(false)
+  }
+
+  // ── Arrow x from VexFlow anchor of first note ─────────────────────────────
+
+  const handleFirstAnchor = useCallback((anchorX: number) => {
+    setArrowX(anchorX)
+  }, [])
+
+  // ── Tap handler ───────────────────────────────────────────────────────────
 
   function handleTap() {
-    if (isPaused || !tapEnabledRef.current) return
+    if (phase !== 'playing') return
 
+    // Visual feedback
     tickEngine.tick('tap')
     setTapFlash(true)
-    if (tapFlashTimer.current) window.clearTimeout(tapFlashTimer.current)
-    tapFlashTimer.current = window.setTimeout(() => setTapFlash(false), 130)
+    if (tapFlashTimerRef.current) window.clearTimeout(tapFlashTimerRef.current)
+    tapFlashTimerRef.current = window.setTimeout(() => setTapFlash(false), 120)
     if (tapBtnRef.current) {
       const r = tapBtnRef.current.getBoundingClientRect()
       triggerRainbowBurst(r.left + r.width / 2, r.top + r.height / 2)
     }
 
-    // Record tap time (used for pattern-match fallback)
-    const now    = performance.now()
+    const now     = performance.now()
+    const elapsed = now - startTimeRef.current
+    const mspM    = msPerMeasure(bpmRef.current)
+    const bpm     = bpmRef.current
+
+    // Track tap times for BPM drift detection
     const recent = tapTimesRef.current.filter(t => now - t < 4000)
     recent.push(now)
     tapTimesRef.current = recent
 
-    if (!hasFirstTappedRef.current) {
-      hasFirstTappedRef.current = true
-      // Metronome already started in startScrolling(); just advance the stage.
-      stageRef.current = 'playing'
-      setStage('playing')
-      // First tap = assumed to be the first note: green it unconditionally
-      greenFirstNote()
-      return
+    // Find the closest unresolved onset within the hit window
+    let bestOnset: PendingOnset | null = null
+    let bestDist = HIT_WINDOW_MS
+
+    for (const onset of pendingRef.current) {
+      if (onset.resolved) continue
+      const dist = Math.abs(elapsed - onset.dueMs)
+      if (dist < bestDist) {
+        bestDist  = dist
+        bestOnset = onset
+      }
     }
 
-    checkTapAccuracy()
+    if (bestOnset) {
+      bestOnset.resolved = true
+      consecutiveMissesRef.current = 0
+      setHitMap(prev => {
+        const ex = prev[bestOnset!.measureLoopIdx] ?? []
+        if (ex.includes(bestOnset!.eventIndex)) return prev
+        return { ...prev, [bestOnset!.measureLoopIdx]: [...ex, bestOnset!.eventIndex] }
+      })
+    }
+    // If no matching onset: tap happened between notes — treat as no-op (not a miss)
+
+    void mspM; void bpm  // suppress unused-var lint
   }
 
-  // ── Cleanup on unmount ────────────────────────────────────────────────────
+  // ── Measure click → review modal ─────────────────────────────────────────
+
+  function handleMeasureClick(measure: GeneratedMeasure) {
+    setReviewMeasure(measure)
+  }
+
+  // ── Cleanup ───────────────────────────────────────────────────────────────
   useEffect(() => () => { tickEngine.cancelAll() }, [])
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  if (stage === 'welcome') return <WelcomeScreen onStart={startScrolling} />
+  if (phase === 'welcome') return <WelcomeScreen onStart={startStatic} cfg={cfg} />
+
+  // Compute the initial reel translateX for the static phase
+  const vpWidth       = reelViewportRef.current?.offsetWidth ?? window.innerWidth
+  const staticTX      = vpWidth * CURSOR_FRAC   // set in CSS instead; this is a fallback
+
+  // Arrow screen-x: cursor position + first-note offset within the measure
+  const arrowScreenX  = vpWidth * CURSOR_FRAC + (arrowX ?? 80)
 
   return (
     <div className="pa-playing">
 
-      {/* ── Measure review modal ──────────────────────────────────────── */}
+      {/* Review modal */}
       {reviewMeasure && (
         <div
           className="modal-overlay"
-          onClick={(e) => { if (e.target === e.currentTarget) setReviewMeasure(null) }}
+          onClick={e => { if (e.target === e.currentTarget) setReviewMeasure(null) }}
         >
           <div className="modal-panel">
             <div className="modal-header">
               <h2 className="modal-title">Hear this measure</h2>
-              <button
-                type="button"
-                className="modal-close"
-                aria-label="Close"
-                onClick={() => setReviewMeasure(null)}
-              >✕</button>
+              <button type="button" className="modal-close" aria-label="Close"
+                onClick={() => setReviewMeasure(null)}>✕</button>
             </div>
             <RhythmPlayback
               pattern={{ events: reviewMeasure.events }}
@@ -417,138 +425,154 @@ export function PlayAlong() {
         </div>
       )}
 
-      {/* ── Beat indicator dots ────────────────────────────────────────── */}
+      {/* Beat indicator dots — count matches current time signature numerator */}
       <div className="pa-beat-row" aria-label="Beat indicator">
-        {[0, 1, 2, 3].map(i => (
-          <div key={i} className={`pa-beat-dot${beatIndex === i ? ' active' : ''}`} />
+        {Array.from({ length: beatsInMeasure }, (_, i) => (
+          <div
+            key={i}
+            className={`pa-beat-dot${beatIndex === i ? ' active' : ''}`}
+          />
         ))}
       </div>
 
-      {/* ── Tempo / prompt label ──────────────────────────────────────── */}
-      {stage === 'playing'
-        ? <p className="pa-bpm-label">{bpm} BPM</p>
-        : <p className="pa-tap-prompt">{tapEnabled ? 'Tap along!' : 'Listen…'}</p>
-      }
+      {/* Tempo label */}
+      <p className="pa-bpm-label">{bpm} BPM</p>
 
-      {/* ── Auto BPM increase notification ───────────────────────────── */}
+      {/* BPM increase notification */}
       {bpmNotif && (
         <div className="pa-bpm-notif" aria-live="polite">
           ♩ = {bpmNotif} — tempo up!
         </div>
       )}
 
-      {/* ── Scrolling notation reel ───────────────────────────────────── */}
-      <div
-        className="pa-reel-viewport"
-        ref={reelViewportRef}
-      >
+      {/* Scrolling notation reel */}
+      <div className="pa-reel-viewport" ref={reelViewportRef} style={{ position: 'relative' }}>
+
+        {/* Downbeat arrow — static: above first note; playing: flashes on beat 1 */}
+        {showDownbeat && (
+          <div
+            className="pa-downbeat-arrow"
+            aria-hidden="true"
+            style={{ left: arrowScreenX }}
+          >
+            ▼
+          </div>
+        )}
+
+        {/* Cursor / read-line */}
+        <div className="pa-cursor-line" aria-hidden="true" />
+
         <div
           ref={reelTrackRef}
           className="pa-reel-track"
-          style={{ width: `${REEL.length * SLOT_PX}px` }}
+          style={{
+            width: `${REEL_UNIQUE * SLOT_PX}px`,
+            // Static phase: position first measure at 25% from left
+            transform: phase === 'static' ? `translateX(${staticTX}px)` : undefined,
+          }}
         >
-          {REEL.map((item, i) => (
+          {reelRef.current.map((item, i) => (
             <NotationBlock
               key={i}
               measure={item}
               onClick={() => handleMeasureClick(item)}
-              hitNoteIndices={hitNoteMap[i % REEL_UNIQUE]}
+              hitNoteIndices={hitMap[i]}
+              missNoteIndices={missMap[i]}
+              onFirstAnchor={i === 0 ? handleFirstAnchor : undefined}
             />
           ))}
         </div>
       </div>
 
-      {/* ── TAP button ───────────────────────────────────────────────── */}
+      {/* TAP / START button */}
       <div className="pa-controls-row">
         <button
           ref={tapBtnRef}
           type="button"
-          className={`pa-tap-btn${tapFlash ? ' flash' : ''}${isPaused || !tapEnabled ? ' pa-tap-btn-muted' : ''}`}
-          onPointerDown={e => { e.preventDefault(); handleTap() }}
-          aria-label="Tap"
-          disabled={isPaused || !tapEnabled}
+          className={`pa-tap-btn${tapFlash ? ' flash' : ''}`}
+          onPointerDown={e => {
+            e.preventDefault()
+            if (phase === 'static') startPlaying()
+            else handleTap()
+          }}
+          aria-label={phase === 'static' ? 'Start' : 'Tap'}
         >
-          <span className="pa-tap-btn-label">TAP</span>
+          <span className="pa-tap-btn-label">{phase === 'static' ? 'START' : 'TAP'}</span>
           <span className="pa-tap-btn-ring" aria-hidden="true" />
         </button>
       </div>
 
-      {/* ── Secondary controls ────────────────────────────────────────── */}
+      {/* Secondary controls */}
       <div className="pa-secondary-controls">
-        {stage === 'playing' && (
-          <button
-            type="button"
-            className={`pa-pause-btn${isPaused ? ' active' : ''}`}
-            onClick={handlePause}
-            aria-label={isPaused ? 'Resume' : 'Pause'}
-          >
-            {isPaused ? '▶ Resume' : '⏸ Pause'}
-          </button>
-        )}
-        <button type="button" className="pa-stop-btn-pill" onClick={stopPlaying}>
+        <button type="button" className="pa-stop-btn-pill" onClick={stopToWelcome}>
           ■ Stop
         </button>
       </div>
-
-      {/* ── Tap-accuracy emoji faces ──────────────────────────────────── */}
-      {faces.map(f => (
-        <span
-          key={f.id}
-          className={`pa-face pa-face-${f.type}`}
-          style={{ left: f.x, top: f.y }}
-          aria-hidden="true"
-        >
-          {f.type === 'hit' ? '😊' : '😞'}
-        </span>
-      ))}
 
     </div>
   )
 }
 
-// ── Welcome screen ────────────────────────────────────────────────────────────
+// ── Welcome screen ─────────────────────────────────────────────────────────────
 
-function WelcomeScreen({ onStart }: { onStart: () => void }) {
+function WelcomeScreen({ onStart, cfg }: { onStart: () => void; cfg: PlayAlongConfig }) {
+  // Find the earliest-unlocking non-4/4 time sig for the instructions
+  const altSigs = cfg.timeSigs
+    .filter(ts => !(ts.top === 4 && ts.bottom === 4))
+    .sort((a, b) => a.afterMeasures - b.afterMeasures)
+  const altUnlockAt = altSigs[0]?.afterMeasures ?? cfg.bpmIncreaseAfterMeasures
+
   return (
     <div className="pa-stage pa-welcome">
       <h1 className="pa-welcome-title">Play Along</h1>
       <p className="pa-welcome-body">
-        Sheet music scrolls in from the right. Tap along in time with the notes —
-        each note you hit turns green.
+        Sheet music appears on screen. Hit <strong>START</strong> and tap along —
+        notes you hit turn green, misses turn orange.
+        {cfg.consecutiveMissesReset} misses in a row resets the game.
       </p>
       <ul className="pa-welcome-bullets">
-        <li>Watch the notation scroll toward you from the right</li>
-        <li>Tap the big button each time a note passes by</li>
-        <li>Notes you tap in time turn green</li>
-        <li>If you drift, just keep tapping your own rhythm — we'll still match you</li>
-        <li>Tempo starts at 40 BPM and rises by 1 every 100 measures, up to 80 BPM</li>
-        <li>Tap any measure to pause and hear it played back</li>
+        <li>Watch the orange arrow — it marks each downbeat</li>
+        <li>Tap when a note passes under the cursor line</li>
+        <li>
+          Tempo starts at <strong>{cfg.startBpm} BPM</strong> and rises
+          by {cfg.bpmIncreaseAmount} every {cfg.bpmIncreaseAfterMeasures} clean
+          measures, up to {cfg.bpmCap} BPM
+        </li>
+        {altSigs.length > 0 && (
+          <li>
+            After {altUnlockAt} clean measures,{' '}
+            {altSigs.map(ts => `${ts.top}/${ts.bottom}`).join(' and ')} can appear
+          </li>
+        )}
+        <li>Tap any measure to hear it played back</li>
       </ul>
       <button type="button" className="btn-primary pa-cta" onClick={onStart}>
-        Start
+        Let's go
       </button>
     </div>
   )
 }
 
-// ── Notation block ────────────────────────────────────────────────────────────
+// ── Notation block ─────────────────────────────────────────────────────────────
 
 interface NotationBlockProps {
   measure: GeneratedMeasure
   onClick: () => void
   hitNoteIndices?: number[]
+  missNoteIndices?: number[]
+  onFirstAnchor?: (x: number) => void
 }
 
 const NotationBlock = memo(function NotationBlock({
   measure,
   onClick,
   hitNoteIndices,
+  missNoteIndices,
+  onFirstAnchor,
 }: NotationBlockProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  /** eventIndex → SVG x position of the note head, captured once on mount. */
   const anchorsRef   = useRef<Map<number, number>>(new Map())
 
-  // Render VexFlow once on mount and capture note-head x positions.
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
@@ -563,6 +587,11 @@ const NotationBlock = memo(function NotationBlock({
       const map = new Map<number, number>()
       result.anchors.forEach(a => map.set(a.eventIndex, a.x))
       anchorsRef.current = map
+
+      // Report the first note's x to the parent (for arrow positioning)
+      if (onFirstAnchor && result.anchors.length > 0) {
+        onFirstAnchor(result.anchors[0].x)
+      }
     } catch {
       // silently ignore render errors
     }
@@ -577,24 +606,37 @@ const NotationBlock = memo(function NotationBlock({
       onClick={onClick}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick() }}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onClick() }}
       aria-label={`Hear measure: ${measure.label}`}
     >
-      {/* Wrapper gives a positioning context for the hit-dot overlay. */}
       <div className="pa-notation-wrapper">
         <div ref={containerRef} className="pa-notation-container" />
-        {/* Green dots above correctly-tapped note heads. */}
+
+        {/* Green hit dots */}
         {hitNoteIndices && hitNoteIndices.length > 0 && (
           <div className="pa-dots-layer" aria-hidden="true">
-            {hitNoteIndices.map(eventIdx => {
-              const x = anchorsRef.current.get(eventIdx)
+            {hitNoteIndices.map(idx => {
+              const x = anchorsRef.current.get(idx)
               return x !== undefined
-                ? <div key={eventIdx} className="pa-hit-dot" style={{ left: x }} />
+                ? <div key={`h${idx}`} className="pa-hit-dot" style={{ left: x }} />
+                : null
+            })}
+          </div>
+        )}
+
+        {/* Orange miss dots */}
+        {missNoteIndices && missNoteIndices.length > 0 && (
+          <div className="pa-dots-layer" aria-hidden="true">
+            {missNoteIndices.map(idx => {
+              const x = anchorsRef.current.get(idx)
+              return x !== undefined
+                ? <div key={`m${idx}`} className="pa-miss-dot" style={{ left: x }} />
                 : null
             })}
           </div>
         )}
       </div>
+
       <span className="pa-measure-hint">click to pause &amp; analyze</span>
       <div className="pa-measure-footer">
         <span className="pa-measure-label">{measure.label}</span>

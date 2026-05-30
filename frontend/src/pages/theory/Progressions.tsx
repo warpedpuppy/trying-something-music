@@ -8,6 +8,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
 import { usePageTitle } from '../../hooks/usePageTitle'
+import { ProgressionPlayer } from '../../components/ProgressionPlayer'
+import { PROGRESSION_SEQUENCES } from '../../lib/theoryAudio'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 
@@ -118,20 +120,24 @@ function ProgressionsLearnContent() {
             <strong>I–IV–V–I</strong> — The foundation of the blues, rock, and classical
             harmony. The three primary chords (I, IV, V) cover every scale degree, which
             is why they harmonise almost any melody.
+            <ProgressionPlayer steps={PROGRESSION_SEQUENCES['I-IV-V-I']} buttonLabel="▶ Hear I–IV–V–I" context="in C" />
           </li>
           <li>
             <strong>I–V–vi–IV</strong> — The modern pop progression. I is home, V creates
             tension, vi adds emotional depth, IV provides contrast before returning to I.
             Used in thousands of contemporary songs.
+            <ProgressionPlayer steps={PROGRESSION_SEQUENCES['I-V-vi-IV']} buttonLabel="▶ Hear I–V–vi–IV" context="in C" />
           </li>
           <li>
             <strong>ii–V–I</strong> — The jazz cadence. The ii chord sets up the V, which
             resolves to I with maximum tension and release. Every jazz standard uses this
             in some form.
+            <ProgressionPlayer steps={PROGRESSION_SEQUENCES['ii-V-I']} buttonLabel="▶ Hear ii–V–I" context="in C" />
           </li>
           <li>
             <strong>I–vi–IV–V</strong> — The "50s progression" (doo-wop). The vi chord
             (relative minor) gives it an emotional tug before IV and V push back home.
+            <ProgressionPlayer steps={PROGRESSION_SEQUENCES['I-vi-IV-V']} buttonLabel="▶ Hear I–vi–IV–V" context="in C" />
           </li>
         </ul>
         <p className="tt-learn-tip">

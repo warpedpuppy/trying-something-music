@@ -8,6 +8,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
 import { usePageTitle } from '../../hooks/usePageTitle'
+import { ProgressionPlayer } from '../../components/ProgressionPlayer'
+import { CADENCE_SEQUENCES } from '../../lib/theoryAudio'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 
@@ -77,6 +79,7 @@ function CadencesLearnContent() {
           <strong> perfect authentic cadence</strong> and is the most final-sounding ending
           in Western music.
         </p>
+        <ProgressionPlayer steps={CADENCE_SEQUENCES.authentic} buttonLabel="▶ Hear V⁷ → I" context="in C major" />
       </section>
 
       <section className="tt-learn-section">
@@ -87,6 +90,7 @@ function CadencesLearnContent() {
           Also called the <strong>"Amen" cadence</strong> because hymns traditionally end
           with the word "A-men" sung over IV–I.
         </p>
+        <ProgressionPlayer steps={CADENCE_SEQUENCES.plagal} buttonLabel="▶ Hear IV → I" context="in C major" />
       </section>
 
       <section className="tt-learn-section">
@@ -100,6 +104,7 @@ function CadencesLearnContent() {
           Half cadences often appear at the end of the first half of a musical sentence,
           with an authentic cadence completing the thought at the end of the second half.
         </p>
+        <ProgressionPlayer steps={CADENCE_SEQUENCES.half} buttonLabel="▶ Hear I → V" context="phrase left unresolved" />
       </section>
 
       <section className="tt-learn-section">
@@ -114,6 +119,7 @@ function CadencesLearnContent() {
           emotional depth. Listen for them in the climactic moments of songs where the
           resolution is delayed for dramatic effect.
         </p>
+        <ProgressionPlayer steps={CADENCE_SEQUENCES.deceptive} buttonLabel="▶ Hear the surprise" context="I → V⁷ → vi — wait for the twist" />
         <p className="tt-learn-tip">
           💡 All four cadences share a crucial feature: the dominant (V) appears in three
           of them. Recognising when you're on V — and watching where it goes next — is the

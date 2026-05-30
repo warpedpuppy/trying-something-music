@@ -608,6 +608,21 @@
   color: #7c3aed;
 }
 
+.section-card-playalong {
+  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+  border: 1.5px solid rgba(249, 115, 22, 0.2);
+  box-shadow: 0 4px 16px rgba(249, 115, 22, 0.1);
+}
+
+.section-card-playalong:hover {
+  box-shadow: 0 8px 28px rgba(249, 115, 22, 0.22);
+  border-color: rgba(249, 115, 22, 0.38);
+}
+
+.section-card-playalong .section-card-cta {
+  color: #ea580c;
+}
+
 /* ---------------------------------------------------------------- home */
 
 .hero-section {
@@ -2797,6 +2812,8 @@ a.theory-card:hover {
 
 /* ---------------------------------------------------------------- play along */
 
+/* ── Welcome screen ─────────────────────────────────────────────────────────── */
+
 .pa-stage {
   max-width: 520px;
   margin: 40px auto;
@@ -2936,13 +2953,13 @@ a.theory-card:hover {
   opacity: 0.7;
 }
 
-/* playing */
+/* ── Playing screen ─────────────────────────────────────────────────────────── */
 .pa-playing {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 28px;
-  padding: 32px 0 48px;
+  gap: 24px;
+  padding: 28px 0 48px;
 }
 
 .pa-beat-row {
@@ -3023,7 +3040,36 @@ a.theory-card:hover {
   will-change: transform;
 }
 
-/* Reel slides in from off-screen right via RAF-driven entry offset in PlayAlong.tsx */
+/* Downbeat arrow — orange ▼ above the first note of each measure.
+   Static phase: always visible. Playing phase: flashes on beat 1.
+   Positioned by inline style left: (px). */
+.pa-downbeat-arrow {
+  position: absolute;
+  top: 4px;
+  transform: translateX(-50%);
+  font-size: 1.4rem;
+  color: #f97316;           /* orange */
+  pointer-events: none;
+  z-index: 10;
+  animation: pa-downbeat-pop 0.14s ease-out both;
+}
+
+@keyframes pa-downbeat-pop {
+  from { opacity: 0; transform: translateX(-50%) translateY(-5px) scale(0.75); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0)    scale(1);    }
+}
+
+/* Vertical read-line at 25% from left of the reel viewport */
+.pa-cursor-line {
+  position: absolute;
+  left: 25%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgba(249, 115, 22, 0.25);   /* faint orange */
+  pointer-events: none;
+  z-index: 5;
+}
 
 .pa-measure-block {
   flex-shrink: 0;
@@ -3074,6 +3120,17 @@ a.theory-card:hover {
   height: 8px;
   border-radius: 50%;
   background: #16a34a;
+  transform: translateX(-50%);
+}
+
+/* Orange dot shown above a missed note head. */
+.pa-miss-dot {
+  position: absolute;
+  top: 5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f97316;
   transform: translateX(-50%);
 }
 
@@ -3283,24 +3340,347 @@ a.theory-card:hover {
   box-shadow: 0 4px 16px rgba(67, 97, 238, 0.35);
 }
 
-/* ── tap-accuracy faces (fixed position, float up and fade) ── */
+/* ── Play Along admin panel ── */
 
-.pa-face {
-  position: fixed;
-  z-index: 9000;
-  font-size: 2.4rem;
-  pointer-events: none;
-  transform: translateX(-50%);
-  animation: pa-face-float 1.25s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-  line-height: 1;
-  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.22));
+.pa-admin {
+  max-width: 680px;
+  padding: 24px 0;
 }
 
-@keyframes pa-face-float {
-  0%   { opacity: 1; transform: translateX(-50%) translateY(0)     scale(1.15); }
-  20%  { opacity: 1; transform: translateX(-50%) translateY(-20px)  scale(1); }
-  80%  { opacity: 0.6; }
-  100% { opacity: 0; transform: translateX(-50%) translateY(-110px) scale(0.85); }
+.pa-admin-heading {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+
+.pa-admin-hint {
+  font-size: 0.87rem;
+  color: var(--muted);
+  margin: 0 0 20px;
+}
+
+.pa-admin-section {
+  margin-bottom: 28px;
+}
+
+.pa-admin-section h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line, #e5e7eb);
+}
+
+.pa-admin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  font-size: 0.9rem;
+}
+
+.pa-admin-row span {
+  flex: 1;
+  color: var(--ink);
+}
+
+.pa-admin-row input[type="number"] {
+  width: 90px;
+  padding: 6px 10px;
+  border: 1.5px solid var(--line, #d1d5db);
+  border-radius: 8px;
+  font-size: 0.92rem;
+  text-align: right;
+  background: var(--surface-1, #fff);
+  color: var(--ink);
+}
+
+.pa-admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  margin-bottom: 10px;
+}
+
+.pa-admin-table th {
+  text-align: left;
+  padding: 6px 8px;
+  font-weight: 600;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line, #e5e7eb);
+}
+
+.pa-admin-table td {
+  padding: 6px 8px;
+}
+
+.pa-admin-table input[type="number"] {
+  width: 80px;
+  padding: 5px 8px;
+  border: 1.5px solid var(--line, #d1d5db);
+  border-radius: 7px;
+  font-size: 0.88rem;
+  text-align: right;
+}
+
+.pa-admin-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 1rem;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.pa-admin-remove:hover:not(:disabled) {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.pa-admin-remove:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.pa-admin-add {
+  background: none;
+  border: 1.5px dashed var(--line, #d1d5db);
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 7px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.pa-admin-add:hover {
+  background: var(--accent-faint, #eef2ff);
+}
+
+.pa-admin-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding-top: 8px;
+}
+
+.pa-admin-saved {
+  color: #16a34a;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+/* ── Theory audio: ProgressionPlayer ─────────────────────────────────────── */
+
+.pp-root {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 14px 0;
+  padding: 14px 16px;
+  background: var(--surface-2, #f8f9fa);
+  border-radius: 12px;
+  border: 1px solid var(--line, #e5e7eb);
+}
+
+.pp-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pp-chip {
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: var(--surface-1, #fff);
+  border: 1.5px solid var(--line, #d1d5db);
+  transition: background 0.12s, border-color 0.12s, transform 0.1s;
+  min-width: 40px;
+  text-align: center;
+}
+
+.pp-chip-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  transform: scale(1.08);
+}
+
+.pp-chip-label {
+  font-family: Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.pp-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pp-play-btn {
+  padding: 7px 18px;
+  border-radius: 20px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.pp-play-btn:hover {
+  background: var(--accent-dark, #3730a3);
+}
+
+.pp-playing {
+  background: #dc2626;
+}
+
+.pp-playing:hover {
+  background: #b91c1c;
+}
+
+.pp-context {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* ── Theory audio: interval play button ──────────────────────────────────── */
+
+.iv-play-btn {
+  background: none;
+  border: 1.5px solid var(--accent);
+  color: var(--accent);
+  border-radius: 6px;
+  padding: 2px 7px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.iv-play-btn:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* ── Theory audio: BachPlayer ────────────────────────────────────────────── */
+
+.bach-player {
+  margin: 14px 0;
+  padding: 16px 18px;
+  background: #fdfaf5;
+  border: 1.5px solid #e8d9a0;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bach-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.bach-title {
+  margin: 0 0 2px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.bach-subtitle {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.bach-bars {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.bach-bar-chip {
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--surface-2, #f3f4f6);
+  border: 1px solid var(--line, #e5e7eb);
+  font-size: 0.75rem;
+  color: var(--muted);
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+
+.bach-bar-active {
+  background: #d4a017;
+  border-color: #d4a017;
+  color: #fff;
+  font-weight: 700;
+}
+
+.bach-voices {
+  display: flex;
+  gap: 12px;
+}
+
+.bach-voice {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--surface-1, #fff);
+  border: 1px solid var(--line, #e5e7eb);
+}
+
+.bach-voice-rh {
+  border-top: 3px solid #4f46e5;
+}
+
+.bach-voice-lh {
+  border-top: 3px solid #d4a017;
+}
+
+.bach-voice-label {
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.bach-note {
+  font-family: Georgia, serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--muted);
+  transition: color 0.08s, transform 0.08s;
+  min-height: 2rem;
+}
+
+.bach-note-active {
+  color: var(--accent);
+  transform: scale(1.18);
+}
+
+.bach-caption {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.55;
 }
 
 /* ── mobile nav accordion ── */
@@ -3411,8 +3791,9 @@ a.theory-card:hover {
   border-top-width: 3px;
 }
 
-.cs-feature-rhythm { border-top-color: var(--accent); }
-.cs-feature-theory  { border-top-color: #6C63FF; }
+.cs-feature-rhythm     { border-top-color: var(--accent); }
+.cs-feature-playalong  { border-top-color: #f97316; }
+.cs-feature-theory     { border-top-color: #6C63FF; }
 
 .cs-feature-icon {
   font-size: 2.2rem;
@@ -3459,7 +3840,66 @@ a.theory-card:hover {
   top: 0.05em;
 }
 
-.cs-feature-theory .cs-feature-list li::before { color: #6C63FF; }
+.cs-feature-playalong .cs-feature-list li::before { color: #f97316; }
+.cs-feature-theory    .cs-feature-list li::before { color: #6C63FF; }
+
+/* Hero action buttons */
+.cs-hero-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.cs-cta-primary {
+  padding: 12px 28px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 28px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 0.15s, transform 0.1s;
+  box-shadow: 0 4px 14px rgba(67, 97, 238, 0.35);
+}
+
+.cs-cta-primary:hover {
+  background: var(--accent-dark, #3730a3);
+  transform: translateY(-1px);
+}
+
+.cs-cta-secondary {
+  padding: 12px 28px;
+  background: transparent;
+  color: #f97316;
+  border: 2px solid #f97316;
+  border-radius: 28px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s, transform 0.1s;
+}
+
+.cs-cta-secondary:hover {
+  background: #f97316;
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+/* "Learn more" link at the bottom of each feature card */
+.cs-card-link {
+  display: inline-block;
+  margin-top: 18px;
+  font-size: 0.875rem;
+  font-weight: 650;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.cs-card-link:hover { text-decoration: underline; }
+.cs-feature-playalong .cs-card-link { color: #f97316; }
+.cs-feature-theory    .cs-card-link { color: #6C63FF; }
 
 /* Footer */
 

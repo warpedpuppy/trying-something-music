@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
 import { usePageTitle } from '../../hooks/usePageTitle'
+import { theoryAudio, MIDI } from '../../lib/theoryAudio'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 
@@ -67,17 +68,27 @@ function IntervalsLearnContent() {
           and their <strong>quality</strong> (major, minor, or perfect).
         </p>
         <div className="tt-sig-table">
-          <div className="tt-sig-row tt-sig-header">
-            <span>Semitones</span><span>Name</span><span>Symbol</span>
+          <div className="tt-sig-row tt-sig-header" style={{ gridTemplateColumns: '80px 1fr 60px 48px' }}>
+            <span>Semitones</span><span>Name</span><span>Symbol</span><span></span>
           </div>
           {INTERVALS.map(iv => (
-            <div key={iv.semitones} className="tt-sig-row">
+            <div key={iv.semitones} className="tt-sig-row" style={{ gridTemplateColumns: '80px 1fr 60px 48px' }}>
               <span className="tt-sig-key">{iv.semitones}</span>
               <span>{iv.name}</span>
               <span className="tt-sig-notes">{iv.abbrev}</span>
+              <button
+                type="button"
+                className="iv-play-btn"
+                aria-label={`Hear ${iv.name}`}
+                title={`Hear ${iv.name}`}
+                onClick={() => theoryAudio.playInterval(MIDI.C4, MIDI.C4 + iv.semitones)}
+              >▶</button>
             </div>
           ))}
         </div>
+        <p style={{ fontSize: '0.8rem', color: 'var(--muted)', marginTop: 6 }}>
+          Each ▶ plays the lower note, then the upper note, then both together — from C.
+        </p>
       </section>
 
       <section className="tt-learn-section">

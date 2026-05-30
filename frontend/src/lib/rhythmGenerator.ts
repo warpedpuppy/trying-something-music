@@ -150,6 +150,37 @@ function durationBeats(dur: PatternEvent['duration']): number {
   }
 }
 
+// ── Post-processing ───────────────────────────────────────────────────────────
+
+/**
+ * Replace the first event with a note if it is a rest.
+ * Used so the first measure of the Play Along game never starts on silence —
+ * the player needs a clear note to tap as their entry point.
+ * Preserves duration and dots.
+ */
+export function ensureNoLeadingRest(events: PatternEvent[]): PatternEvent[] {
+  if (events.length === 0) return events
+  const first = events[0]
+  if (first.type !== 'rest') return events
+  const fixed: PatternEvent = { type: 'note', duration: first.duration }
+  if (first.dots) fixed.dots = first.dots
+  return [fixed, ...events.slice(1)]
+}
+
+/**
+ * Replace the last event with a note if it is a rest.
+ * Used so the first measure of the Play Along game never ends on silence.
+ * Preserves duration and dots; strips ties (a trailing tie makes no sense).
+ */
+export function ensureNoTrailingRest(events: PatternEvent[]): PatternEvent[] {
+  if (events.length === 0) return events
+  const last = events[events.length - 1]
+  if (last.type !== 'rest') return events
+  const fixed: PatternEvent = { type: 'note', duration: last.duration }
+  if (last.dots) fixed.dots = last.dots
+  return [...events.slice(0, -1), fixed]
+}
+
 // ── Safe wrapper ──────────────────────────────────────────────────────────────
 
 function safeGenerate(beats: number, level: number, rng: () => number): PatternEvent[] {
@@ -230,14 +261,16 @@ export function generateReel(count: number, baseSeed = 1337): GeneratedMeasure[]
 
   for (let i = 0; i < count; i++) {
     // Difficulty ramp across the 24-measure reel:
-    //   0–9  → level 1 (quarters, halves, rests only — no 8ths, no whole notes)
-    //  10–19 → level 2 (adds eighth-note pairs)
-    //  20–21 → level 3 (adds whole notes, dotted figures)
-    //  22–23 → level 4 (adds syncopation)
-    const level = i < 10 ? 1
-                : i < 20 ? 2
-                : i < 22 ? 3
-                : 4
+    //   0–1  → level 1 (quarters and halves only — simple entry)
+    //   2–4  → level 2 (adds eighth-note pairs)
+    //   5–11 → level 3 (adds dotted figures, whole notes — more interesting)
+    //  12–19 → level 4 (adds syncopation, offbeats)
+    //  20–23 → level 5 (sixteenth groups, gallop/reverse-gallop)
+    const level = i < 2  ? 1
+                : i < 5  ? 2
+                : i < 12 ? 3
+                : i < 20 ? 4
+                : 5
 
     // Separate RNG streams for time-sig choice vs. note choices (avoids correlation)
     const timeSigRng = mulberry32(baseSeed + i * 7 + 3)
@@ -246,7 +279,13 @@ export function generateReel(count: number, baseSeed = 1337): GeneratedMeasure[]
     const timeSig = pickTimeSig(level, timeSigRng())
     const { top, bottom, beats, label: sigLabel } = timeSig
 
-    const events = safeGenerate(beats, level, noteRng)
+    let events = safeGenerate(beats, level, noteRng)
+    // The first measure must begin and end with a note — the player needs a
+    // clear note to tap as their entry point into the game.
+    if (i === 0) {
+      events = ensureNoLeadingRest(events)
+      events = ensureNoTrailingRest(events)
+    }
 
     const sigKey = `${top}/${bottom}`
     const isNewSig = sigKey !== prevSigKey

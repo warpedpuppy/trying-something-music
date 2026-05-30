@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
 import { usePageTitle } from '../../hooks/usePageTitle'
+import { BachPlayer } from '../../components/BachPlayer'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 
@@ -194,6 +195,18 @@ function LearnContent() {
           independent singers to improvise against a melody. The rules keep everything singable,
           independent, and harmonious all at once.
         </p>
+      </section>
+
+      <section className="tt-learn-section">
+        <h2>Hear it — Bach in two voices</h2>
+        <p>
+          Bach's <em>Two-Part Inventions</em> are the canonical study pieces for counterpoint.
+          Each invention introduces a short motive in the right hand, which the left hand then
+          imitates — creating two fully independent melodic lines that weave together.
+          Listen for contrary motion, the imitation between voices, and how dissonances
+          are always prepared and resolved.
+        </p>
+        <BachPlayer />
       </section>
 
       <section className="tt-learn-section">

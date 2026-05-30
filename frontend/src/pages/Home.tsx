@@ -32,45 +32,63 @@ export function Home() {
           to={user ? '/rhythm/dashboard' : '/rhythm/learn'}
           className="home-cta-btn"
         >
-          learn how to read rhythm in sheet music!
+          Start reading music today
         </Link>
       </div>
 
       {/* Section chooser */}
       <section className="section-chooser">
+
         <Link
           to={user ? '/rhythm/dashboard' : '/rhythm/learn'}
           className="section-card section-card-rhythm"
         >
           <div className="section-card-icon">♩</div>
           <div>
-            <h2>Rhythm</h2>
+            <h2>Rhythm Training</h2>
             <p>
-              Read sheet music notation and tap the rhythm. The trainer listens, scores each
-              tap, and adapts to your level as you improve.
+              Sheet music scrolls past — you tap along and the app listens in real time.
+              Eight progressive levels from whole notes to sixteenth-note syncopation,
+              plus Play Along mode for pressure-free practice at your own pace.
             </p>
             <span className="section-card-cta">
-              {user ? 'Go to dashboard →' : 'Start learning →'}
+              {user ? 'Go to dashboard →' : 'Start training →'}
             </span>
+          </div>
+        </Link>
+
+        <Link to="/rhythm/play-along" className="section-card section-card-playalong">
+          <div className="section-card-icon">▶</div>
+          <div>
+            <h2>Play Along</h2>
+            <p>
+              Notation scrolls across the screen at a steady tempo. Tap in time —
+              green dots mark hits, orange marks misses. Tempo rises as you improve,
+              and more complex time signatures unlock as you master the basics.
+            </p>
+            <span className="section-card-cta">Play now →</span>
           </div>
         </Link>
 
         <Link to="/theory" className="section-card section-card-theory">
           <div className="section-card-icon">𝄞</div>
           <div>
-            <h2>Theory</h2>
+            <h2>Music Theory</h2>
             <p>
-              Intervals, scales, chords, key signatures — the vocabulary that unlocks
-              every piece of music you'll ever encounter.
+              Twenty-plus interactive topics across three levels — from intervals and
+              key signatures through counterpoint and jazz reharmonization. Every concept
+              you can hear: tap to play cadences, chord progressions, intervals, and
+              a synthesized excerpt of Bach.
             </p>
             <span className="section-card-cta">Explore theory →</span>
           </div>
         </Link>
+
       </section>
 
       <p className="home-footer-nudge">
-        Try it now ·{' '}
-        <Link to="/register">create a free account</Link> to track your progress
+        No account needed to start ·{' '}
+        <Link to="/register">sign up free</Link> to track your progress across sessions
       </p>
     </div>
   )
