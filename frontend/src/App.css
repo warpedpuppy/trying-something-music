@@ -3024,13 +3024,13 @@ a.theory-card:hover {
   will-change: transform;
 }
 
-/* Reel viewport slides in from the right when the game starts */
-@keyframes pa-reel-slide-in {
-  from { transform: translateX(110%); }
-  to   { transform: translateX(0); }
+/* Reel viewport fades in when the game starts */
+@keyframes pa-reel-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 .pa-reel-viewport.pa-reel-entering {
-  animation: pa-reel-slide-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: pa-reel-fade-in 0.45s ease-out both;
 }
 
 .pa-measure-block {
