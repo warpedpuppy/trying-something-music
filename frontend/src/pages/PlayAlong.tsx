@@ -41,6 +41,8 @@ export function PlayAlong() {
   const [bpmNotif, setBpmNotif]         = useState<number | null>(null)
   // Map from reel measure index (0-REEL_UNIQUE) to array of hit event indices
   const [hitNoteMap, setHitNoteMap]     = useState<Record<number, number[]>>({})
+  // Tap button is disabled until the first measure is fully visible on screen
+  const [tapEnabled, setTapEnabled]     = useState(false)
 
   // DOM refs
   const tapBtnRef       = useRef<HTMLButtonElement>(null)
@@ -66,8 +68,9 @@ export function PlayAlong() {
   const hasFirstTappedRef = useRef<boolean>(false)
 
   // Misc refs
-  const faceIdRef     = useRef<number>(0)
-  const tapFlashTimer = useRef<number | null>(null)
+  const faceIdRef       = useRef<number>(0)
+  const tapFlashTimer   = useRef<number | null>(null)
+  const tapEnabledRef   = useRef<boolean>(false)   // mirrors tapEnabled without re-render cost
 
   // ── RAF-driven reel scroll ─────────────────────────────────────────────────
   //
@@ -93,6 +96,19 @@ export function PlayAlong() {
 
       if (reelTrackRef.current) {
         reelTrackRef.current.style.transform = `translateX(${-scrollPx}px)`
+      }
+
+      // ── Enable tap button once the first measure is fully on screen ───────
+      if (!tapEnabledRef.current) {
+        const vpW = reelViewportRef.current?.offsetWidth ?? window.innerWidth
+        // Right edge of measure 0 reaches right edge of viewport when scrollPx = SLOT_PX - vpW.
+        // On narrow screens where vpW < SLOT_PX the measure can never be "fully" on screen,
+        // so fall back to enabling once any part of it is visible (scrollPx >= -vpW + 10).
+        const threshold = vpW >= SLOT_PX ? SLOT_PX - vpW : -vpW + 10
+        if (scrollPx >= threshold) {
+          tapEnabledRef.current = true
+          setTapEnabled(true)
+        }
       }
 
       // ── Auto BPM progression (only while playing, elapsed > 0) ───────────
@@ -148,10 +164,12 @@ export function PlayAlong() {
     bpmIncreaseAtRef.current    = BPM_INCREASE_EVERY
     hasFirstTappedRef.current   = false
     tapTimesRef.current         = []
+    tapEnabledRef.current       = false
     setBeatIndex(null)
     setIsPaused(false)
     setHitNoteMap({})
     setBpmNotif(null)
+    setTapEnabled(false)
     stageRef.current = 'scrolling'
     setStage('scrolling')
   }
@@ -166,10 +184,12 @@ export function PlayAlong() {
     setIsPaused(false)
     hasFirstTappedRef.current   = false
     tapTimesRef.current         = []
+    tapEnabledRef.current       = false
     prevMeasureIndexRef.current = -1
     bpmIncreaseAtRef.current    = BPM_INCREASE_EVERY
     setHitNoteMap({})
     setBpmNotif(null)
+    setTapEnabled(false)
     stageRef.current = 'welcome'
     setStage('welcome')
   }
@@ -295,36 +315,42 @@ export function PlayAlong() {
 
   function greenFirstNote() {
     const pos = cursorPosition()
-    if (!pos) return
-
-    const { measureIdx, posInMeasure } = pos
+    // During entry the cursor is before the reel so pos may be null.
+    // Fall back to measure 0, beat 0 — the user's first tap is assumed
+    // to be the very first note of the reel.
+    const measureIdx   = pos?.measureIdx ?? 0
     const msPerMeasure = (4 * 60_000) / bpmRef.current
-    const timeInMs     = posInMeasure * msPerMeasure
+    const timeInMs     = (pos?.posInMeasure ?? 0) * msPerMeasure
     const msPerBeat    = 60_000 / bpmRef.current
 
     const measure = REEL_LIBRARY[measureIdx]
     const onsets  = expectedOnsets({ events: measure.events })
     if (onsets.length === 0) return
 
-    // Find the onset closest to the current cursor time
-    let closest = onsets[0]
-    let closestDist = Math.abs(closest.beat * msPerBeat - timeInMs)
-    for (const onset of onsets) {
-      const d = Math.abs(onset.beat * msPerBeat - timeInMs)
-      if (d < closestDist) { closest = onset; closestDist = d }
+    // If we have a real cursor position find the closest onset; otherwise
+    // just take the first (beat 0) onset of the fallback measure.
+    let targetEventIndex = onsets[0].eventIndex
+    if (pos) {
+      let closest = onsets[0]
+      let closestDist = Math.abs(closest.beat * msPerBeat - timeInMs)
+      for (const onset of onsets) {
+        const d = Math.abs(onset.beat * msPerBeat - timeInMs)
+        if (d < closestDist) { closest = onset; closestDist = d }
+      }
+      targetEventIndex = closest.eventIndex
     }
 
     setHitNoteMap(prev => {
       const existing = prev[measureIdx] ?? []
-      if (existing.includes(closest.eventIndex)) return prev
-      return { ...prev, [measureIdx]: [...existing, closest.eventIndex] }
+      if (existing.includes(targetEventIndex)) return prev
+      return { ...prev, [measureIdx]: [...existing, targetEventIndex] }
     })
   }
 
   // ── Tap handler ────────────────────────────────────────────────────────────
 
   function handleTap() {
-    if (isPaused) return
+    if (isPaused || !tapEnabledRef.current) return
 
     tickEngine.tick('tap')
     setTapFlash(true)
@@ -437,10 +463,10 @@ export function PlayAlong() {
         <button
           ref={tapBtnRef}
           type="button"
-          className={`pa-tap-btn${tapFlash ? ' flash' : ''}${isPaused ? ' pa-tap-btn-muted' : ''}`}
+          className={`pa-tap-btn${tapFlash ? ' flash' : ''}${isPaused || !tapEnabled ? ' pa-tap-btn-muted' : ''}`}
           onPointerDown={e => { e.preventDefault(); handleTap() }}
           aria-label="Tap"
-          disabled={isPaused}
+          disabled={isPaused || !tapEnabled}
         >
           <span className="pa-tap-btn-label">TAP</span>
           <span className="pa-tap-btn-ring" aria-hidden="true" />
