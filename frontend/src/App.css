@@ -4715,3 +4715,69 @@ a.theory-card:hover {
   .scales-mini-notename { font-size: 0.7rem; }
 }
 
+
+/* ── Notes & Staff Overview animation ───────────────────────────────────── */
+
+.tt-panel-overview {
+  padding: 1.5rem 1rem 2rem;
+  display: flex;
+  justify-content: center;
+}
+
+.ns-overview {
+  width: 100%;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ns-overview-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text, #1e293b);
+  margin: 0;
+}
+
+.ns-overview-subtitle {
+  font-size: 0.85rem;
+  color: var(--muted, #64748b);
+  margin: 0 0 0.5rem;
+  letter-spacing: 0.04em;
+}
+
+.ns-staff-wrap {
+  width: 100%;
+  padding: 0.5rem 0;
+}
+
+.ns-staff-line {
+  opacity: 0.55;
+  color: var(--text, #334155);
+}
+
+.ns-clef {
+  fill: var(--text, #334155);
+  opacity: 0.7;
+}
+
+.ns-overview-controls {
+  margin-top: 0.75rem;
+}
+
+.ns-play-btn {
+  background: none;
+  border: 1.5px solid var(--muted, #94a3b8);
+  border-radius: 20px;
+  padding: 0.3rem 1.1rem;
+  font-size: 0.85rem;
+  color: var(--muted, #64748b);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ns-play-btn:hover {
+  border-color: var(--accent, #f97316);
+  color: var(--accent, #f97316);
+}

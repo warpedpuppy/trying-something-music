@@ -391,6 +391,8 @@ function NotesQuiz() {
 // PAGE EXPORT
 // ═══════════════════════════════════════════════════════════════════════════════
 
+import { NotesAndStaffOverview } from './NotesAndStaffOverview'
+
 export function NotesAndStaff() {
   usePageTitle('Notes & the Staff')
   return (
@@ -402,6 +404,7 @@ export function NotesAndStaff() {
         </p>
       </div>
       <TheoryTopicLayout
+        overviewContent={<NotesAndStaffOverview />}
         learnContent={<NotesLearnContent />}
         gamesContent={<NotesQuiz />}
         topicName="notes &amp; the staff"

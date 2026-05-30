@@ -1,8 +1,9 @@
 /**
  * TheoryTopicLayout — shared tab shell for every theory topic page.
  *
- * Renders two tabs: "Learn" (explanatory text) and a second tab whose
- * label is configurable (e.g. "Practice", "Explore").
+ * Renders up to three tabs: optional "Overview" (leftmost, default when provided),
+ * "Learn" (explanatory text), and a second interactive tab whose label is
+ * configurable (e.g. "Practice", "Explore").
  *
  * When the user navigates from the games/explore tab to the Learn tab via
  * the help link at the bottom of the games panel, a "← Back to [games]"
@@ -12,14 +13,16 @@
 import type { ReactNode } from 'react'
 import { useState } from 'react'
 
-export type TheoryTab = 'learn' | 'games'
+export type TheoryTab = 'overview' | 'learn' | 'games'
 
 export interface TheoryTopicLayoutProps {
+  /** Optional content for the "Overview" tab — animation, intro, etc. Leftmost tab; default when provided. */
+  overviewContent?: ReactNode
   /** Content for the "Learn" tab — text, diagrams, explanations. */
   learnContent: ReactNode
   /** Content for the interactive tab — quiz, explorer, etc. */
   gamesContent: ReactNode
-  /** Which tab to show first. Defaults to 'games'. */
+  /** Which tab to show first. Defaults to 'overview' when overviewContent is set, else 'games'. */
   defaultTab?: TheoryTab
   /** Used in the help prompt: "Need a refresher on {topicName}?" */
   topicName?: string
@@ -28,13 +31,17 @@ export interface TheoryTopicLayoutProps {
 }
 
 export function TheoryTopicLayout({
+  overviewContent,
   learnContent,
   gamesContent,
-  defaultTab = 'games',
+  defaultTab,
   topicName = 'this topic',
   gamesLabel = 'Practice',
 }: TheoryTopicLayoutProps) {
-  const [tab, setTab] = useState<TheoryTab>(defaultTab)
+  const resolvedDefault: TheoryTab =
+    defaultTab ?? (overviewContent ? 'overview' : 'games')
+
+  const [tab, setTab] = useState<TheoryTab>(resolvedDefault)
   // True when the user clicked the help link from the games panel —
   // causes "← Back to [gamesLabel]" to appear in the Learn panel.
   const [cameFromGame, setCameFromGame] = useState(false)
@@ -54,11 +61,27 @@ export function TheoryTopicLayout({
     setTab('games')
   }
 
+  function openOverview() {
+    setCameFromGame(false)
+    setTab('overview')
+  }
+
   return (
     <div className="tt-layout">
 
       {/* ── Tab bar ───────────────────────────────────────────────────── */}
       <div className="tt-tabs" role="tablist" aria-label="Topic sections">
+        {overviewContent && (
+          <button
+            role="tab"
+            type="button"
+            aria-selected={tab === 'overview'}
+            className={`tt-tab${tab === 'overview' ? ' active' : ''}`}
+            onClick={openOverview}
+          >
+            Overview
+          </button>
+        )}
         <button
           role="tab"
           type="button"
@@ -78,6 +101,13 @@ export function TheoryTopicLayout({
           {gamesLabel}
         </button>
       </div>
+
+      {/* ── Overview panel ────────────────────────────────────────────── */}
+      {tab === 'overview' && overviewContent && (
+        <div role="tabpanel" className="tt-panel tt-panel-overview">
+          {overviewContent}
+        </div>
+      )}
 
       {/* ── Learn panel ───────────────────────────────────────────────── */}
       {tab === 'learn' && (
