@@ -14,10 +14,10 @@ export interface RenderResult {
   width: number
   height: number
   anchors: NoteAnchor[]
-  /** Maps each note's event index → its rendered SVG <g> element.
-   *  Populated via StaveNote.getSVGElement() (VexFlow 5) after drawing. */
-  noteElements: Map<number, Element>
 }
+
+/** Green used for correctly-tapped note heads. */
+export const NOTE_HIT_COLOR = '#16a34a'
 
 interface MeasureGroup {
   events: Array<{ event: PatternEvent; index: number }>
@@ -55,8 +55,10 @@ function toStaveNote(event: PatternEvent): StaveNote {
 }
 
 /**
- * Render a rhythm pattern as engraved notation inside `container` and return the
- * pixel position of every note head so the caller can overlay feedback dots.
+ * Render a rhythm pattern as engraved notation inside `container`.
+ *
+ * Pass `hitNoteIndices` to draw specific notes in green using VexFlow's own
+ * setStyle API — much more reliable than post-draw DOM attribute patching.
  */
 export function renderPattern(
   container: HTMLDivElement,
@@ -78,10 +80,26 @@ export function renderPattern(
     /** When true, staves fill the full fixedTotalWidth with no side margins.
      *  Eliminates the ~20px gap between adjacent blocks in a seamless reel. */
     seamless?: boolean
+    /**
+     * Event indices (into `pattern.events`) whose note heads should be
+     * rendered in green.  Uses VexFlow's setStyle() before draw so the color
+     * is baked in at render time — no DOM patching required.
+     */
+    hitNoteIndices?: number[]
   } = {},
 ): RenderResult {
-  const { showTimeSignature = true, showClef = true, fixedTotalWidth, maxWidth, seamless = false } = options
+  const {
+    showTimeSignature = true,
+    showClef = true,
+    fixedTotalWidth,
+    maxWidth,
+    seamless = false,
+    hitNoteIndices,
+  } = options
+
   container.innerHTML = ''
+
+  const hitSet = new Set(hitNoteIndices ?? [])
 
   const beatsPerMeasure = timeSigTop * (4 / timeSigBottom)
   const measures = splitIntoMeasures(pattern, beatsPerMeasure)
@@ -133,7 +151,15 @@ export function renderPattern(
     }
     stave.setContext(context).draw()
 
-    const notes = measure.events.map(({ event }) => toStaveNote(event))
+    const notes = measure.events.map(({ event, index }) => {
+      const note = toStaveNote(event)
+      // Apply green style BEFORE drawing so VexFlow bakes the color in via drawWithStyle()
+      if (event.type === 'note' && hitSet.has(index)) {
+        note.setStyle({ fillStyle: NOTE_HIT_COLOR, strokeStyle: NOTE_HIT_COLOR })
+      }
+      return note
+    })
+
     const beams = Beam.generateBeams(notes.filter((note) => !note.isRest()))
     const voice = new Voice({ numBeats: timeSigTop, beatValue: timeSigBottom })
     voice.setMode(Voice.Mode.SOFT)
@@ -176,14 +202,5 @@ export function renderPattern(
     y: STAVE_Y,
   }))
 
-  // Capture rendered SVG elements for each note (VexFlow 5: getSVGElement uses ID lookup)
-  const noteElements = new Map<number, Element>()
-  allNotes.forEach((note, i) => {
-    const svgEl = note.getSVGElement()
-    if (svgEl) {
-      noteElements.set(noteEventIndexes[i], svgEl)
-    }
-  })
-
-  return { width: totalWidth, height, anchors, noteElements }
+  return { width: totalWidth, height, anchors }
 }

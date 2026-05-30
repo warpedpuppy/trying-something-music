@@ -539,47 +539,32 @@ interface NotationBlockProps {
   hitNoteIndices?: number[]
 }
 
-const NOTE_HIT_COLOR = '#16a34a'   // green-700 — readable on white staff background
-
 const NotationBlock = memo(function NotationBlock({
   measure,
   onClick,
   hitNoteIndices,
 }: NotationBlockProps) {
-  const containerRef    = useRef<HTMLDivElement>(null)
-  const noteElementsRef = useRef<Map<number, Element>>(new Map())
+  const containerRef = useRef<HTMLDivElement>(null)
 
-  // Render VexFlow once on mount; capture SVG element refs for coloring
+  // Re-render VexFlow whenever hitNoteIndices changes.
+  // Color is applied via note.setStyle() BEFORE drawing — VexFlow's own API,
+  // baked into the SVG at render time.  No post-draw DOM patching needed.
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
     try {
-      const result = renderPattern(el, { events: measure.events }, measure.timeSigTop, measure.timeSigBottom, {
+      renderPattern(el, { events: measure.events }, measure.timeSigTop, measure.timeSigBottom, {
         fixedTotalWidth: SLOT_PX,
         showClef: measure.showClef,
         showTimeSignature: measure.showTimeSig,
         seamless: true,
+        hitNoteIndices,
       })
-      noteElementsRef.current = result.noteElements
     } catch {
       // silently ignore render errors
     }
+  // measure is stable for a given block; eslint would complain but it's correct.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // Color hit note heads green using the captured SVG element refs
-  useEffect(() => {
-    if (!hitNoteIndices || hitNoteIndices.length === 0) return
-    hitNoteIndices.forEach(eventIndex => {
-      const svgEl = noteElementsRef.current.get(eventIndex)
-      if (!svgEl) return
-      svgEl.querySelectorAll<SVGElement>('[fill]:not([fill="none"])').forEach(el => {
-        el.setAttribute('fill', NOTE_HIT_COLOR)
-      })
-      svgEl.querySelectorAll<SVGElement>('[stroke]:not([stroke="none"])').forEach(el => {
-        el.setAttribute('stroke', NOTE_HIT_COLOR)
-      })
-    })
   }, [hitNoteIndices])
 
   const levelDots = '●'.repeat(measure.level) + '○'.repeat(5 - measure.level)
