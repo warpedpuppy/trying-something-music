@@ -16,11 +16,6 @@ const MAX_BPM            = 80    // auto-increase ceiling
 const BPM_INCREASE_EVERY = 100   // measures between auto BPM bumps
 const HIT_WINDOW_MS      = 175   // tap-accuracy tolerance (ms)
 
-// Entry sweep: content rushes in from off-screen right at V_ENTRY_INIT px/ms,
-// decelerating quadratically to match the BPM scroll speed exactly on arrival —
-// so there is zero velocity discontinuity when the scroll phase takes over.
-const V_ENTRY_INIT = 0.3         // px/ms (300 px/s) — initial sweep speed
-
 // Built once at module load — deterministic, no re-generation on re-render
 const REEL_LIBRARY: GeneratedMeasure[] = generateReel(REEL_UNIQUE, 1337)
 // Doubled for seamless looping
@@ -52,23 +47,19 @@ export function PlayAlong() {
   const reelViewportRef = useRef<HTMLDivElement>(null)
   const reelTrackRef    = useRef<HTMLDivElement>(null)
 
-  // Timing refs (never trigger re-renders)
+  // Timing refs
   const reelStartRef   = useRef<number>(0)
   const reelElapsedRef = useRef<number>(0)
+  // ↑ reelElapsedRef starts NEGATIVE — the reel begins off-screen right and
+  //   scrolls in at BPM pace until elapsed reaches 0 (natural start position).
+  //   No separate entry animation; a single unified BPM-speed scroll throughout.
   const bpmRef         = useRef<number>(DEFAULT_BPM)
-  const stageRef       = useRef<Stage>('welcome')   // mirrors stage for RAF closures
-
-  // Entry-animation refs — quadratic sweep from off-screen right to position 0
-  const entryStartRef  = useRef<number>(0)
-  const entryDurRef    = useRef<number>(0)
-  const entryARef      = useRef<number>(0)
-  const entryBRef      = useRef<number>(0)
-  const entryP0Ref     = useRef<number>(0)
+  const stageRef       = useRef<Stage>('welcome')
 
   // BPM auto-progression refs
-  const prevMeasureIndexRef  = useRef<number>(-1)
-  const bpmIncreaseAtRef     = useRef<number>(BPM_INCREASE_EVERY)
-  const bpmNotifTimerRef     = useRef<number | null>(null)
+  const prevMeasureIndexRef = useRef<number>(-1)
+  const bpmIncreaseAtRef    = useRef<number>(BPM_INCREASE_EVERY)
+  const bpmNotifTimerRef    = useRef<number | null>(null)
 
   // Tap refs
   const tapTimesRef       = useRef<number[]>([])
@@ -79,6 +70,11 @@ export function PlayAlong() {
   const tapFlashTimer = useRef<number | null>(null)
 
   // ── RAF-driven reel scroll ─────────────────────────────────────────────────
+  //
+  // reelElapsedRef starts negative. The reel is off-screen right when
+  // elapsed < 0 (translateX is positive) and scrolls left at BPM pace.
+  // elapsed crosses 0 exactly when the track reaches its natural start position,
+  // then continues looping normally — one unbroken constant-speed motion.
 
   useEffect(() => {
     if (stage === 'welcome' || isPaused) return
@@ -88,53 +84,40 @@ export function PlayAlong() {
       const now          = performance.now()
       const msPerMeasure = (4 * 60_000) / bpmRef.current
       const loopMs       = REEL_UNIQUE * msPerMeasure
-      const entryElapsed = now - entryStartRef.current
+      const elapsed      = reelElapsedRef.current + (now - reelStartRef.current)
 
-      if (entryElapsed < entryDurRef.current) {
-        // ── Entry phase: quadratic sweep from off-screen right ────────────
-        const t   = entryElapsed
-        const pos = entryARef.current * t * t + entryBRef.current * t + entryP0Ref.current
-        if (reelTrackRef.current) {
-          reelTrackRef.current.style.transform = `translateX(${pos}px)`
-        }
-        reelStartRef.current   = now
-        reelElapsedRef.current = 0
+      // For negative elapsed don't loop — just use elapsed directly.
+      // translateX(-negative) = translateX(positive) = off-screen right. ✓
+      const raw      = elapsed < 0 ? elapsed : elapsed % loopMs
+      const scrollPx = raw * (SLOT_PX / msPerMeasure)
 
-      } else {
-        // ── Scroll phase: BPM-driven left scroll ─────────────────────────
-        const elapsed  = reelElapsedRef.current + (now - reelStartRef.current)
-        const scrollPx = (elapsed % loopMs) * (SLOT_PX / msPerMeasure)
-        if (reelTrackRef.current) {
-          reelTrackRef.current.style.transform = `translateX(-${scrollPx}px)`
-        }
+      if (reelTrackRef.current) {
+        reelTrackRef.current.style.transform = `translateX(${-scrollPx}px)`
+      }
 
-        // ── Auto BPM progression (only while playing, BPM < max) ─────────
-        if (stageRef.current === 'playing' && bpmRef.current < MAX_BPM) {
-          const measureIndex = Math.floor(elapsed / msPerMeasure)
-          if (measureIndex > prevMeasureIndexRef.current) {
-            prevMeasureIndexRef.current = measureIndex
-            if (measureIndex >= bpmIncreaseAtRef.current) {
-              // Preserve reel position at new tempo
-              const oldScrollPx = scrollPx
-              const newBpm      = bpmRef.current + 1
-              const newMs       = (4 * 60_000) / newBpm
-              const newElapsed  = (oldScrollPx / SLOT_PX) * newMs
-              reelElapsedRef.current = newElapsed
-              reelStartRef.current   = now
-              bpmRef.current         = newBpm
+      // ── Auto BPM progression (only while playing, elapsed > 0) ───────────
+      if (stageRef.current === 'playing' && bpmRef.current < MAX_BPM && elapsed > 0) {
+        const measureIndex = Math.floor(elapsed / msPerMeasure)
+        if (measureIndex > prevMeasureIndexRef.current) {
+          prevMeasureIndexRef.current = measureIndex
+          if (measureIndex >= bpmIncreaseAtRef.current) {
+            // Preserve reel scroll position at new tempo
+            const newBpm     = bpmRef.current + 1
+            const newMs      = (4 * 60_000) / newBpm
+            const newElapsed = (scrollPx / SLOT_PX) * newMs
+            reelElapsedRef.current    = newElapsed
+            reelStartRef.current      = now
+            bpmRef.current            = newBpm
+            prevMeasureIndexRef.current = Math.floor(newElapsed / newMs)
+            bpmIncreaseAtRef.current    = prevMeasureIndexRef.current + BPM_INCREASE_EVERY
 
-              // Next threshold (based on new measure count at new tempo)
-              prevMeasureIndexRef.current = Math.floor(newElapsed / newMs)
-              bpmIncreaseAtRef.current    = prevMeasureIndexRef.current + BPM_INCREASE_EVERY
-
-              // Schedule React state updates (batched)
-              setBpm(newBpm)
-              setBpmNotif(newBpm)
-              if (bpmNotifTimerRef.current) window.clearTimeout(bpmNotifTimerRef.current)
-              bpmNotifTimerRef.current = window.setTimeout(() => setBpmNotif(null), 3500)
-              tickEngine.cancelAll()
-              tickEngine.startMetronome(newBpm, idx => setBeatIndex(idx % 4))
-            }
+            // Schedule React state updates
+            setBpm(newBpm)
+            setBpmNotif(newBpm)
+            if (bpmNotifTimerRef.current) window.clearTimeout(bpmNotifTimerRef.current)
+            bpmNotifTimerRef.current = window.setTimeout(() => setBpmNotif(null), 3500)
+            tickEngine.cancelAll()
+            tickEngine.startMetronome(newBpm, idx => setBeatIndex(idx % 4))
           }
         }
       }
@@ -146,7 +129,6 @@ export function PlayAlong() {
     return () => cancelAnimationFrame(rafId)
   }, [stage, isPaused])
 
-
   // ── Start (Welcome → Scrolling) ────────────────────────────────────────────
 
   function startScrolling() {
@@ -154,25 +136,18 @@ export function PlayAlong() {
     bpmRef.current = DEFAULT_BPM
     setBpm(DEFAULT_BPM)
 
-    const vpWidth      = window.innerWidth
+    // Negative elapsed puts the reel off-screen to the right.
+    // entryMs = how long it takes to scroll one viewport-width at BPM pace.
     const msPerMeasure = (4 * 60_000) / DEFAULT_BPM
-    const vScroll      = SLOT_PX / msPerMeasure
-    const T            = 2 * vpWidth / (V_ENTRY_INIT + vScroll)
-    const a            = (V_ENTRY_INIT - vScroll) / (2 * T)
-    const b            = -V_ENTRY_INIT
+    const entryMs      = window.innerWidth * msPerMeasure / SLOT_PX
 
-    const now                  = performance.now()
-    entryStartRef.current      = now
-    entryDurRef.current        = T
-    entryARef.current          = a
-    entryBRef.current          = b
-    entryP0Ref.current         = vpWidth
-    reelStartRef.current       = now
-    reelElapsedRef.current     = 0
-    prevMeasureIndexRef.current  = -1
-    bpmIncreaseAtRef.current     = BPM_INCREASE_EVERY
-    hasFirstTappedRef.current  = false
-    tapTimesRef.current        = []
+    const now                   = performance.now()
+    reelStartRef.current        = now
+    reelElapsedRef.current      = -entryMs
+    prevMeasureIndexRef.current = -1
+    bpmIncreaseAtRef.current    = BPM_INCREASE_EVERY
+    hasFirstTappedRef.current   = false
+    tapTimesRef.current         = []
     setBeatIndex(null)
     setIsPaused(false)
     setHitNoteMap({})
@@ -185,14 +160,14 @@ export function PlayAlong() {
 
   function stopPlaying() {
     tickEngine.cancelAll()
-    setBeatIndex(null)
-    setIsPaused(false)
-    hasFirstTappedRef.current  = false
-    tapTimesRef.current        = []
-    prevMeasureIndexRef.current = -1
-    bpmIncreaseAtRef.current    = BPM_INCREASE_EVERY
     bpmRef.current              = DEFAULT_BPM
     setBpm(DEFAULT_BPM)
+    setBeatIndex(null)
+    setIsPaused(false)
+    hasFirstTappedRef.current   = false
+    tapTimesRef.current         = []
+    prevMeasureIndexRef.current = -1
+    bpmIncreaseAtRef.current    = BPM_INCREASE_EVERY
     setHitNoteMap({})
     setBpmNotif(null)
     stageRef.current = 'welcome'
@@ -228,26 +203,42 @@ export function PlayAlong() {
     setReviewMeasure(measure)
   }
 
+  // ── Shared: get cursor position in the reel ───────────────────────────────
+  // Returns { measureIdx, posInMeasure, scrollPx } or null if cursor is before
+  // the reel (reel hasn't arrived yet).
+
+  function cursorPosition(): { measureIdx: number; posInMeasure: number; scrollPx: number } | null {
+    const elapsed      = reelElapsedRef.current + (performance.now() - reelStartRef.current)
+    const msPerMeasure = (4 * 60_000) / bpmRef.current
+    const loopMs       = REEL_UNIQUE * msPerMeasure
+    const raw          = elapsed < 0 ? elapsed : elapsed % loopMs
+    const scrollPx     = raw * (SLOT_PX / msPerMeasure)
+
+    const vpWidth    = reelViewportRef.current?.offsetWidth ?? window.innerWidth
+    const reelPosPx  = vpWidth * 0.22 + scrollPx
+    const rawIdx     = Math.floor(reelPosPx / SLOT_PX)
+    if (rawIdx < 0) return null               // reel hasn't reached cursor yet
+
+    return {
+      measureIdx:   rawIdx % REEL_UNIQUE,
+      posInMeasure: (reelPosPx % SLOT_PX) / SLOT_PX,
+      scrollPx,
+    }
+  }
+
   // ── Tap accuracy — identify hit note, update hitNoteMap ───────────────────
 
   function checkTapAccuracy() {
-    const elapsed = reelElapsedRef.current + (performance.now() - reelStartRef.current)
-    if (elapsed < 0) return
+    const pos = cursorPosition()
+    if (!pos) return
 
+    const { measureIdx, posInMeasure, scrollPx: _scrollPx } = pos
     const msPerMeasure = (4 * 60_000) / bpmRef.current
-    const loopMs       = REEL_UNIQUE * msPerMeasure
-    const scrollPx     = (elapsed % loopMs) * (SLOT_PX / msPerMeasure)
-
-    const vpWidth      = reelViewportRef.current?.offsetWidth ?? window.innerWidth
-    const cursorLeft   = vpWidth * 0.22
-    const reelPosPx    = cursorLeft + scrollPx
-    const measureIdx   = Math.floor(reelPosPx / SLOT_PX) % REEL_UNIQUE
-    const posInMeasure = (reelPosPx % SLOT_PX) / SLOT_PX
     const timeInMs     = posInMeasure * msPerMeasure
+    const msPerBeat    = 60_000 / bpmRef.current
 
-    const measure  = REEL_LIBRARY[measureIdx]
-    const onsets   = expectedOnsets({ events: measure.events })
-    const msPerBeat = 60_000 / bpmRef.current
+    const measure = REEL_LIBRARY[measureIdx]
+    const onsets  = expectedOnsets({ events: measure.events })
 
     // Try metronome BPM first
     let hitEventIndex = -1
@@ -258,15 +249,15 @@ export function PlayAlong() {
       }
     }
 
-    // Pattern-match fallback: if user has drifted, use their tapping tempo
+    // Pattern-match fallback: if user has drifted, try their detected BPM
     if (hitEventIndex === -1 && tapTimesRef.current.length >= 2) {
       const taps = tapTimesRef.current
       const avgInterval = (taps[taps.length - 1] - taps[0]) / (taps.length - 1)
       const userBpm = Math.max(30, Math.min(300, 60_000 / avgInterval))
       if (Math.abs(userBpm - bpmRef.current) > 4) {
-        const userMsPerBeat  = 60_000 / userBpm
-        const userMsPerMeasure = userMsPerBeat * (measure.timeSigTop ?? 4)
-        const userTimeInMs   = posInMeasure * userMsPerMeasure
+        const userMsPerBeat     = 60_000 / userBpm
+        const userMsPerMeasure  = userMsPerBeat * (measure.timeSigTop ?? 4)
+        const userTimeInMs      = posInMeasure * userMsPerMeasure
         for (const { eventIndex, beat } of onsets) {
           if (Math.abs(beat * userMsPerBeat - userTimeInMs) < HIT_WINDOW_MS) {
             hitEventIndex = eventIndex
@@ -281,7 +272,8 @@ export function PlayAlong() {
     // Emoji feedback
     const vpEl  = reelViewportRef.current
     const rect  = vpEl?.getBoundingClientRect()
-    const faceX = vpWidth * 0.22
+    const vpW   = reelViewportRef.current?.offsetWidth ?? window.innerWidth
+    const faceX = vpW * 0.22
     const faceY = rect ? rect.top + rect.height * 0.4 : window.innerHeight * 0.45
     const id    = ++faceIdRef.current
     setFaces(f => [...f, { id, type: hit ? 'hit' : 'miss', x: faceX, y: faceY }])
@@ -291,10 +283,42 @@ export function PlayAlong() {
     if (hit) {
       setHitNoteMap(prev => {
         const existing = prev[measureIdx] ?? []
-        if (existing.includes(hitEventIndex)) return prev   // already hit, skip re-render
+        if (existing.includes(hitEventIndex)) return prev
         return { ...prev, [measureIdx]: [...existing, hitEventIndex] }
       })
     }
+  }
+
+  // ── First-tap green: always green the nearest note at cursor ──────────────
+  // The first tap is presumed to be the first note of whatever measure is
+  // currently at the cursor — no timing window required.
+
+  function greenFirstNote() {
+    const pos = cursorPosition()
+    if (!pos) return
+
+    const { measureIdx, posInMeasure } = pos
+    const msPerMeasure = (4 * 60_000) / bpmRef.current
+    const timeInMs     = posInMeasure * msPerMeasure
+    const msPerBeat    = 60_000 / bpmRef.current
+
+    const measure = REEL_LIBRARY[measureIdx]
+    const onsets  = expectedOnsets({ events: measure.events })
+    if (onsets.length === 0) return
+
+    // Find the onset closest to the current cursor time
+    let closest = onsets[0]
+    let closestDist = Math.abs(closest.beat * msPerBeat - timeInMs)
+    for (const onset of onsets) {
+      const d = Math.abs(onset.beat * msPerBeat - timeInMs)
+      if (d < closestDist) { closest = onset; closestDist = d }
+    }
+
+    setHitNoteMap(prev => {
+      const existing = prev[measureIdx] ?? []
+      if (existing.includes(closest.eventIndex)) return prev
+      return { ...prev, [measureIdx]: [...existing, closest.eventIndex] }
+    })
   }
 
   // ── Tap handler ────────────────────────────────────────────────────────────
@@ -311,7 +335,7 @@ export function PlayAlong() {
       triggerRainbowBurst(r.left + r.width / 2, r.top + r.height / 2)
     }
 
-    // Record tap time (used for pattern-match fallback in checkTapAccuracy)
+    // Record tap time (used for pattern-match fallback)
     const now    = performance.now()
     const recent = tapTimesRef.current.filter(t => now - t < 4000)
     recent.push(now)
@@ -322,7 +346,9 @@ export function PlayAlong() {
       tickEngine.startMetronome(bpmRef.current, (index) => setBeatIndex(index % 4))
       stageRef.current = 'playing'
       setStage('playing')
-      return   // no accuracy check on first tap
+      // First tap = assumed to be the first note: green it unconditionally
+      greenFirstNote()
+      return
     }
 
     checkTapAccuracy()
@@ -390,7 +416,6 @@ export function PlayAlong() {
         className="pa-reel-viewport"
         ref={reelViewportRef}
       >
-        {/* Reel track — position driven by RAF, not CSS animation */}
         <div
           ref={reelTrackRef}
           className="pa-reel-track"
@@ -521,11 +546,9 @@ const NotationBlock = memo(function NotationBlock({
     hitNoteIndices.forEach(eventIndex => {
       const group = noteGroups[eventIndex]
       if (!group) return
-      // Color every filled SVG shape inside this note group
       group.querySelectorAll<SVGElement>('[fill]:not([fill="none"])').forEach(el => {
         el.setAttribute('fill', NOTE_HIT_COLOR)
       })
-      // Also color stroked elements (e.g. stems, beams rendered with stroke)
       group.querySelectorAll<SVGElement>('[stroke]:not([stroke="none"])').forEach(el => {
         el.setAttribute('stroke', NOTE_HIT_COLOR)
       })
