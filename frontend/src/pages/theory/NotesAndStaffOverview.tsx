@@ -100,9 +100,10 @@ const TREBLE_LINE: Record<string, number> = {
 // ── VexFlow layout ────────────────────────────────────────────────────────────
 
 const VF_W        = 580
-const VF_TREBLE_Y = 18
-const VF_BASS_Y   = 118
-const VF_H        = 230
+const VF_TREBLE_Y = 18    // treble top line (F5) y
+const VF_BASS_Y   = 78    // bass top line (A3) y — 20px below treble bottom line (E4=58),
+                           // matching the standard 5th interval at 5px per staff step
+const VF_H        = 150   // G2 sits at y=118; 150 leaves room for note-name label
 const VF_LEFT     = 14
 const VF_STAVE_W  = VF_W - VF_LEFT - 14
 
@@ -221,7 +222,6 @@ export function NotesAndStaffOverview() {
   const containerRef = useRef<HTMLDivElement>(null)
   const [positions, setPositions]   = useState<NotePos[]>([])
   const [step,      setStep]        = useState(0)
-  const [history,   setHistory]     = useState<number[]>([])
   const [isAudioOn, setIsAudioOn]   = useState(false)
 
   // Render VexFlow once on mount
@@ -246,7 +246,6 @@ export function NotesAndStaffOverview() {
     if (isAudioOn) {
       try { theoryAudio.playNote(ALL_SCALE[step].midi, NOTE_DUR) } catch { /* blocked */ }
     }
-    setHistory(prev => [...prev.slice(-5), step])
     const t = window.setTimeout(() => setStep(s => (s + 1) % N), STEP_MS)
     return () => clearTimeout(t)
   }, [step, isAudioOn])
@@ -257,14 +256,13 @@ export function NotesAndStaffOverview() {
 
   const currentPos   = positions[step]
   const currentColor = RAINBOW[step]
-  const trail        = history.slice(0, -1)
 
   return (
     <div className="ns-overview">
       <p className="ns-overview-title">The Grand Staff</p>
       <p className="ns-overview-subtitle">G2 → F5 · bass &amp; treble · piano range</p>
 
-      {/* VexFlow staff + animation overlay */}
+      {/* VexFlow staff + ripple overlay */}
       <div className="ns-staff-wrap" style={{ position: 'relative' }}>
         <div ref={containerRef} />
 
@@ -280,34 +278,17 @@ export function NotesAndStaffOverview() {
             }}
             aria-hidden="true"
           >
-            {/* Trail — recent notes fading */}
-            {trail.map((s, ti) => {
-              const pos = positions[s]
-              if (!pos) return null
-              return (
-                <ellipse key={`tr${ti}`}
-                  cx={pos.x} cy={pos.y} rx={6} ry={4.5}
-                  fill={RAINBOW[s]}
-                  opacity={((ti + 1) / trail.length) * 0.45}
-                />
-              )
-            })}
-
-            {/* Active note — glow halo + filled note head + ripple */}
+            {/* Ripple only — remounts each step to restart the CSS animation */}
             {currentPos && (
               <>
-                <ellipse cx={currentPos.x} cy={currentPos.y}
-                  rx={13} ry={10} fill={currentColor} opacity={0.22} />
-                <ellipse cx={currentPos.x} cy={currentPos.y}
-                  rx={6} ry={4.5} fill={currentColor} />
                 <circle
                   key={`rpl-${step}`}
                   cx={currentPos.x} cy={currentPos.y}
-                  r={7} fill="none" strokeWidth={1.8}
+                  r={7} fill="none" strokeWidth={2}
                   stroke={currentColor} className="ns-ripple"
                 />
                 <text
-                  x={currentPos.x} y={VF_H - 6}
+                  x={currentPos.x} y={VF_H - 4}
                   textAnchor="middle" fontSize={11} fontWeight="700"
                   fill={currentColor} fontFamily="system-ui, sans-serif"
                 >
