@@ -58,6 +58,8 @@ export function PlayAlong() {
   const [beatIndex, setBeatIndex]   = useState<number | null>(null)
   const [tapFlash, setTapFlash]     = useState(false)
   const [reviewMeasure, setReviewMeasure] = useState<GeneratedMeasure | null>(null)
+  // x offset (px) of first note within measure 0 — positions the cursor line
+  const [arrowX, setArrowX] = useState<number | null>(null)
 
   // Green (hit) and orange (miss) dots, keyed by looped measure index
   const [hitMap,  setHitMap]  = useState<Record<number, number[]>>({})
@@ -381,6 +383,16 @@ export function PlayAlong() {
   // ── Cleanup ───────────────────────────────────────────────────────────────
   useEffect(() => () => { tickEngine.cancelAll() }, [])
 
+  // ── Stop audio when user leaves the tab ──────────────────────────────────
+  useEffect(() => {
+    const handleVisibility = () => { if (document.hidden) tickEngine.cancelAll() }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [])
+
+  // ── First-note anchor from measure 0 (positions cursor line) ─────────────
+  const handleFirstAnchor = useCallback((x: number) => { setArrowX(x) }, [])
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (phase === 'welcome') return <WelcomeScreen onStart={startStatic} cfg={cfg} />
@@ -438,8 +450,12 @@ export function PlayAlong() {
       {/* Scrolling notation reel */}
       <div className="pa-reel-viewport" ref={reelViewportRef} style={{ position: 'relative' }}>
 
-        {/* Cursor / read-line */}
-        <div className="pa-cursor-line" aria-hidden="true" />
+        {/* Cursor / read-line — aligned with the first note of each measure */}
+        <div
+          className="pa-cursor-line"
+          aria-hidden="true"
+          style={arrowX !== null ? { left: vpWidth * CURSOR_FRAC + arrowX } : undefined}
+        />
 
         <div
           ref={reelTrackRef}
@@ -457,6 +473,7 @@ export function PlayAlong() {
               onClick={() => handleMeasureClick(item)}
               hitNoteIndices={hitMap[i]}
               missNoteIndices={missMap[i]}
+              onFirstAnchor={i === 0 ? handleFirstAnchor : undefined}
             />
           ))}
         </div>
@@ -538,6 +555,7 @@ interface NotationBlockProps {
   onClick: () => void
   hitNoteIndices?: number[]
   missNoteIndices?: number[]
+  onFirstAnchor?: (x: number) => void
 }
 
 const NotationBlock = memo(function NotationBlock({
@@ -545,6 +563,7 @@ const NotationBlock = memo(function NotationBlock({
   onClick,
   hitNoteIndices,
   missNoteIndices,
+  onFirstAnchor,
 }: NotationBlockProps) {
   const containerRef   = useRef<HTMLDivElement>(null)
   const anchorsRef     = useRef<Map<number, number>>(new Map())
@@ -565,9 +584,10 @@ const NotationBlock = memo(function NotationBlock({
       result.anchors.forEach(a => map.set(a.eventIndex, a.x))
       anchorsRef.current = map
 
-      // Track the first note's x for the beat-1 arrow
+      // Track the first note's x for the beat-1 arrow + cursor positioning
       if (result.anchors.length > 0) {
         setFirstAnchorX(result.anchors[0].x)
+        onFirstAnchor?.(result.anchors[0].x)
       }
     } catch {
       // silently ignore render errors

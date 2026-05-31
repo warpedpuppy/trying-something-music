@@ -4781,3 +4781,8 @@ a.theory-card:hover {
   border-color: var(--accent, #f97316);
   color: var(--accent, #f97316);
 }
+.ns-play-btn.active {
+  border-color: #22c55e;
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.08);
+}
