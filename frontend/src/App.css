@@ -4818,8 +4818,10 @@ a.theory-card:hover {
 .nq-mode-row .nq-mode-btn:nth-child(5) { background: hsl(230, 60%, 95%); border-color: hsl(230, 50%, 78%); color: hsl(230, 55%, 32%); }
 .nq-mode-row .nq-mode-btn:nth-child(6) { background: hsl(275, 55%, 95%); border-color: hsl(275, 45%, 78%); color: hsl(275, 50%, 34%); }
 
-/* Active mode button — keep its rainbow hue but saturate/darken it */
-.nq-mode-row .nq-mode-btn.active {
-  filter: saturate(1.5) brightness(0.84);
-  color: #fff;
-}
+/* Active mode button — saturated dark version of the rainbow hue, white text */
+.nq-mode-row .nq-mode-btn:nth-child(1).active { background: hsl(  0, 65%, 40%) !important; border-color: hsl(  0, 65%, 35%) !important; color: #fff !important; }
+.nq-mode-row .nq-mode-btn:nth-child(2).active { background: hsl( 38, 65%, 40%) !important; border-color: hsl( 38, 65%, 35%) !important; color: #fff !important; }
+.nq-mode-row .nq-mode-btn:nth-child(3).active { background: hsl( 90, 52%, 36%) !important; border-color: hsl( 90, 52%, 31%) !important; color: #fff !important; }
+.nq-mode-row .nq-mode-btn:nth-child(4).active { background: hsl(185, 60%, 36%) !important; border-color: hsl(185, 60%, 31%) !important; color: #fff !important; }
+.nq-mode-row .nq-mode-btn:nth-child(5).active { background: hsl(230, 60%, 44%) !important; border-color: hsl(230, 60%, 39%) !important; color: #fff !important; }
+.nq-mode-row .nq-mode-btn:nth-child(6).active { background: hsl(275, 52%, 42%) !important; border-color: hsl(275, 52%, 37%) !important; color: #fff !important; }
