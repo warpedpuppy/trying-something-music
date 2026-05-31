@@ -3,6 +3,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
+import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -221,7 +222,19 @@ export function SecondaryDominants() {
         <h1>Secondary Dominants</h1>
         <p className="tt-page-sub">Borrow the dominant chord from any neighbouring key to create a powerful pull toward any diatonic chord.</p>
       </div>
-      <TheoryTopicLayout learnContent={<LearnContent />} gamesContent={<Quiz />} topicName="secondary dominants" gamesLabel="Practice" />
+      <TheoryTopicLayout
+        overviewContent={<TheoryOverviewCard
+          icon="🔀"
+          title="Secondary Dominants"
+          description="A secondary dominant is a dominant 7th chord borrowed from a related key that briefly tonicises a non-tonic chord. V/V means the dominant of the dominant — temporarily making IV sound like home before you return."
+          keyFact="In C major, A7 is V/ii — it strongly pulls to Dm. This borrowed chord creates a chromatic colour not available in pure diatonic harmony."
+          color="hsl(15, 75%, 45%)"
+        />}
+        learnContent={<LearnContent />}
+        gamesContent={<Quiz />}
+        topicName="secondary dominants"
+        gamesLabel="Practice"
+      />
     </div>
   )
 }

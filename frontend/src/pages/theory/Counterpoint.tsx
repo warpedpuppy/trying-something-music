@@ -3,6 +3,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
+import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
 import { usePageTitle } from '../../hooks/usePageTitle'
 import { BachPlayer } from '../../components/BachPlayer'
 
@@ -291,7 +292,19 @@ export function Counterpoint() {
         <h1>Counterpoint</h1>
         <p className="tt-page-sub">Two or more independent melodic lines that work together — the foundation of Bach and the underlying logic of any great arrangement.</p>
       </div>
-      <TheoryTopicLayout learnContent={<LearnContent />} gamesContent={<Quiz />} topicName="counterpoint" gamesLabel="Practice" />
+      <TheoryTopicLayout
+        overviewContent={<TheoryOverviewCard
+          icon="🎻"
+          title="Counterpoint"
+          description="Counterpoint is the art of combining two or more independent melodic lines so they sound beautiful together. Bach's fugues are the pinnacle of this craft — four voices that are each interesting alone but magnificent together."
+          keyFact="The rule of contrary motion: when one voice goes up, the other goes down. This independence is what makes counterpoint sound rich rather than parallel."
+          color="hsl(30, 70%, 42%)"
+        />}
+        learnContent={<LearnContent />}
+        gamesContent={<Quiz />}
+        topicName="counterpoint"
+        gamesLabel="Practice"
+      />
     </div>
   )
 }

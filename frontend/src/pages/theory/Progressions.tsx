@@ -7,6 +7,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
+import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
 import { usePageTitle } from '../../hooks/usePageTitle'
 import { ProgressionPlayer } from '../../components/ProgressionPlayer'
 import { PROGRESSION_SEQUENCES } from '../../lib/theoryAudio'
@@ -309,6 +310,13 @@ export function ChordProgressions() {
         </p>
       </div>
       <TheoryTopicLayout
+        overviewContent={<TheoryOverviewCard
+          icon="🔄"
+          title="Chord Progressions"
+          description="A chord progression is a sequence of chords that creates the harmonic backdrop of a song. The same four chords — I, V, vi, IV — underpin thousands of popular songs in every genre."
+          keyFact="I–V–vi–IV in C major: C–G–Am–F. Recognise it? It's in 'Let It Be', 'No Woman No Cry', 'With or Without You', and hundreds more."
+          color="hsl(160, 60%, 38%)"
+        />}
         learnContent={<ProgressionsLearnContent />}
         gamesContent={<ProgressionsQuiz />}
         topicName="chord progressions"

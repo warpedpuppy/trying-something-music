@@ -3,6 +3,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
+import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -296,7 +297,19 @@ export function VoiceLeading() {
         <h1>Voice Leading</h1>
         <p className="tt-page-sub">The invisible logic that makes chord progressions feel smooth — how individual voices move between chords.</p>
       </div>
-      <TheoryTopicLayout learnContent={<LearnContent />} gamesContent={<Quiz />} topicName="voice leading" gamesLabel="Practice" />
+      <TheoryTopicLayout
+        overviewContent={<TheoryOverviewCard
+          icon="↕️"
+          title="Voice Leading"
+          description="Voice leading is the art of moving smoothly from one chord to the next. Good voice leading minimises the distance each voice travels, creating a seamless flow. It is why some chord progressions feel natural and others feel clunky."
+          keyFact="The leading tone (7th scale degree) has a strong tendency to resolve up a half-step to the tonic. Voice leading is really about managing these melodic tendencies."
+          color="hsl(260, 60%, 50%)"
+        />}
+        learnContent={<LearnContent />}
+        gamesContent={<Quiz />}
+        topicName="voice leading"
+        gamesLabel="Practice"
+      />
     </div>
   )
 }

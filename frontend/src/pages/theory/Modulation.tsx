@@ -3,6 +3,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
+import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -322,7 +323,19 @@ export function Modulation() {
         <h1>Modulation</h1>
         <p className="tt-page-sub">Move from one key to another using pivot chords, direct shifts, or chromatic sleight-of-hand.</p>
       </div>
-      <TheoryTopicLayout learnContent={<LearnContent />} gamesContent={<Quiz />} topicName="modulation" gamesLabel="Practice" />
+      <TheoryTopicLayout
+        overviewContent={<TheoryOverviewCard
+          icon="🚀"
+          title="Modulation"
+          description="Modulation is moving from one key to another within a piece of music. A well-placed modulation creates a sense of journey and arrival. The most common modulations are to the dominant (up a 5th) and the relative minor."
+          keyFact="The 'truck driver modulation' — abruptly shifting up a half-step or whole step for the last chorus — is the most obvious form. Subtle modulations via pivot chords feel inevitable in hindsight."
+          color="hsl(55, 75%, 38%)"
+        />}
+        learnContent={<LearnContent />}
+        gamesContent={<Quiz />}
+        topicName="modulation"
+        gamesLabel="Practice"
+      />
     </div>
   )
 }

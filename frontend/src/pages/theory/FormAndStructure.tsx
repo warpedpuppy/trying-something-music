@@ -3,6 +3,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
+import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -272,7 +273,19 @@ export function FormAndStructure() {
         <h1>Form &amp; Structure</h1>
         <p className="tt-page-sub">Binary, ternary, AABA, verse-chorus, sonata-allegro — how large-scale repetition and contrast shape an entire piece.</p>
       </div>
-      <TheoryTopicLayout learnContent={<LearnContent />} gamesContent={<Quiz />} topicName="form and structure" gamesLabel="Practice" />
+      <TheoryTopicLayout
+        overviewContent={<TheoryOverviewCard
+          icon="🏗️"
+          title="Form & Structure"
+          description="Musical form is the large-scale organisation of a piece — how sections relate and repeat. AABA (32-bar song form) and 12-bar blues are the two pillars of jazz and pop songwriting."
+          keyFact="The AABA form (used in 'Over the Rainbow', 'Autumn Leaves', 'I Got Rhythm') creates tension through contrast: the B section (bridge) provides a harmonic escape before the final A section resolves."
+          color="hsl(80, 55%, 38%)"
+        />}
+        learnContent={<LearnContent />}
+        gamesContent={<Quiz />}
+        topicName="form and structure"
+        gamesLabel="Practice"
+      />
     </div>
   )
 }

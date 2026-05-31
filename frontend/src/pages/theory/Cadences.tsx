@@ -7,6 +7,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
+import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
 import { usePageTitle } from '../../hooks/usePageTitle'
 import { ProgressionPlayer } from '../../components/ProgressionPlayer'
 import { CADENCE_SEQUENCES } from '../../lib/theoryAudio'
@@ -265,6 +266,13 @@ export function Cadences() {
         </p>
       </div>
       <TheoryTopicLayout
+        overviewContent={<TheoryOverviewCard
+          icon="🏁"
+          title="Cadences"
+          description="A cadence is a harmonic punctuation mark — a chord progression that signals the end (or middle) of a musical phrase. The V→I authentic cadence is the most powerful resolution in western music."
+          keyFact="The tension of V7 (dominant seventh) pulling to I (tonic) is the engine behind nearly all tonal music."
+          color="hsl(340, 70%, 45%)"
+        />}
         learnContent={<CadencesLearnContent />}
         gamesContent={<CadencesQuiz />}
         topicName="cadences"

@@ -3,6 +3,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
+import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -349,7 +350,19 @@ export function Reharmonization() {
         <h1>Reharmonization</h1>
         <p className="tt-page-sub">Keep the melody — change the chords underneath. A creative technique that reveals how harmony and melody are independent dimensions.</p>
       </div>
-      <TheoryTopicLayout learnContent={<LearnContent />} gamesContent={<Quiz />} topicName="reharmonization" gamesLabel="Practice" />
+      <TheoryTopicLayout
+        overviewContent={<TheoryOverviewCard
+          icon="✨"
+          title="Reharmonisation"
+          description="Reharmonisation is substituting new, richer chords beneath an existing melody. Jazz musicians constantly reharmonise standards — replacing a simple I chord with a ii–V, or substituting a tritone substitute for a dominant chord."
+          keyFact="The tritone substitution replaces G7 with D♭7 — they share the same tritone (B and F, just spelled differently) so the melody still works over the new chord."
+          color="hsl(290, 60%, 48%)"
+        />}
+        learnContent={<LearnContent />}
+        gamesContent={<Quiz />}
+        topicName="reharmonization"
+        gamesLabel="Practice"
+      />
     </div>
   )
 }

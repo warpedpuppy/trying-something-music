@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
+import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -322,6 +323,13 @@ export function ScalesAndMajorScale() {
         </p>
       </div>
       <TheoryTopicLayout
+        overviewContent={<TheoryOverviewCard
+          icon="🎼"
+          title="Scales"
+          description="A scale is an ordered set of notes spanning an octave. The major scale (do-re-mi) and natural minor scale are the foundation of virtually all western melody and harmony."
+          keyFact="Every major scale has a relative minor that shares the same notes — just starting from a different place. C major and A minor use identical notes."
+          color="hsl(270, 65%, 52%)"
+        />}
         learnContent={<ScalesLearnContent />}
         gamesContent={<ScalesQuiz />}
         topicName="scales &amp; the major scale"

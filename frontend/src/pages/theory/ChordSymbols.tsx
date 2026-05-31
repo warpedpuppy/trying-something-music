@@ -3,6 +3,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
+import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -305,7 +306,19 @@ export function ChordSymbols() {
         <h1>Chord Symbols &amp; Lead Sheets</h1>
         <p className="tt-page-sub">Read real-world notation: Cmaj7, G7♭9, Dm11 — the language of jazz charts, pop sheets, and gigging musicians.</p>
       </div>
-      <TheoryTopicLayout learnContent={<LearnContent />} gamesContent={<Quiz />} topicName="chord symbols" gamesLabel="Practice" />
+      <TheoryTopicLayout
+        overviewContent={<TheoryOverviewCard
+          icon="🔣"
+          title="Chord Symbols"
+          description="Chord symbols are a compact shorthand for describing chords: Cmaj7, Dm7, G7, Fadd9. Used in lead sheets, jazz charts, and pop music everywhere. Once learned, a single symbol tells you exactly what to play."
+          keyFact="A 'C' alone means C major triad. Adding '7' means dominant 7th (C-E-G-B♭). Adding 'maj7' means major 7th (C-E-G-B). The distinction matters enormously to a jazz musician."
+          color="hsl(310, 55%, 48%)"
+        />}
+        learnContent={<LearnContent />}
+        gamesContent={<Quiz />}
+        topicName="chord symbols"
+        gamesLabel="Practice"
+      />
     </div>
   )
 }

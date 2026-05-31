@@ -3,6 +3,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
+import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -264,7 +265,7 @@ function Quiz() {
   const accuracy = total > 0 ? Math.round((score / total) * 100) : null
 
   return (
-    <div className="nq-root">
+    <div className="nq-root ec-quiz">
       <div className="nq-score-row">
         <div className="nq-stat"><span className="nq-stat-value">{score}<span className="nq-stat-denom">/{total}</span></span><span className="nq-stat-label">correct</span></div>
         {accuracy !== null && <div className="nq-stat"><span className="nq-stat-value">{accuracy}%</span><span className="nq-stat-label">accuracy</span></div>}
@@ -297,7 +298,19 @@ export function ExtendedChords() {
         <h1>Extended &amp; Altered Chords</h1>
         <p className="tt-page-sub">Add 9ths, 11ths, 13ths, and alterations to build the lush, complex harmonies of jazz and film music.</p>
       </div>
-      <TheoryTopicLayout learnContent={<LearnContent />} gamesContent={<Quiz />} topicName="extended chords" gamesLabel="Practice" />
+      <TheoryTopicLayout
+        overviewContent={<TheoryOverviewCard
+          icon="🎷"
+          title="Extended & Altered Chords"
+          description="Extended chords stack additional thirds beyond the 7th: 9ths, 11ths, 13ths. Altered chords raise or lower these extensions for maximum tension. These are the sounds of jazz harmony."
+          keyFact="A dominant 7th chord (G7) has one tritone. A G7♯11 has two overlapping tritones — producing the heightened tension that makes jazz resolutions so satisfying."
+          color="hsl(40, 75%, 42%)"
+        />}
+        learnContent={<LearnContent />}
+        gamesContent={<Quiz />}
+        topicName="extended chords"
+        gamesLabel="Practice"
+      />
     </div>
   )
 }

@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
+import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -294,6 +295,13 @@ export function KeySignatures() {
         </p>
       </div>
       <TheoryTopicLayout
+        overviewContent={<TheoryOverviewCard
+          icon="🔑"
+          title="Key Signatures"
+          description="A key signature is a group of sharps or flats at the beginning of a staff that tells you which scale the piece is written in — so you don't have to write accidentals on every note."
+          keyFact="The Circle of Fifths shows all 15 key signatures in order: each step clockwise adds one sharp; each step counter-clockwise adds one flat."
+          color="hsl(35, 80%, 45%)"
+        />}
         learnContent={<KeySigsLearnContent />}
         gamesContent={<KeySigsQuiz />}
         topicName="key signatures"

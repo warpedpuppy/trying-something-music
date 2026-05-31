@@ -4825,3 +4825,65 @@ a.theory-card:hover {
 .nq-mode-row .nq-mode-btn:nth-child(4).active { background: hsl(185, 60%, 36%) !important; border-color: hsl(185, 60%, 31%) !important; color: #fff !important; }
 .nq-mode-row .nq-mode-btn:nth-child(5).active { background: hsl(230, 60%, 44%) !important; border-color: hsl(230, 60%, 39%) !important; color: #fff !important; }
 .nq-mode-row .nq-mode-btn:nth-child(6).active { background: hsl(275, 52%, 42%) !important; border-color: hsl(275, 52%, 37%) !important; color: #fff !important; }
+
+/* ── Grand staff note name (HTML, outside SVG) ──────────────── */
+.ns-note-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin: 2px 0 0;
+  min-height: 1.2em;
+  text-align: center;
+  transition: color 0.15s ease;
+}
+
+/* ── Extended / Altered Chords quiz — compact buttons ────────── */
+.ec-quiz .nq-choice {
+  font-size: clamp(0.72rem, 1.8vw, 1.1rem);
+  height: auto;
+  min-height: 52px;
+  padding: 6px 8px;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.25;
+}
+
+/* ── Theory overview cards ─────────────────────────────────────── */
+.th-overview-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem 1.5rem;
+  max-width: 520px;
+  margin: 0 auto;
+  text-align: center;
+}
+.th-overview-icon {
+  font-size: 4rem;
+  line-height: 1;
+}
+.th-overview-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--ink, #1e293b);
+  margin: 0;
+}
+.th-overview-desc {
+  font-size: 1rem;
+  color: var(--text, #334155);
+  line-height: 1.6;
+  margin: 0;
+}
+.th-overview-fact {
+  border-left: 3px solid;
+  padding: 0.6rem 1rem;
+  border-radius: 0 8px 8px 0;
+  background: rgba(249,115,22,0.06);
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: left;
+  width: 100%;
+  box-sizing: border-box;
+}

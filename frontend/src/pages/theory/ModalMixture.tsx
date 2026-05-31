@@ -3,6 +3,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
+import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -255,7 +256,19 @@ export function ModalMixture() {
         <h1>Borrowed Chords &amp; Modal Mixture</h1>
         <p className="tt-page-sub">Pull chords from the parallel minor to darken a major key — the source of the ♭VII in rock and the iv in a ballad.</p>
       </div>
-      <TheoryTopicLayout learnContent={<LearnContent />} gamesContent={<Quiz />} topicName="modal mixture" gamesLabel="Practice" />
+      <TheoryTopicLayout
+        overviewContent={<TheoryOverviewCard
+          icon="🎨"
+          title="Modal Mixture"
+          description="Modal mixture borrows chords from the parallel minor (or major) key. In C major you can borrow ♭VII (B♭ major) or iv minor (Fm) from C minor — suddenly adding colour that pure C major can't provide."
+          keyFact="The ♭VII chord (borrowed from the parallel minor) is the most common mixture chord in rock and pop. It appears in 'Hey Jude', 'Let It Be', and thousands of other songs."
+          color="hsl(170, 60%, 38%)"
+        />}
+        learnContent={<LearnContent />}
+        gamesContent={<Quiz />}
+        topicName="modal mixture"
+        gamesLabel="Practice"
+      />
     </div>
   )
 }

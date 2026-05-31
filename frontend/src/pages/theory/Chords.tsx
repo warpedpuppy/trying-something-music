@@ -9,6 +9,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
+import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -337,6 +338,13 @@ export function TriadsAndChords() {
         </p>
       </div>
       <TheoryTopicLayout
+        overviewContent={<TheoryOverviewCard
+          icon="🎹"
+          title="Chords"
+          description="A chord is three or more notes played together. Stack notes a 3rd apart from any scale and you get the chords of that key — the harmonic vocabulary of western music."
+          keyFact="The I, IV, and V chords alone can harmonise most folk, pop, and rock songs ever written."
+          color="hsl(200, 70%, 45%)"
+        />}
         learnContent={<ChordsLearnContent />}
         gamesContent={<ChordsQuiz />}
         topicName="triads &amp; basic chords"

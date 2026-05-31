@@ -3,6 +3,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
+import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -232,7 +233,19 @@ export function Blues() {
         <h1>The 12-Bar Blues</h1>
         <p className="tt-page-sub">A structure so universal it deserves its own lesson — three dominant 7th chords that underpin a century of popular music.</p>
       </div>
-      <TheoryTopicLayout learnContent={<LearnContent />} gamesContent={<Quiz />} topicName="the blues" gamesLabel="Practice" />
+      <TheoryTopicLayout
+        overviewContent={<TheoryOverviewCard
+          icon="🎸"
+          title="Blues"
+          description="The blues is the foundation of jazz, rock, and soul. Its 12-bar form and pentatonic scale with the added ♭5 'blue note' create the characteristic tension-and-release that drives the most emotional music in the western tradition."
+          keyFact="The blues scale adds just one note to the minor pentatonic: the ♭5 (tritone). That single note is responsible for the expressive, bittersweet quality of blues music."
+          color="hsl(215, 65%, 45%)"
+        />}
+        learnContent={<LearnContent />}
+        gamesContent={<Quiz />}
+        topicName="the blues"
+        gamesLabel="Practice"
+      />
     </div>
   )
 }

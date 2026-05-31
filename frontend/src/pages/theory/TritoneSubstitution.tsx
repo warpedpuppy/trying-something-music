@@ -3,6 +3,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
+import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -291,7 +292,19 @@ export function TritoneSubstitution() {
         <h1>Tritone Substitution</h1>
         <p className="tt-page-sub">Replace any V7 chord with the chord a tritone away — one of the most elegant ideas in jazz harmony.</p>
       </div>
-      <TheoryTopicLayout learnContent={<LearnContent />} gamesContent={<Quiz />} topicName="tritone substitution" gamesLabel="Practice" />
+      <TheoryTopicLayout
+        overviewContent={<TheoryOverviewCard
+          icon="↔️"
+          title="Tritone Substitution"
+          description="Any dominant 7th chord can be replaced by the dominant 7th a tritone away. G7 and D♭7 both contain the same tritone interval (B–F, just enharmonically respelled), so either can resolve to C."
+          keyFact="Tritone subs are why jazz bass lines can move in half-steps instead of 5ths. Instead of G–C (down a 5th), the bass plays D♭–C (down a half-step) — smooth chromatic voice leading."
+          color="hsl(0, 65%, 45%)"
+        />}
+        learnContent={<LearnContent />}
+        gamesContent={<Quiz />}
+        topicName="tritone substitution"
+        gamesLabel="Practice"
+      />
     </div>
   )
 }

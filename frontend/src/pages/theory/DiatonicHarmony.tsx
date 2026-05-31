@@ -3,6 +3,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
+import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -241,7 +242,19 @@ export function DiatonicHarmony() {
         <h1>Diatonic Harmony &amp; Roman Numerals</h1>
         <p className="tt-page-sub">Analyse chords by function rather than letter name — the same patterns work in every key.</p>
       </div>
-      <TheoryTopicLayout learnContent={<LearnContent />} gamesContent={<Quiz />} topicName="diatonic harmony" gamesLabel="Practice" />
+      <TheoryTopicLayout
+        overviewContent={<TheoryOverviewCard
+          icon="📐"
+          title="Diatonic Harmony"
+          description="Diatonic harmony means using only the chords built from the notes of a single scale. Each scale degree generates a chord with a predictable quality — I and IV and V are major; ii, iii, vi are minor; vii° is diminished."
+          keyFact="Roman numerals (I, ii, iii, IV, V, vi, vii°) describe chord function independent of key — so I–IV–V means the same emotional journey in every key."
+          color="hsl(130, 55%, 38%)"
+        />}
+        learnContent={<LearnContent />}
+        gamesContent={<Quiz />}
+        topicName="diatonic harmony"
+        gamesLabel="Practice"
+      />
     </div>
   )
 }

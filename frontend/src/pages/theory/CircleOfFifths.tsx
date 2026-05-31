@@ -9,6 +9,7 @@
 
 import { useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
+import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -459,6 +460,13 @@ export function CircleOfFifths() {
         </p>
       </div>
       <TheoryTopicLayout
+        overviewContent={<TheoryOverviewCard
+          icon="⭕"
+          title="Circle of Fifths"
+          description="The Circle of Fifths arranges all 12 keys in a circle where each step is a perfect fifth apart. Moving clockwise adds a sharp; counter-clockwise adds a flat. Neighbouring keys share the most notes."
+          keyFact="The circle encodes harmonic distance: keys close together sound related and flow naturally. Keys opposite each other (a tritone apart) sound most distant."
+          color="hsl(220, 65%, 50%)"
+        />}
         learnContent={<CircleOfFifthsLearnContent />}
         gamesContent={<CircleOfFifthsInteractive />}
         topicName="the circle of fifths"

@@ -3,6 +3,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
+import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -293,7 +294,19 @@ export function ModesPage() {
         <h1>Modes as Tonal Centers</h1>
         <p className="tt-page-sub">Dorian, Phrygian, Lydian, Mixolydian — not just scale patterns but independent sonic worlds. The basis of modal jazz.</p>
       </div>
-      <TheoryTopicLayout learnContent={<LearnContent />} gamesContent={<Quiz />} topicName="modes" gamesLabel="Practice" />
+      <TheoryTopicLayout
+        overviewContent={<TheoryOverviewCard
+          icon="🌊"
+          title="Modes"
+          description="The seven modes are the seven rotations of the major scale. Each starts on a different degree and has a unique flavour: Dorian (jazzy minor), Phrygian (flamenco tension), Lydian (dreamy major), Mixolydian (bluesy major), Locrian (unstable)."
+          keyFact="Dorian mode is the most common modal sound in jazz and rock. 'So What' by Miles Davis, 'Oye Como Va', and 'Smoke on the Water' are all Dorian."
+          color="hsl(190, 65%, 40%)"
+        />}
+        learnContent={<LearnContent />}
+        gamesContent={<Quiz />}
+        topicName="modes"
+        gamesLabel="Practice"
+      />
     </div>
   )
 }

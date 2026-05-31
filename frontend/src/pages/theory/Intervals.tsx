@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
+import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
 import { usePageTitle } from '../../hooks/usePageTitle'
 import { theoryAudio, MIDI } from '../../lib/theoryAudio'
 
@@ -140,7 +141,7 @@ function IntervalsLearnContent() {
 // QUIZ
 // ═══════════════════════════════════════════════════════════════════════════════
 
-type IVMode = 'count-to-name' | 'name-to-count'
+type IVMode = 'count-to-name' | 'name-to-count' | 'listen-to-name' | 'sing-along'
 
 interface IVModeConfig {
   id: IVMode
@@ -152,15 +153,27 @@ interface IVModeConfig {
 const IV_MODES: IVModeConfig[] = [
   {
     id: 'count-to-name',
-    label: 'Count → Name',
+    label: 'Count→Name',
     pool: BEGINNER_POOL,
     hint: 'Minor/Major = 2nds, 3rds, 6ths, 7ths  ·  Perfect = 4ths, 5ths, Octave',
   },
   {
     id: 'name-to-count',
-    label: 'Name → Count',
+    label: 'Name→Count',
     pool: FULL_POOL,
     hint: 'Count half-steps: W = 2, 3rd = 3–4, 4th = 5, 5th = 7, Octave = 12',
+  },
+  {
+    id: 'listen-to-name',
+    label: 'Listen→Name',
+    pool: BEGINNER_POOL,
+    hint: 'Listen carefully — the interval plays root first, then the upper note, then both together.',
+  },
+  {
+    id: 'sing-along',
+    label: 'Sing Along',
+    pool: BEGINNER_POOL,
+    hint: 'Hear the root, imagine the target pitch, then reveal it to check.',
   },
 ]
 
@@ -172,7 +185,7 @@ function ivPickQuestion(pool: Interval[], excludeSemitones?: number): Interval {
 }
 
 function ivPickChoices(mode: IVMode, correct: Interval, pool: Interval[]): string[] {
-  if (mode === 'count-to-name') {
+  if (mode === 'count-to-name' || mode === 'listen-to-name' || mode === 'sing-along') {
     const answer = correct.name
     const others = pool
       .filter(i => i.name !== answer)
@@ -191,6 +204,77 @@ function ivPickChoices(mode: IVMode, correct: Interval, pool: Interval[]): strin
   }
 }
 
+// ── Sing Along sub-component ──────────────────────────────────────────────────
+
+interface IntervalSingAlongProps {
+  question: Interval
+  onAdvance: (fromSemitones: number) => void
+}
+
+function IntervalSingAlong({ question, onAdvance }: IntervalSingAlongProps) {
+  const [revealed, setRevealed] = useState(false)
+
+  // Reset revealed state when question changes
+  useEffect(() => { setRevealed(false) }, [question])
+
+  function handleReveal() {
+    setRevealed(true)
+    theoryAudio.playNote(MIDI.C4 + question.semitones, 1.5)
+  }
+
+  return (
+    <div className="theory-q-card">
+      <div className="theory-q-main" style={{ fontSize: '1.4rem' }}>
+        Sing a <strong>{question.name}</strong> above C
+      </div>
+      <div className="theory-q-sub">Root note: C4</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '0.8rem', alignItems: 'center' }}>
+        <button
+          type="button"
+          className="iv-play-btn"
+          style={{ fontSize: '0.95rem', padding: '6px 16px' }}
+          onClick={() => theoryAudio.playNote(MIDI.C4, 1.2)}
+        >
+          ▶ Hear the root (C)
+        </button>
+        <button
+          type="button"
+          className="iv-play-btn"
+          style={{ fontSize: '0.95rem', padding: '6px 16px' }}
+          onClick={handleReveal}
+        >
+          ▶ Reveal target note
+        </button>
+      </div>
+      {revealed && (
+        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem', justifyContent: 'center' }}>
+          <button
+            type="button"
+            className="nq-choice nq-correct"
+            style={{ flex: 1, maxWidth: 160 }}
+            onClick={() => onAdvance(question.semitones)}
+          >
+            ✓ I heard it
+          </button>
+          <button
+            type="button"
+            className="nq-choice nq-wrong"
+            style={{ flex: 1, maxWidth: 160 }}
+            onClick={() => onAdvance(question.semitones)}
+          >
+            ✗ I missed it
+          </button>
+        </div>
+      )}
+      <p style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: '1rem', lineHeight: 1.4 }}>
+        We can't hear you — this trains your inner ear to imagine the target pitch before you reveal it.
+      </p>
+    </div>
+  )
+}
+
+// ── Main quiz component ───────────────────────────────────────────────────────
+
 function IntervalsQuiz() {
   const [modeId, setModeId]     = useState<IVMode>('count-to-name')
   const modeConfig              = IV_MODES.find(m => m.id === modeId)!
@@ -204,6 +288,15 @@ function IntervalsQuiz() {
   const timerRef   = useRef<number | null>(null)
   const modeIdRef  = useRef<IVMode>('count-to-name')
   modeIdRef.current = modeId
+
+  // Auto-play interval when in listen-to-name mode and question changes
+  useEffect(() => {
+    if (modeId !== 'listen-to-name') return
+    const t = window.setTimeout(() => {
+      theoryAudio.playInterval(MIDI.C4, MIDI.C4 + question.semitones)
+    }, 300)
+    return () => clearTimeout(t)
+  }, [question, modeId])
 
   const switchMode = useCallback((m: IVMode) => {
     if (timerRef.current) clearTimeout(timerRef.current)
@@ -228,7 +321,7 @@ function IntervalsQuiz() {
 
   function handleAnswer(choice: string) {
     if (selected !== null) return
-    const answer = modeId === 'count-to-name' ? question.name : String(question.semitones)
+    const answer = modeId === 'name-to-count' ? String(question.semitones) : question.name
     const correct = choice === answer
     setSelected(choice)
     setTotal(t => t + 1)
@@ -244,8 +337,9 @@ function IntervalsQuiz() {
 
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
 
-  const answer   = modeId === 'count-to-name' ? question.name : String(question.semitones)
+  const answer   = modeId === 'name-to-count' ? String(question.semitones) : question.name
   const accuracy = total > 0 ? Math.round((score / total) * 100) : null
+  const isSingAlong = modeId === 'sing-along'
 
   return (
     <div className="nq-root">
@@ -260,62 +354,83 @@ function IntervalsQuiz() {
         ))}
       </div>
 
-      <div className="nq-score-row">
-        <div className="nq-stat">
-          <span className="nq-stat-value">{score}<span className="nq-stat-denom">/{total}</span></span>
-          <span className="nq-stat-label">correct</span>
-        </div>
-        {accuracy !== null && (
+      {!isSingAlong && (
+        <div className="nq-score-row">
           <div className="nq-stat">
-            <span className="nq-stat-value">{accuracy}%</span>
-            <span className="nq-stat-label">accuracy</span>
+            <span className="nq-stat-value">{score}<span className="nq-stat-denom">/{total}</span></span>
+            <span className="nq-stat-label">correct</span>
           </div>
-        )}
-        <div className="nq-stat">
-          <span className="nq-stat-value">{streak >= 3 ? `🔥 ${streak}` : streak}</span>
-          <span className="nq-stat-label">streak {best > 0 ? `(best ${best})` : ''}</span>
-        </div>
-      </div>
-
-      <div className={`theory-q-card${selected !== null ? (selected === answer ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
-        {modeId === 'count-to-name' ? (
-          <>
-            <div className="theory-q-main">
-              {question.semitones}
-              <span style={{ fontSize: '1.1rem', fontWeight: 600, marginLeft: 6 }}>
-                {question.semitones === 1 ? 'semitone' : 'semitones'}
-              </span>
+          {accuracy !== null && (
+            <div className="nq-stat">
+              <span className="nq-stat-value">{accuracy}%</span>
+              <span className="nq-stat-label">accuracy</span>
             </div>
-            <div className="theory-q-sub">What is this interval called?</div>
-          </>
-        ) : (
-          <>
-            <div className="theory-q-main">{question.name}</div>
-            <div className="theory-q-sub">How many semitones?</div>
-          </>
-        )}
-      </div>
+          )}
+          <div className="nq-stat">
+            <span className="nq-stat-value">{streak >= 3 ? `🔥 ${streak}` : streak}</span>
+            <span className="nq-stat-label">streak {best > 0 ? `(best ${best})` : ''}</span>
+          </div>
+        </div>
+      )}
 
-      <div className="nq-choices">
-        {choices.map(choice => {
-          const isCorrect  = choice === answer
-          const isSelected = choice === selected
-          let cls = 'nq-choice'
-          if (selected !== null) {
-            if (isSelected && isCorrect)  cls += ' nq-correct'
-            else if (isSelected)          cls += ' nq-wrong'
-            else if (isCorrect)           cls += ' nq-reveal'
-          }
-          return (
-            <button key={choice} type="button" className={cls}
-              onClick={() => handleAnswer(choice)} disabled={selected !== null}>
-              {modeId === 'name-to-count' ? `${choice} semitone${choice === '1' ? '' : 's'}` : choice}
-            </button>
-          )
-        })}
-      </div>
+      {isSingAlong ? (
+        <IntervalSingAlong question={question} onAdvance={advance} />
+      ) : (
+        <>
+          <div className={`theory-q-card${selected !== null ? (selected === answer ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
+            {modeId === 'count-to-name' ? (
+              <>
+                <div className="theory-q-main">
+                  {question.semitones}
+                  <span style={{ fontSize: '1.1rem', fontWeight: 600, marginLeft: 6 }}>
+                    {question.semitones === 1 ? 'semitone' : 'semitones'}
+                  </span>
+                </div>
+                <div className="theory-q-sub">What is this interval called?</div>
+              </>
+            ) : modeId === 'listen-to-name' ? (
+              <>
+                <div className="theory-q-main">🎵</div>
+                <div className="theory-q-sub">What interval did you hear?</div>
+                <button
+                  type="button"
+                  className="iv-play-btn"
+                  style={{ marginTop: '0.5rem' }}
+                  onClick={() => theoryAudio.playInterval(MIDI.C4, MIDI.C4 + question.semitones)}
+                >
+                  ▶ Play again
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="theory-q-main">{question.name}</div>
+                <div className="theory-q-sub">How many semitones?</div>
+              </>
+            )}
+          </div>
 
-      <p className="nq-hint">{modeConfig.hint}</p>
+          <div className="nq-choices">
+            {choices.map(choice => {
+              const isCorrect  = choice === answer
+              const isSelected = choice === selected
+              let cls = 'nq-choice'
+              if (selected !== null) {
+                if (isSelected && isCorrect)  cls += ' nq-correct'
+                else if (isSelected)          cls += ' nq-wrong'
+                else if (isCorrect)           cls += ' nq-reveal'
+              }
+              return (
+                <button key={choice} type="button" className={cls}
+                  onClick={() => handleAnswer(choice)} disabled={selected !== null}>
+                  {modeId === 'name-to-count' ? `${choice} semitone${choice === '1' ? '' : 's'}` : choice}
+                </button>
+              )
+            })}
+          </div>
+
+          <p className="nq-hint">{modeConfig.hint}</p>
+        </>
+      )}
 
     </div>
   )
@@ -336,6 +451,13 @@ export function IntervalsPage() {
         </p>
       </div>
       <TheoryTopicLayout
+        overviewContent={<TheoryOverviewCard
+          icon="↕️"
+          title="Intervals"
+          description="An interval is the distance in pitch between two notes, measured in half-steps (semitones). Intervals are the building blocks of every melody and chord — learning to hear them is one of the most valuable skills in music."
+          keyFact="The Perfect 5th (7 semitones) is the most stable interval after the octave. The Minor 2nd (1 semitone) is the most dissonant. All harmony lives between these extremes."
+          color="hsl(240, 65%, 52%)"
+        />}
         learnContent={<IntervalsLearnContent />}
         gamesContent={<IntervalsQuiz />}
         topicName="intervals"
