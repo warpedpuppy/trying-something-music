@@ -103,7 +103,7 @@ const VF_W        = 580
 const VF_TREBLE_Y = 18    // treble top line (F5) y
 const VF_BASS_Y   = 78    // bass top line (A3) y — 20px below treble bottom line (E4=58),
                            // matching the standard 5th interval at 5px per staff step
-const VF_H        = 150   // G2 sits at y=118; 150 leaves room for note-name label
+const VF_H        = 178   // G2 sits at y=118; stems + note-name label need room below
 const VF_LEFT     = 14
 const VF_STAVE_W  = VF_W - VF_LEFT - 14
 

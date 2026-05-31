@@ -58,8 +58,6 @@ export function PlayAlong() {
   const [beatIndex, setBeatIndex]   = useState<number | null>(null)
   const [tapFlash, setTapFlash]     = useState(false)
   const [reviewMeasure, setReviewMeasure] = useState<GeneratedMeasure | null>(null)
-  // x offset (px) of first note within measure 0 — positions the cursor line
-  const [arrowX, setArrowX] = useState<number | null>(null)
 
   // Green (hit) and orange (miss) dots, keyed by looped measure index
   const [hitMap,  setHitMap]  = useState<Record<number, number[]>>({})
@@ -390,16 +388,14 @@ export function PlayAlong() {
     return () => document.removeEventListener('visibilitychange', handleVisibility)
   }, [])
 
-  // ── First-note anchor from measure 0 (positions cursor line) ─────────────
-  const handleFirstAnchor = useCallback((x: number) => { setArrowX(x) }, [])
 
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (phase === 'welcome') return <WelcomeScreen onStart={startStatic} cfg={cfg} />
 
   // Compute the initial reel translateX for the static phase
-  const vpWidth       = reelViewportRef.current?.offsetWidth ?? window.innerWidth
-  const staticTX      = vpWidth * CURSOR_FRAC   // set in CSS instead; this is a fallback
+  const vpWidth   = reelViewportRef.current?.offsetWidth ?? window.innerWidth
+  const staticTX  = vpWidth * CURSOR_FRAC
 
   return (
     <div className="pa-playing">
@@ -450,12 +446,8 @@ export function PlayAlong() {
       {/* Scrolling notation reel */}
       <div className="pa-reel-viewport" ref={reelViewportRef} style={{ position: 'relative' }}>
 
-        {/* Cursor / read-line — aligned with the first note of each measure */}
-        <div
-          className="pa-cursor-line"
-          aria-hidden="true"
-          style={arrowX !== null ? { left: vpWidth * CURSOR_FRAC + arrowX } : undefined}
-        />
+        {/* Cursor / read-line at beat 1 (left edge of each measure = barline) */}
+        <div className="pa-cursor-line" aria-hidden="true" />
 
         <div
           ref={reelTrackRef}
@@ -473,7 +465,6 @@ export function PlayAlong() {
               onClick={() => handleMeasureClick(item)}
               hitNoteIndices={hitMap[i]}
               missNoteIndices={missMap[i]}
-              onFirstAnchor={i === 0 ? handleFirstAnchor : undefined}
             />
           ))}
         </div>
@@ -555,7 +546,6 @@ interface NotationBlockProps {
   onClick: () => void
   hitNoteIndices?: number[]
   missNoteIndices?: number[]
-  onFirstAnchor?: (x: number) => void
 }
 
 const NotationBlock = memo(function NotationBlock({
@@ -563,11 +553,9 @@ const NotationBlock = memo(function NotationBlock({
   onClick,
   hitNoteIndices,
   missNoteIndices,
-  onFirstAnchor,
 }: NotationBlockProps) {
-  const containerRef   = useRef<HTMLDivElement>(null)
-  const anchorsRef     = useRef<Map<number, number>>(new Map())
-  const [firstAnchorX, setFirstAnchorX] = useState<number | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const anchorsRef   = useRef<Map<number, number>>(new Map())
 
   useEffect(() => {
     const el = containerRef.current
@@ -583,12 +571,6 @@ const NotationBlock = memo(function NotationBlock({
       const map = new Map<number, number>()
       result.anchors.forEach(a => map.set(a.eventIndex, a.x))
       anchorsRef.current = map
-
-      // Track the first note's x for the beat-1 arrow + cursor positioning
-      if (result.anchors.length > 0) {
-        setFirstAnchorX(result.anchors[0].x)
-        onFirstAnchor?.(result.anchors[0].x)
-      }
     } catch {
       // silently ignore render errors
     }
@@ -607,12 +589,12 @@ const NotationBlock = memo(function NotationBlock({
       aria-label={`Hear measure: ${measure.label}`}
     >
       <div className="pa-notation-wrapper">
-        {/* Beat-1 arrow — orange normally, green when beat 1 was hit */}
-        {firstAnchorX !== null && measure.events[0]?.type === 'note' && (
+        {/* Beat-1 arrow at the barline (left edge = downbeat), turns green on hit */}
+        {measure.events[0]?.type === 'note' && (
           <div
             className={`pa-beat1-arrow${hitNoteIndices?.includes(0) ? ' hit' : ''}`}
             aria-hidden="true"
-            style={{ left: firstAnchorX }}
+            style={{ left: 0 }}
           >▼</div>
         )}
         <div ref={containerRef} className="pa-notation-container" />

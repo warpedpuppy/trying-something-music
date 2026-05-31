@@ -92,7 +92,7 @@ const TWO_BEAT: { minLevel: number; fill: Fill }[] = [
 
 /** Fills consuming exactly 4 quarter-note beats (4/4 only). */
 const FOUR_BEAT: { minLevel: number; fill: Fill }[] = [
-  { minLevel: 3, fill: [n('w')] },   // whole note: level 3+ only (appears ~measure 14)
+  { minLevel: 4, fill: [n('w')] },   // whole note: level 4+ only (~70 BPM, welcomed as a breather)
   { minLevel: 4, fill: [r('w')] },   // whole rest: level 4+ only
 ]
 
