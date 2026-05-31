@@ -4786,3 +4786,40 @@ a.theory-card:hover {
   color: #22c55e;
   background: rgba(34, 197, 94, 0.08);
 }
+
+/* ── Grand staff note ripple ─────────────────────────────────────────────── */
+.ns-ripple {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ns-ripple-expand 0.45s ease-out forwards;
+}
+@keyframes ns-ripple-expand {
+  from { transform: scale(1); opacity: 0.9; }
+  to   { transform: scale(5); opacity: 0;   }
+}
+
+/* ══ Theory practice — gentle rainbow buttons ════════════════════════════════
+   Answer choice buttons (.nq-choice) and mode selector buttons (.nq-mode-btn)
+   get soft pastel rainbow backgrounds by position. Correct/wrong states use
+   !important in their own rules and safely override these.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Answer choice buttons (4 per quiz) */
+.nq-choices .nq-choice:nth-child(1) { background: hsl(  0, 70%, 95%); border-color: hsl(  0, 55%, 78%); color: hsl(  0, 55%, 32%); }
+.nq-choices .nq-choice:nth-child(2) { background: hsl( 55, 70%, 94%); border-color: hsl( 55, 55%, 75%); color: hsl( 55, 55%, 30%); }
+.nq-choices .nq-choice:nth-child(3) { background: hsl(145, 60%, 93%); border-color: hsl(145, 50%, 72%); color: hsl(145, 50%, 28%); }
+.nq-choices .nq-choice:nth-child(4) { background: hsl(220, 65%, 94%); border-color: hsl(220, 55%, 76%); color: hsl(220, 55%, 32%); }
+
+/* Mode / category selector buttons (up to 6) */
+.nq-mode-row .nq-mode-btn:nth-child(1) { background: hsl(  0, 55%, 96%); border-color: hsl(  0, 45%, 80%); color: hsl(  0, 50%, 34%); }
+.nq-mode-row .nq-mode-btn:nth-child(2) { background: hsl( 38, 65%, 95%); border-color: hsl( 38, 50%, 78%); color: hsl( 38, 55%, 30%); }
+.nq-mode-row .nq-mode-btn:nth-child(3) { background: hsl( 90, 55%, 94%); border-color: hsl( 90, 45%, 75%); color: hsl( 90, 50%, 28%); }
+.nq-mode-row .nq-mode-btn:nth-child(4) { background: hsl(185, 60%, 94%); border-color: hsl(185, 50%, 75%); color: hsl(185, 55%, 28%); }
+.nq-mode-row .nq-mode-btn:nth-child(5) { background: hsl(230, 60%, 95%); border-color: hsl(230, 50%, 78%); color: hsl(230, 55%, 32%); }
+.nq-mode-row .nq-mode-btn:nth-child(6) { background: hsl(275, 55%, 95%); border-color: hsl(275, 45%, 78%); color: hsl(275, 50%, 34%); }
+
+/* Active mode button — keep its rainbow hue but saturate/darken it */
+.nq-mode-row .nq-mode-btn.active {
+  filter: saturate(1.5) brightness(0.84);
+  color: #fff;
+}
