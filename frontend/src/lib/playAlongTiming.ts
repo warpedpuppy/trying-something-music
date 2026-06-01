@@ -6,16 +6,8 @@
 /** Pixel width of one rendered measure slot. Must match SLOT_PX in PlayAlong.tsx. */
 export const SLOT_PX = 380
 
-/** The read-line / cursor sits 25% from the left of the viewport. */
+/** The cursor reference sits 25% from the left of the viewport (used for reel timing). */
 export const CURSOR_FRAC = 0.25
-
-/**
- * Fallback px offset of the first note head from a measure's left edge (barline).
- * The cursor line + downbeat arrow sit over count-one (the first note), which
- * VexFlow draws inset from the barline. Bare measures report their real inset at
- * runtime; this is only used until the first report arrives.
- */
-export const DEFAULT_DOWNBEAT_INSET_PX = 28
 
 // ── Tempo ─────────────────────────────────────────────────────────────────────
 
@@ -97,39 +89,39 @@ export function onsetDueMs(
   return measureAbsIdx * mspM + beatQuarters * msPerBeat(bpm)
 }
 
-// ── Cursor line geometry ────────────────────────────────────────────────────
+// ── Downbeat pulse ────────────────────────────────────────────────────────────
 
 /**
- * Screen-x (px) of the vertical read-line / cursor.
- *
- * The reel is timed so that a measure's left edge (barline) sits at
- * `vpWidth * CURSOR_FRAC` exactly when that measure's downbeat is due. The first
- * note head is drawn `downbeatInsetPx` to the right of the barline, so the cursor
- * line is offset by the same amount to sit directly over count-one.
+ * Whether the downbeat arrow (the one currently at the cursor) should pulse —
+ * grow and shrink to show the player where they are in the measure. Only on
+ * count-one (beat index 0) and only while actually playing.
  */
-export function cursorLineX(
-  vpWidth: number,
-  downbeatInsetPx: number = DEFAULT_DOWNBEAT_INSET_PX,
-): number {
-  return vpWidth * CURSOR_FRAC + downbeatInsetPx
+export function shouldPulseDownbeat(
+  phase: 'welcome' | 'static' | 'playing',
+  beatIndex: number | null,
+): boolean {
+  return phase === 'playing' && beatIndex === 0
+}
+
+// ── Stray (no-note) tap position ────────────────────────────────────────────────
+
+/**
+ * Fraction (0..1) through the current measure at `elapsed` ms — i.e. where in the
+ * measure's timeline a tap landed. 0 = on the barline/downbeat, 0.5 = halfway.
+ */
+export function tapFractionInMeasure(elapsed: number, mspM: number): number {
+  if (mspM <= 0 || elapsed <= 0) return 0
+  const f = (elapsed % mspM) / mspM
+  return f < 0 ? 0 : f > 1 ? 1 : f
 }
 
 /**
- * Which downbeat inset the cursor line should use, for any phase.
- *
- * The reading line must NEVER move as play starts. An earlier version returned a
- * larger inset during the static phase (so the line sat over measure 0's
- * clef-shifted downbeat) and the smaller bare inset while playing — but that made
- * the line jump *left* the instant START was pressed. The line now uses the bare
- * (scrolling) inset in every phase, so its x is identical before and after START:
- * it never moves backwards. Bare measures dominate play, so this is also the inset
- * that keeps the line aligned with notes as they fall due.
+ * Pixel x within a measure slot at which to mark a stray tap (a tap with no note
+ * under it). Linear in time: the reel scrolls at a constant px/ms, so a tap's
+ * timing fraction maps directly to its horizontal position in the slot.
  */
-export function cursorInsetForPhase(
-  _phase: 'welcome' | 'static' | 'playing',
-  bareInset: number,
-): number {
-  return bareInset
+export function strayTapX(elapsed: number, mspM: number, slotPx: number): number {
+  return tapFractionInMeasure(elapsed, mspM) * slotPx
 }
 
 // ── Pause / resume ────────────────────────────────────────────────────────────

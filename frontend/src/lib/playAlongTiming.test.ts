@@ -3,7 +3,6 @@ import { describe, it, expect } from 'vitest'
 import {
   SLOT_PX,
   CURSOR_FRAC,
-  DEFAULT_DOWNBEAT_INSET_PX,
   msPerMeasure,
   msPerBeat,
   reelTranslateX,
@@ -11,8 +10,9 @@ import {
   totalMeasuresPassed,
   onsetDueMs,
   shouldShowDownbeat,
-  cursorLineX,
-  cursorInsetForPhase,
+  shouldPulseDownbeat,
+  tapFractionInMeasure,
+  strayTapX,
   resumedStartTime,
 } from './playAlongTiming'
 
@@ -157,58 +157,80 @@ describe('onsetDueMs', () => {
   })
 })
 
-// ── Cursor line geometry ────────────────────────────────────────────────────
+// ── Downbeat pulse ──────────────────────────────────────────────────────────
 
-describe('cursorLineX', () => {
-  const VP = 800
-
-  it('sits at the barline crossing plus the downbeat inset', () => {
-    expect(cursorLineX(VP, 28)).toBe(VP * CURSOR_FRAC + 28)
+describe('shouldPulseDownbeat', () => {
+  it('pulses on count-one (beat 0) while playing', () => {
+    expect(shouldPulseDownbeat('playing', 0)).toBe(true)
   })
 
-  it('uses the default inset when none is given', () => {
-    expect(cursorLineX(VP)).toBe(VP * CURSOR_FRAC + DEFAULT_DOWNBEAT_INSET_PX)
+  it('does not pulse on beats 1, 2, 3', () => {
+    expect(shouldPulseDownbeat('playing', 1)).toBe(false)
+    expect(shouldPulseDownbeat('playing', 2)).toBe(false)
+    expect(shouldPulseDownbeat('playing', 3)).toBe(false)
   })
 
-  it('aligns with the downbeat note head at the due moment', () => {
-    // At elapsed = onsetDueMs(absIdx, 0), the measure's left edge (reel translateX
-    // for the first measure) is at vpWidth*CURSOR_FRAC. The note head is drawn
-    // `inset` px to the right, so the cursor line must equal that screen-x.
-    const inset = 31
-    const barlineScreenX = reelTranslateX(0, VP, msPerMeasure(60), 24 * msPerMeasure(60))
-    expect(cursorLineX(VP, inset)).toBeCloseTo(barlineScreenX + inset)
+  it('does not pulse in static or welcome phases', () => {
+    expect(shouldPulseDownbeat('static', 0)).toBe(false)
+    expect(shouldPulseDownbeat('welcome', 0)).toBe(false)
   })
 
-  it('scales the 25% fraction with viewport width', () => {
-    expect(cursorLineX(1200, 0)).toBe(300)
-    expect(cursorLineX(400, 0)).toBe(100)
+  it('does not pulse when there is no current beat', () => {
+    expect(shouldPulseDownbeat('playing', null)).toBe(false)
   })
 })
 
-describe('cursorInsetForPhase', () => {
-  const BARE = 24
+// ── Stray (no-note) tap position ────────────────────────────────────────────
 
-  it('returns the bare inset in every phase', () => {
-    expect(cursorInsetForPhase('welcome', BARE)).toBe(BARE)
-    expect(cursorInsetForPhase('static', BARE)).toBe(BARE)
-    expect(cursorInsetForPhase('playing', BARE)).toBe(BARE)
+describe('tapFractionInMeasure', () => {
+  const mspM = msPerMeasure(60) // 4000 ms
+
+  it('is 0 on the downbeat (start of the measure)', () => {
+    expect(tapFractionInMeasure(0, mspM)).toBe(0)
+    expect(tapFractionInMeasure(8000, mspM)).toBeCloseTo(0) // start of measure 2
   })
 
-  it('never lets the line move backwards from static to playing', () => {
-    // Regression: the line used to jump LEFT when START was pressed because the
-    // static phase used a larger (clef) inset. It must be identical across phases.
-    const vp = 800
-    const staticX  = cursorLineX(vp, cursorInsetForPhase('static', BARE))
-    const playingX = cursorLineX(vp, cursorInsetForPhase('playing', BARE))
-    expect(playingX).toBe(staticX)                 // identical — no jump at all
-    expect(playingX).toBeGreaterThanOrEqual(staticX) // and never moves left
+  it('is 0.5 exactly halfway through a measure', () => {
+    expect(tapFractionInMeasure(2000, mspM)).toBeCloseTo(0.5)
+    expect(tapFractionInMeasure(6000, mspM)).toBeCloseTo(0.5) // halfway through measure 1
   })
 
-  it('is phase-independent for any inset value', () => {
-    for (const inset of [0, 12, 24, 70, 120]) {
-      expect(cursorInsetForPhase('static', inset))
-        .toBe(cursorInsetForPhase('playing', inset))
+  it('is 0.25 a quarter of the way in', () => {
+    expect(tapFractionInMeasure(1000, mspM)).toBeCloseTo(0.25)
+  })
+
+  it('clamps to 0 for non-positive elapsed and zero tempo', () => {
+    expect(tapFractionInMeasure(-100, mspM)).toBe(0)
+    expect(tapFractionInMeasure(2000, 0)).toBe(0)
+  })
+
+  it('stays within [0,1) for any positive elapsed', () => {
+    for (const e of [10, 999, 4001, 15123, 99999]) {
+      const f = tapFractionInMeasure(e, mspM)
+      expect(f).toBeGreaterThanOrEqual(0)
+      expect(f).toBeLessThan(1)
     }
+  })
+})
+
+describe('strayTapX', () => {
+  const mspM = msPerMeasure(60) // 4000 ms
+
+  it('places the mark at the left edge for a downbeat tap', () => {
+    expect(strayTapX(0, mspM, SLOT_PX)).toBe(0)
+  })
+
+  it('places the mark at the slot midpoint for a half-measure tap', () => {
+    expect(strayTapX(2000, mspM, SLOT_PX)).toBeCloseTo(SLOT_PX / 2)
+  })
+
+  it('maps tap timing linearly to slot x', () => {
+    expect(strayTapX(1000, mspM, SLOT_PX)).toBeCloseTo(SLOT_PX * 0.25)
+    expect(strayTapX(3000, mspM, SLOT_PX)).toBeCloseTo(SLOT_PX * 0.75)
+  })
+
+  it('repeats each measure (position depends only on phase within the bar)', () => {
+    expect(strayTapX(1000, mspM, SLOT_PX)).toBeCloseTo(strayTapX(5000, mspM, SLOT_PX))
   })
 })
 

@@ -3079,16 +3079,26 @@ a.theory-card:hover {
   color: #22c55e;   /* green-500 */
 }
 
-/* Vertical read-line at 25% from left of the reel viewport */
-.pa-cursor-line {
+/* Downbeat pulse — the arrow at the cursor grows to 1.25× then settles back. */
+.pa-beat1-arrow.pulsing {
+  animation: pa-arrow-pulse 0.38s ease-out;
+}
+@keyframes pa-arrow-pulse {
+  0%   { transform: translateX(-50%) scale(1); }
+  45%  { transform: translateX(-50%) scale(1.25); }
+  100% { transform: translateX(-50%) scale(1); }
+}
+
+/* Stray tap marker — tiny black × in the dot row at the tap's timing position. */
+.pa-stray-x {
   position: absolute;
-  left: 25%;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: rgba(249, 115, 22, 0.25);   /* faint orange */
+  top: 1px;
+  transform: translateX(-50%);
+  font-size: 0.72rem;
+  line-height: 1;
+  font-weight: 700;
+  color: #111;
   pointer-events: none;
-  z-index: 5;
 }
 
 .pa-measure-block {

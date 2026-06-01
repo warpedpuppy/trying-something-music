@@ -9,15 +9,14 @@ import { triggerRainbowBurst } from '../lib/rippleEngine'
 import {
   SLOT_PX,
   CURSOR_FRAC,
-  DEFAULT_DOWNBEAT_INSET_PX,
   msPerMeasure,
   msPerBeat,
   reelTranslateX,
   measureAtCursor,
   totalMeasuresPassed,
   onsetDueMs,
-  cursorLineX,
-  cursorInsetForPhase,
+  shouldPulseDownbeat,
+  strayTapX,
   resumedStartTime,
 } from '../lib/playAlongTiming'
 import {
@@ -66,6 +65,12 @@ export function PlayAlong() {
   // Green (hit) and orange (miss) dots, keyed by looped measure index
   const [hitMap,  setHitMap]  = useState<Record<number, number[]>>({})
   const [missMap, setMissMap] = useState<Record<number, number[]>>({})
+  // Stray taps (tap with no note under it): px x-positions within the slot, per measure
+  const [strayMap, setStrayMap] = useState<Record<number, number[]>>({})
+
+  // Downbeat pulse: which measure is at the cursor and a nonce that bumps each
+  // downbeat so the active arrow replays its grow/shrink animation.
+  const [pulse, setPulse] = useState<{ idx: number; n: number } | null>(null)
 
   // BPM notification banner
   const [bpmNotif, setBpmNotif]     = useState<number | null>(null)
@@ -84,12 +89,8 @@ export function PlayAlong() {
   const pausedRef       = useRef(false)
   const pauseStartRef   = useRef(0)
 
-  // Px offset of count-one (first note head) from the measure barline, taken from
-  // bare measures. The cursor line uses this in EVERY phase so it never moves.
-  const [downbeatInset, setDownbeatInset] = useState(DEFAULT_DOWNBEAT_INSET_PX)
-  const reportDownbeatInset = useCallback((x: number) => {
-    setDownbeatInset(prev => (Math.abs(prev - x) < 0.5 ? prev : x))
-  }, [])
+  // The reel measure currently under the cursor (updated each RAF frame).
+  const cursorLoopIdxRef = useRef(0)
 
   // Game progression refs
   const consecutiveMissesRef  = useRef(0)
@@ -163,6 +164,7 @@ export function PlayAlong() {
 
       // Beat dots: update when measure changes
       const loopIdx = measureAtCursor(elapsed, mspM, REEL_UNIQUE)
+      cursorLoopIdxRef.current = loopIdx
       if (loopIdx !== prevMeasureLoopIdxRef.current) {
         prevMeasureLoopIdxRef.current = loopIdx
         setBeatsInMeasure(reelRef.current[loopIdx]?.timeSigTop ?? 4)
@@ -213,6 +215,7 @@ export function PlayAlong() {
             // Clear dot maps (new measures, fresh start)
             setHitMap({})
             setMissMap({})
+            setStrayMap({})
           }
           if (
             successfulMeasuresRef.current % cfg.bpmIncreaseAfterMeasures === 0 &&
@@ -247,6 +250,12 @@ export function PlayAlong() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, cfg])
 
+  // ── Pulse the downbeat arrow at the cursor on every count-one ──────────────
+  useEffect(() => {
+    if (!shouldPulseDownbeat(phase, beatIndex)) return
+    setPulse(prev => ({ idx: cursorLoopIdxRef.current, n: (prev?.n ?? 0) + 1 }))
+  }, [beatIndex, phase])
+
   // ── Start → Static ────────────────────────────────────────────────────────
 
   function startStatic() {
@@ -258,6 +267,7 @@ export function PlayAlong() {
     reelRef.current = buildReel(reelLevel(cfg, 0))
     setHitMap({})
     setMissMap({})
+    setStrayMap({})
     setBpmNotif(null)
     const beats = reelRef.current[0]?.timeSigTop ?? 4
     setBeatsInMeasure(beats)
@@ -309,6 +319,7 @@ export function PlayAlong() {
     consecutiveMissesRef.current = 0
     setHitMap({})
     setMissMap({})
+    setStrayMap({})
     const beats = reelRef.current[0]?.timeSigTop ?? 4
     // Restart metronome from beat 0 so the player gets a fresh count-in.
     setBeatIndex(0)
@@ -345,7 +356,6 @@ export function PlayAlong() {
     const now     = performance.now()
     const elapsed = now - startTimeRef.current
     const mspM    = msPerMeasure(bpmRef.current)
-    const bpm     = bpmRef.current
 
     // Track tap times for BPM drift detection
     const recent = tapTimesRef.current.filter(t => now - t < 4000)
@@ -373,10 +383,12 @@ export function PlayAlong() {
         if (ex.includes(bestOnset!.eventIndex)) return prev
         return { ...prev, [bestOnset!.measureLoopIdx]: [...ex, bestOnset!.eventIndex] }
       })
+    } else {
+      // No note under the tap — mark a black × at the tap's timing position.
+      const loopIdx = measureAtCursor(elapsed, mspM, REEL_UNIQUE)
+      const x = strayTapX(elapsed, mspM, SLOT_PX)
+      setStrayMap(prev => ({ ...prev, [loopIdx]: [...(prev[loopIdx] ?? []), x] }))
     }
-    // If no matching onset: tap happened between notes — treat as no-op (not a miss)
-
-    void mspM; void bpm  // suppress unused-var lint
   }
 
   // ── Measure click → review modal ─────────────────────────────────────────
@@ -484,13 +496,6 @@ export function PlayAlong() {
       {/* Scrolling notation reel */}
       <div className="pa-reel-viewport" ref={reelViewportRef} style={{ position: 'relative' }}>
 
-        {/* Cursor / read-line — sits over count-one (the downbeat note head) */}
-        <div
-          className="pa-cursor-line"
-          aria-hidden="true"
-          style={{ left: cursorLineX(vpWidth, cursorInsetForPhase(phase, downbeatInset)) }}
-        />
-
         <div
           ref={reelTrackRef}
           className="pa-reel-track"
@@ -507,7 +512,8 @@ export function PlayAlong() {
               onClick={() => handleMeasureClick(item)}
               hitNoteIndices={hitMap[i]}
               missNoteIndices={missMap[i]}
-              onDownbeatInset={reportDownbeatInset}
+              strayXs={strayMap[i]}
+              pulseNonce={pulse?.idx === i ? pulse.n : 0}
             />
           ))}
         </div>
@@ -560,8 +566,8 @@ function WelcomeScreen({ onStart, cfg }: { onStart: () => void; cfg: PlayAlongCo
         {cfg.consecutiveMissesReset} misses in a row resets the game.
       </p>
       <ul className="pa-welcome-bullets">
-        <li>Watch the orange arrow — it marks each downbeat</li>
-        <li>Tap when a note passes under the cursor line</li>
+        <li>Watch the orange arrow — it marks each downbeat and pulses to keep your place</li>
+        <li>Tap each note in time as the music scrolls by</li>
         <li>
           Tempo starts at <strong>{cfg.startBpm} BPM</strong> and rises
           by {cfg.bpmIncreaseAmount} every {cfg.bpmIncreaseAfterMeasures} clean
@@ -589,9 +595,11 @@ interface NotationBlockProps {
   onClick: () => void
   hitNoteIndices?: number[]
   missNoteIndices?: number[]
-  /** Called by bare measures (no clef/time-sig) with the first note head x,
-   *  so the parent can place the cursor line over the downbeat. */
-  onDownbeatInset?: (x: number) => void
+  /** Px x-positions of stray (no-note) taps to mark with a black ×. */
+  strayXs?: number[]
+  /** Non-zero when this measure's downbeat arrow should pulse; the value bumps
+   *  each downbeat so the animation replays. 0 = not pulsing. */
+  pulseNonce?: number
 }
 
 const NotationBlock = memo(function NotationBlock({
@@ -599,7 +607,8 @@ const NotationBlock = memo(function NotationBlock({
   onClick,
   hitNoteIndices,
   missNoteIndices,
-  onDownbeatInset,
+  strayXs,
+  pulseNonce = 0,
 }: NotationBlockProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const anchorsRef   = useRef<Map<number, number>>(new Map())
@@ -623,11 +632,7 @@ const NotationBlock = memo(function NotationBlock({
 
       // Count-one note head x (event index 0, only if it's a note).
       const firstX = measure.events[0]?.type === 'note' ? map.get(0) : undefined
-      if (firstX !== undefined) {
-        setDownbeatNoteX(firstX)
-        // Bare measures (no clef/time-sig) define the cursor-line inset.
-        if (!measure.showClef && !measure.showTimeSig) onDownbeatInset?.(firstX)
-      }
+      if (firstX !== undefined) setDownbeatNoteX(firstX)
     } catch {
       // silently ignore render errors
     }
@@ -646,10 +651,12 @@ const NotationBlock = memo(function NotationBlock({
       aria-label={`Hear measure: ${measure.label}`}
     >
       <div className="pa-notation-wrapper">
-        {/* Downbeat arrow — sits over count-one (first note head), green on hit */}
+        {/* Downbeat arrow — over count-one; green on hit; pulses on the downbeat.
+            key changes with pulseNonce so the grow/shrink animation replays. */}
         {measure.events[0]?.type === 'note' && downbeatNoteX !== null && (
           <div
-            className={`pa-beat1-arrow${hitNoteIndices?.includes(0) ? ' hit' : ''}`}
+            key={pulseNonce}
+            className={`pa-beat1-arrow${hitNoteIndices?.includes(0) ? ' hit' : ''}${pulseNonce > 0 ? ' pulsing' : ''}`}
             aria-hidden="true"
             style={{ left: downbeatNoteX }}
           >▼</div>
@@ -677,6 +684,15 @@ const NotationBlock = memo(function NotationBlock({
                 ? <div key={`m${idx}`} className="pa-miss-dot" style={{ left: x }} />
                 : null
             })}
+          </div>
+        )}
+
+        {/* Stray taps — tiny black × in the dot row, at the tap's timing position */}
+        {strayXs && strayXs.length > 0 && (
+          <div className="pa-dots-layer" aria-hidden="true">
+            {strayXs.map((x, i) => (
+              <div key={`s${i}`} className="pa-stray-x" style={{ left: x }}>×</div>
+            ))}
           </div>
         )}
       </div>
