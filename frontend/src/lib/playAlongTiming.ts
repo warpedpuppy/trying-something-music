@@ -115,20 +115,21 @@ export function cursorLineX(
 }
 
 /**
- * Which downbeat inset the cursor line should use.
+ * Which downbeat inset the cursor line should use, for any phase.
  *
- * In the static (pre-START) phase the first measure sits under the cursor, and it
- * shows a clef + time signature, so its first note is inset further than a bare
- * measure. The line must use that larger inset so it sits over count-one of the
- * first measure. Once playing, the scrolling bare measures dominate, so the
- * smaller bare inset is used.
+ * The reading line must NEVER move as play starts. An earlier version returned a
+ * larger inset during the static phase (so the line sat over measure 0's
+ * clef-shifted downbeat) and the smaller bare inset while playing — but that made
+ * the line jump *left* the instant START was pressed. The line now uses the bare
+ * (scrolling) inset in every phase, so its x is identical before and after START:
+ * it never moves backwards. Bare measures dominate play, so this is also the inset
+ * that keeps the line aligned with notes as they fall due.
  */
 export function cursorInsetForPhase(
-  phase: 'welcome' | 'static' | 'playing',
-  firstMeasureInset: number,
+  _phase: 'welcome' | 'static' | 'playing',
   bareInset: number,
 ): number {
-  return phase === 'playing' ? bareInset : firstMeasureInset
+  return bareInset
 }
 
 // ── Pause / resume ────────────────────────────────────────────────────────────
