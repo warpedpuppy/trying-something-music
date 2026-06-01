@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import type { Pattern } from '../api/types'
 import { eventBeats, expectedOnsets, onsetTimesMs, tapCount, tapsToPattern, totalBeats } from './rhythm'

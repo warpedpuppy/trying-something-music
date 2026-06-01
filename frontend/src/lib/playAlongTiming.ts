@@ -9,6 +9,14 @@ export const SLOT_PX = 380
 /** The read-line / cursor sits 25% from the left of the viewport. */
 export const CURSOR_FRAC = 0.25
 
+/**
+ * Fallback px offset of the first note head from a measure's left edge (barline).
+ * The cursor line + downbeat arrow sit over count-one (the first note), which
+ * VexFlow draws inset from the barline. Bare measures report their real inset at
+ * runtime; this is only used until the first report arrives.
+ */
+export const DEFAULT_DOWNBEAT_INSET_PX = 28
+
 // ── Tempo ─────────────────────────────────────────────────────────────────────
 
 /** Milliseconds for one 4/4 measure at the given BPM. */
@@ -87,6 +95,42 @@ export function onsetDueMs(
   bpm: number,
 ): number {
   return measureAbsIdx * mspM + beatQuarters * msPerBeat(bpm)
+}
+
+// ── Cursor line geometry ────────────────────────────────────────────────────
+
+/**
+ * Screen-x (px) of the vertical read-line / cursor.
+ *
+ * The reel is timed so that a measure's left edge (barline) sits at
+ * `vpWidth * CURSOR_FRAC` exactly when that measure's downbeat is due. The first
+ * note head is drawn `downbeatInsetPx` to the right of the barline, so the cursor
+ * line is offset by the same amount to sit directly over count-one.
+ */
+export function cursorLineX(
+  vpWidth: number,
+  downbeatInsetPx: number = DEFAULT_DOWNBEAT_INSET_PX,
+): number {
+  return vpWidth * CURSOR_FRAC + downbeatInsetPx
+}
+
+// ── Pause / resume ────────────────────────────────────────────────────────────
+
+/**
+ * New `startTime` after resuming from a pause, so that `elapsed` (now - startTime)
+ * is continuous across the pause. Freezing the reel while a review modal is open
+ * relies on this to resume exactly where it left off.
+ *
+ * @param startTime   the original play-start timestamp (performance.now based)
+ * @param pauseStart  timestamp when the pause began
+ * @param resumeNow   timestamp when resuming
+ */
+export function resumedStartTime(
+  startTime: number,
+  pauseStart: number,
+  resumeNow: number,
+): number {
+  return startTime + (resumeNow - pauseStart)
 }
 
 // ── Arrow / beat indicator ────────────────────────────────────────────────────

@@ -9,12 +9,15 @@ import { triggerRainbowBurst } from '../lib/rippleEngine'
 import {
   SLOT_PX,
   CURSOR_FRAC,
+  DEFAULT_DOWNBEAT_INSET_PX,
   msPerMeasure,
   msPerBeat,
   reelTranslateX,
   measureAtCursor,
   totalMeasuresPassed,
   onsetDueMs,
+  cursorLineX,
+  resumedStartTime,
 } from '../lib/playAlongTiming'
 import {
   loadPlayAlongConfig,
@@ -76,6 +79,17 @@ export function PlayAlong() {
   const bpmRef          = useRef(cfg.startBpm)
   const startTimeRef    = useRef<number>(0)     // performance.now() at play start
 
+  // Pause (while the review modal is open) — freezes the reel + hit detection
+  const pausedRef       = useRef(false)
+  const pauseStartRef   = useRef(0)
+
+  // Px offset of count-one (first note head) from the measure barline.
+  // Reported by bare measures at render so the cursor line sits over the downbeat.
+  const [downbeatInset, setDownbeatInset] = useState(DEFAULT_DOWNBEAT_INSET_PX)
+  const reportDownbeatInset = useCallback((x: number) => {
+    setDownbeatInset(prev => (Math.abs(prev - x) < 0.5 ? prev : x))
+  }, [])
+
   // Game progression refs
   const consecutiveMissesRef  = useRef(0)
   const successfulMeasuresRef = useRef(0)
@@ -130,6 +144,11 @@ export function PlayAlong() {
 
     let rafId: number
     const frame = () => {
+      // Frozen while the review modal is open — reel and hit detection stop.
+      if (pausedRef.current) {
+        rafId = requestAnimationFrame(frame)
+        return
+      }
       const elapsed  = performance.now() - startTimeRef.current
       const mspM     = msPerMeasure(bpmRef.current)
       const loopMs   = REEL_UNIQUE * mspM
@@ -362,20 +381,38 @@ export function PlayAlong() {
   // ── Measure click → review modal ─────────────────────────────────────────
 
   function handleMeasureClick(measure: GeneratedMeasure) {
-    tickEngine.stopMetronome()   // pause background beat while modal is open
+    // Freeze the running game (reel + hit detection) while the modal is open.
+    if (phaseRef.current === 'playing' && !pausedRef.current) {
+      pausedRef.current = true
+      pauseStartRef.current = performance.now()
+    }
+    tickEngine.stopMetronome()   // silence the background beat while reading
     setReviewMeasure(measure)
   }
 
   function closeReviewModal() {
     setReviewMeasure(null)
-    // Restart the PlayAlong metronome after RhythmPlayback has cancelled all audio
-    const beats = reelRef.current[0]?.timeSigTop ?? 4
-    window.setTimeout(() => {
-      tickEngine.startMetronome(bpmRef.current, idx => {
-        const b = idx % beats
-        setBeatIndex(b)
-      }, undefined, beats)
-    }, 50)
+
+    // Resume the reel exactly where it froze (keep elapsed continuous).
+    if (pausedRef.current) {
+      startTimeRef.current = resumedStartTime(
+        startTimeRef.current,
+        pauseStartRef.current,
+        performance.now(),
+      )
+      pausedRef.current = false
+    }
+
+    // Restart the metronome after RhythmPlayback has cancelled all its audio.
+    if (phaseRef.current === 'playing' || phaseRef.current === 'static') {
+      const beats = reelRef.current[0]?.timeSigTop ?? 4
+      window.setTimeout(() => {
+        tickEngine.startMetronome(bpmRef.current, idx => {
+          const b = idx % beats
+          setBeatIndex(b)
+        }, undefined, beats)
+      }, 50)
+    }
   }
 
   // ── Cleanup ───────────────────────────────────────────────────────────────
@@ -446,8 +483,12 @@ export function PlayAlong() {
       {/* Scrolling notation reel */}
       <div className="pa-reel-viewport" ref={reelViewportRef} style={{ position: 'relative' }}>
 
-        {/* Cursor / read-line at beat 1 (left edge of each measure = barline) */}
-        <div className="pa-cursor-line" aria-hidden="true" />
+        {/* Cursor / read-line — sits over count-one (the downbeat note head) */}
+        <div
+          className="pa-cursor-line"
+          aria-hidden="true"
+          style={{ left: cursorLineX(vpWidth, downbeatInset) }}
+        />
 
         <div
           ref={reelTrackRef}
@@ -465,6 +506,7 @@ export function PlayAlong() {
               onClick={() => handleMeasureClick(item)}
               hitNoteIndices={hitMap[i]}
               missNoteIndices={missMap[i]}
+              onDownbeatInset={reportDownbeatInset}
             />
           ))}
         </div>
@@ -546,6 +588,9 @@ interface NotationBlockProps {
   onClick: () => void
   hitNoteIndices?: number[]
   missNoteIndices?: number[]
+  /** Called by bare measures (no clef/time-sig) with the first note head x,
+   *  so the parent can place the cursor line over the downbeat. */
+  onDownbeatInset?: (x: number) => void
 }
 
 const NotationBlock = memo(function NotationBlock({
@@ -553,9 +598,12 @@ const NotationBlock = memo(function NotationBlock({
   onClick,
   hitNoteIndices,
   missNoteIndices,
+  onDownbeatInset,
 }: NotationBlockProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const anchorsRef   = useRef<Map<number, number>>(new Map())
+  // x of count-one (first note head) within this block — positions the arrow.
+  const [downbeatNoteX, setDownbeatNoteX] = useState<number | null>(null)
 
   useEffect(() => {
     const el = containerRef.current
@@ -571,6 +619,14 @@ const NotationBlock = memo(function NotationBlock({
       const map = new Map<number, number>()
       result.anchors.forEach(a => map.set(a.eventIndex, a.x))
       anchorsRef.current = map
+
+      // Count-one note head x (event index 0, only if it's a note).
+      const firstX = measure.events[0]?.type === 'note' ? map.get(0) : undefined
+      if (firstX !== undefined) {
+        setDownbeatNoteX(firstX)
+        // Bare measures (no clef/time-sig) define the canonical downbeat inset.
+        if (!measure.showClef && !measure.showTimeSig) onDownbeatInset?.(firstX)
+      }
     } catch {
       // silently ignore render errors
     }
@@ -589,12 +645,12 @@ const NotationBlock = memo(function NotationBlock({
       aria-label={`Hear measure: ${measure.label}`}
     >
       <div className="pa-notation-wrapper">
-        {/* Beat-1 arrow at the barline (left edge = downbeat), turns green on hit */}
-        {measure.events[0]?.type === 'note' && (
+        {/* Downbeat arrow — sits over count-one (first note head), green on hit */}
+        {measure.events[0]?.type === 'note' && downbeatNoteX !== null && (
           <div
             className={`pa-beat1-arrow${hitNoteIndices?.includes(0) ? ' hit' : ''}`}
             aria-hidden="true"
-            style={{ left: 0 }}
+            style={{ left: downbeatNoteX }}
           >▼</div>
         )}
         <div ref={containerRef} className="pa-notation-container" />

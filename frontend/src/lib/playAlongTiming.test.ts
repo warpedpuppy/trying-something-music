@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest'
 import {
   SLOT_PX,
   CURSOR_FRAC,
+  DEFAULT_DOWNBEAT_INSET_PX,
   msPerMeasure,
   msPerBeat,
   reelTranslateX,
@@ -10,6 +11,8 @@ import {
   totalMeasuresPassed,
   onsetDueMs,
   shouldShowDownbeat,
+  cursorLineX,
+  resumedStartTime,
 } from './playAlongTiming'
 
 // ── Tempo ──────────────────────────────────────────────────────────────────────
@@ -150,6 +153,65 @@ describe('onsetDueMs', () => {
     const due40 = onsetDueMs(2, 1, msPerMeasure(40), 40)
     const due80 = onsetDueMs(2, 1, msPerMeasure(80), 80)
     expect(due40 / due80).toBeCloseTo(2)
+  })
+})
+
+// ── Cursor line geometry ────────────────────────────────────────────────────
+
+describe('cursorLineX', () => {
+  const VP = 800
+
+  it('sits at the barline crossing plus the downbeat inset', () => {
+    expect(cursorLineX(VP, 28)).toBe(VP * CURSOR_FRAC + 28)
+  })
+
+  it('uses the default inset when none is given', () => {
+    expect(cursorLineX(VP)).toBe(VP * CURSOR_FRAC + DEFAULT_DOWNBEAT_INSET_PX)
+  })
+
+  it('aligns with the downbeat note head at the due moment', () => {
+    // At elapsed = onsetDueMs(absIdx, 0), the measure's left edge (reel translateX
+    // for the first measure) is at vpWidth*CURSOR_FRAC. The note head is drawn
+    // `inset` px to the right, so the cursor line must equal that screen-x.
+    const inset = 31
+    const barlineScreenX = reelTranslateX(0, VP, msPerMeasure(60), 24 * msPerMeasure(60))
+    expect(cursorLineX(VP, inset)).toBeCloseTo(barlineScreenX + inset)
+  })
+
+  it('scales the 25% fraction with viewport width', () => {
+    expect(cursorLineX(1200, 0)).toBe(300)
+    expect(cursorLineX(400, 0)).toBe(100)
+  })
+})
+
+// ── Pause / resume ────────────────────────────────────────────────────────────
+
+describe('resumedStartTime', () => {
+  it('keeps elapsed continuous across a pause', () => {
+    const startTime = 1000
+    const pauseStart = 3500          // elapsed at pause = 2500
+    const resumeNow = 9000           // paused for 5500 ms
+    const newStart = resumedStartTime(startTime, pauseStart, resumeNow)
+    // elapsed immediately after resume must equal elapsed at pause
+    expect(resumeNow - newStart).toBeCloseTo(pauseStart - startTime)
+  })
+
+  it('shifts startTime forward by exactly the pause duration', () => {
+    expect(resumedStartTime(0, 200, 1200)).toBe(1000) // paused 1000 ms
+  })
+
+  it('is a no-op for a zero-length pause', () => {
+    expect(resumedStartTime(500, 800, 800)).toBe(500)
+  })
+
+  it('accumulates correctly across two pauses', () => {
+    let start = 0
+    // first pause: elapsed 1000 at t=1000, resume at t=1600 (paused 600)
+    start = resumedStartTime(start, 1000, 1600)
+    expect(1600 - start).toBeCloseTo(1000)
+    // second pause: elapsed now 2000 at t=2600, resume at t=3000 (paused 400)
+    start = resumedStartTime(start, 2600, 3000)
+    expect(3000 - start).toBeCloseTo(2000)
   })
 })
 

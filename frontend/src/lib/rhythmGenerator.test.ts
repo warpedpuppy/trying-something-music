@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import { generateReel, ensureNoLeadingRest, ensureNoTrailingRest } from './rhythmGenerator'
+import { DURATION_BEATS } from './rhythm'
 
 // ── ensureNoLeadingRest ────────────────────────────────────────────────────────
 
@@ -214,5 +215,53 @@ describe('generateReel general', () => {
     const b = generateReel(24, 999)
     // They might collide in rare cases, but across any two very different seeds they won't
     expect(JSON.stringify(a[0].events)).not.toBe(JSON.stringify(b[0].events))
+  })
+})
+
+// ── Game invariants (guard against regressions) ─────────────────────────────────
+
+describe('generateReel — game invariants', () => {
+  function measureBeats(events: { duration: 'w'|'h'|'q'|'8'|'16'; dots?: number }[]): number {
+    return events.reduce((sum, e) => {
+      const base = DURATION_BEATS[e.duration]
+      return sum + base + (e.dots ? base * 0.5 : 0)
+    }, 0)
+  }
+
+  it('every measure fills its bar exactly, across many seeds', () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      for (const m of generateReel(24, seed)) {
+        const expected = m.timeSigTop * (4 / m.timeSigBottom)
+        expect(measureBeats(m.events)).toBeCloseTo(expected, 5)
+      }
+    }
+  })
+
+  it('whole notes (single-note measures) only appear at level 4+', () => {
+    // Whole notes are a welcome breather at higher tempos; they must not appear
+    // in the easy early measures.
+    for (let seed = 1; seed <= 40; seed++) {
+      for (const m of generateReel(24, seed)) {
+        if (m.events.some(e => e.duration === 'w')) {
+          expect(m.level).toBeGreaterThanOrEqual(4)
+        }
+      }
+    }
+  })
+
+  it('first measure always starts and ends on a note, across seeds', () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      const first = generateReel(24, seed)[0]
+      expect(first.events[0].type).toBe('note')
+      expect(first.events[first.events.length - 1].type).toBe('note')
+    }
+  })
+
+  it('never produces an empty measure', () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      for (const m of generateReel(24, seed)) {
+        expect(m.events.length).toBeGreaterThan(0)
+      }
+    }
   })
 })
