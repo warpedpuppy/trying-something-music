@@ -52,6 +52,8 @@ export function RhythmPlayback({
   // latest anchor positions even though they arrive asynchronously via onRendered.
   const staffAnchorsRef = useRef<NoteAnchor[]>([])
   const staffWidthRef = useRef<number>(200)
+  // x of the first event (note OR rest) = start of the measure / downbeat.
+  const staffFirstEventXRef = useRef<number | null>(null)
 
   const playheadRafRef = useRef<number | null>(null)
   const playheadHoldRef = useRef<number | null>(null)
@@ -101,6 +103,13 @@ export function RhythmPlayback({
       const x = anchor?.x ?? anchors[0]?.x ?? 0
       return [t, x]
     })
+    // Leading waypoint: if the measure starts with a rest (first onset after t=0),
+    // begin the sweep at the start of the measure so the line travels through the
+    // rest rather than jumping straight to the first note.
+    const startX = staffFirstEventXRef.current
+    if (startX != null && waypoints.length > 0 && waypoints[0][0] > 0) {
+      waypoints.unshift([0, startX])
+    }
     // Final waypoint: sweep to the right edge.
     if (waypoints.length > 0) {
       const lastT = waypoints[waypoints.length - 1][0]
@@ -145,8 +154,9 @@ export function RhythmPlayback({
     setPlayingIndex(null)
     setCountInBeat(null)
     setPhase('count-in')
-    // Park the playhead at the first note so the orange line is visible from the start
-    setPlayheadX(staffAnchorsRef.current[0]?.x ?? 0)
+    // Park the playhead at the start of the measure (downbeat) — the first event's
+    // x whether it's a note or a rest — so the orange line always begins at count one.
+    setPlayheadX(staffFirstEventXRef.current ?? staffAnchorsRef.current[0]?.x ?? 0)
 
     const countInBeats = timeSigTop
     const beatMs = 60000 / bpm
@@ -256,9 +266,10 @@ export function RhythmPlayback({
           timeSigBottom={timeSigBottom}
           dots={dots}
           playheadX={playheadX}
-          onRendered={(width, anchors) => {
+          onRendered={(width, anchors, firstEventX) => {
             staffWidthRef.current = width
             staffAnchorsRef.current = anchors
+            staffFirstEventXRef.current = firstEventX ?? null
           }}
         />
       </div>

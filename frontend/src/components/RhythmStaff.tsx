@@ -34,8 +34,9 @@ interface RhythmStaffProps {
   caption?: string
   /** Current playhead x position (px within the staff canvas). Null = hidden. */
   playheadX?: number | null
-  /** Called after each render with the SVG width and all note anchors. */
-  onRendered?: (width: number, anchors: NoteAnchor[]) => void
+  /** Called after each render with the SVG width, all note anchors, and the x of
+   *  the first event (note or rest) — i.e. the start-of-measure / downbeat x. */
+  onRendered?: (width: number, anchors: NoteAnchor[], firstEventX?: number) => void
 }
 
 /** Engraved notation with optional colored feedback dots floating above the notes. */
@@ -65,7 +66,7 @@ export function RhythmStaff({
         maxWidth: availableWidth > 0 ? availableWidth : undefined,
       })
       setAnchors(result.anchors)
-      onRenderedRef.current?.(result.width, result.anchors)
+      onRenderedRef.current?.(result.width, result.anchors, result.firstEventX)
       setRenderError(null)
     } catch (err) {
       setRenderError(err instanceof Error ? err.message : 'Could not render notation')
