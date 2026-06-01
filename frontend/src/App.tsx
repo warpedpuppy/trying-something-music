@@ -77,7 +77,15 @@ import './App.css'
 
 function App() {
   // ── Testing gate — show landing page unless ?testing=true is present ──────
-  if (!IS_TESTING) return <ComingSoon />
+  // ComingSoon uses <Link>, so it must be rendered inside a Router or it throws
+  // (a Router-less <Link> crashes at runtime → blank page).
+  if (!IS_TESTING) {
+    return (
+      <BrowserRouter>
+        <ComingSoon />
+      </BrowserRouter>
+    )
+  }
 
   return (
     <AuthProvider>
