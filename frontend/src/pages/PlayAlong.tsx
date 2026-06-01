@@ -630,9 +630,9 @@ const NotationBlock = memo(function NotationBlock({
       result.anchors.forEach(a => map.set(a.eventIndex, a.x))
       anchorsRef.current = map
 
-      // Count-one note head x (event index 0, only if it's a note).
-      const firstX = measure.events[0]?.type === 'note' ? map.get(0) : undefined
-      if (firstX !== undefined) setDownbeatNoteX(firstX)
+      // Downbeat (count-one) x — the first event's position whether note or rest,
+      // so 3/4 (and any rest-first) measures still get a downbeat arrow.
+      if (result.firstEventX !== undefined) setDownbeatNoteX(result.firstEventX)
     } catch {
       // silently ignore render errors
     }
@@ -652,8 +652,9 @@ const NotationBlock = memo(function NotationBlock({
     >
       <div className="pa-notation-wrapper">
         {/* Downbeat arrow — over count-one; green on hit; pulses on the downbeat.
-            key changes with pulseNonce so the grow/shrink animation replays. */}
-        {measure.events[0]?.type === 'note' && downbeatNoteX !== null && (
+            Shown for every measure (incl. rest-first / 3-4); key changes with
+            pulseNonce so the grow/shrink animation replays. */}
+        {downbeatNoteX !== null && (
           <div
             key={pulseNonce}
             className={`pa-beat1-arrow${hitNoteIndices?.includes(0) ? ' hit' : ''}${pulseNonce > 0 ? ' pulsing' : ''}`}

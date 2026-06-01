@@ -14,6 +14,9 @@ export interface RenderResult {
   width: number
   height: number
   anchors: NoteAnchor[]
+  /** Absolute x of the very first event (note OR rest) — the downbeat position.
+   *  Used to place the Play Along downbeat arrow even when beat 1 is a rest. */
+  firstEventX?: number
 }
 
 interface MeasureGroup {
@@ -116,6 +119,7 @@ export function renderPattern(
   const allNotes: StaveNote[] = []
   const noteEventIndexes: number[] = []
   let x = (fixedTotalWidth && seamless) ? 0 : 10
+  let firstStaveNote: StaveNote | null = null
 
   measures.forEach((measure, measureIndex) => {
     const stave = new Stave(x, STAVE_Y, measureWidths[measureIndex])
@@ -126,11 +130,11 @@ export function renderPattern(
       }
     }
     if (seamless) {
-      // Reel mode: each block renders one measure flush against the next. Draw a
-      // single thin barline (same weight as the staff lines) and no begin barline,
-      // so each measure boundary shows exactly one line — just like sheet music.
+      // Reel mode: each block renders one measure flush against the next. Let
+      // VexFlow draw no barlines (its edge barlines get clipped by the SVG); we
+      // draw a single thin barline ourselves just inside the right edge below.
       stave.setBegBarType(Barline.type.NONE)
-      stave.setEndBarType(Barline.type.SINGLE)
+      stave.setEndBarType(Barline.type.NONE)
     } else if (measureIndex === measures.length - 1) {
       stave.setEndBarType(Barline.type.END) // thick final barline
     }
@@ -145,12 +149,30 @@ export function renderPattern(
     voice.draw(context, stave)
     beams.forEach((beam) => beam.setContext(context).draw())
 
+    if (measureIndex === 0 && notes.length > 0) firstStaveNote = notes[0]
+
     measure.events.forEach(({ event, index }, i) => {
       if (event.type === 'note') {
         allNotes.push(notes[i])
         noteEventIndexes.push(index)
       }
     })
+
+    // Seamless single thin barline at the right edge (staff-line weight), drawn
+    // ~1px inside so the SVG viewport doesn't clip it away.
+    if (seamless) {
+      const barX = stave.getX() + stave.getWidth() - 0.5
+      const topY = stave.getYForLine(0)
+      const botY = stave.getYForLine(4)
+      context.save()
+      context.setLineWidth(1)
+      context.setStrokeStyle('#000000')
+      context.beginPath()
+      context.moveTo(barX, topY)
+      context.lineTo(barX, botY)
+      context.stroke()
+      context.restore()
+    }
 
     x += measureWidths[measureIndex]
   })
@@ -179,5 +201,9 @@ export function renderPattern(
     y: STAVE_Y,
   }))
 
-  return { width: totalWidth, height, anchors }
+  const firstEventX = firstStaveNote
+    ? (firstStaveNote as StaveNote).getAbsoluteX()
+    : undefined
+
+  return { width: totalWidth, height, anchors, firstEventX }
 }
