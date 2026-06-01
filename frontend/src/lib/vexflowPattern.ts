@@ -1,4 +1,4 @@
-import { Beam, Dot, Formatter, Renderer, Stave, StaveNote, StaveTie, Voice } from 'vexflow'
+import { Barline, Beam, Dot, Formatter, Renderer, Stave, StaveNote, StaveTie, Voice } from 'vexflow'
 import type { Pattern, PatternEvent } from '../api/types'
 import { eventBeats } from './rhythm'
 
@@ -125,8 +125,14 @@ export function renderPattern(
         stave.addTimeSignature(`${timeSigTop}/${timeSigBottom}`)
       }
     }
-    if (measureIndex === measures.length - 1) {
-      stave.setEndBarType(3) // end barline
+    if (seamless) {
+      // Reel mode: each block renders one measure flush against the next. Draw a
+      // single thin barline (same weight as the staff lines) and no begin barline,
+      // so each measure boundary shows exactly one line — just like sheet music.
+      stave.setBegBarType(Barline.type.NONE)
+      stave.setEndBarType(Barline.type.SINGLE)
+    } else if (measureIndex === measures.length - 1) {
+      stave.setEndBarType(Barline.type.END) // thick final barline
     }
     stave.setContext(context).draw()
 
