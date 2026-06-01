@@ -17,6 +17,7 @@ import {
   totalMeasuresPassed,
   onsetDueMs,
   cursorLineX,
+  cursorInsetForPhase,
   resumedStartTime,
 } from '../lib/playAlongTiming'
 import {
@@ -84,10 +85,15 @@ export function PlayAlong() {
   const pauseStartRef   = useRef(0)
 
   // Px offset of count-one (first note head) from the measure barline.
-  // Reported by bare measures at render so the cursor line sits over the downbeat.
+  // Bare measures (no clef/time-sig) define the inset used while the reel scrolls;
+  // measure 0 (clef + time-sig) defines the inset used in the static pre-START view.
   const [downbeatInset, setDownbeatInset] = useState(DEFAULT_DOWNBEAT_INSET_PX)
+  const [firstMeasureInset, setFirstMeasureInset] = useState(DEFAULT_DOWNBEAT_INSET_PX)
   const reportDownbeatInset = useCallback((x: number) => {
     setDownbeatInset(prev => (Math.abs(prev - x) < 0.5 ? prev : x))
+  }, [])
+  const reportFirstMeasureInset = useCallback((x: number) => {
+    setFirstMeasureInset(prev => (Math.abs(prev - x) < 0.5 ? prev : x))
   }, [])
 
   // Game progression refs
@@ -487,7 +493,7 @@ export function PlayAlong() {
         <div
           className="pa-cursor-line"
           aria-hidden="true"
-          style={{ left: cursorLineX(vpWidth, downbeatInset) }}
+          style={{ left: cursorLineX(vpWidth, cursorInsetForPhase(phase, firstMeasureInset, downbeatInset)) }}
         />
 
         <div
@@ -507,6 +513,7 @@ export function PlayAlong() {
               hitNoteIndices={hitMap[i]}
               missNoteIndices={missMap[i]}
               onDownbeatInset={reportDownbeatInset}
+              onFirstMeasureInset={i === 0 ? reportFirstMeasureInset : undefined}
             />
           ))}
         </div>
@@ -591,6 +598,9 @@ interface NotationBlockProps {
   /** Called by bare measures (no clef/time-sig) with the first note head x,
    *  so the parent can place the cursor line over the downbeat. */
   onDownbeatInset?: (x: number) => void
+  /** Called by the first measure (with clef/time-sig) with its first note head x,
+   *  so the static pre-START cursor line sits over the first downbeat. */
+  onFirstMeasureInset?: (x: number) => void
 }
 
 const NotationBlock = memo(function NotationBlock({
@@ -599,6 +609,7 @@ const NotationBlock = memo(function NotationBlock({
   hitNoteIndices,
   missNoteIndices,
   onDownbeatInset,
+  onFirstMeasureInset,
 }: NotationBlockProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const anchorsRef   = useRef<Map<number, number>>(new Map())
@@ -624,8 +635,10 @@ const NotationBlock = memo(function NotationBlock({
       const firstX = measure.events[0]?.type === 'note' ? map.get(0) : undefined
       if (firstX !== undefined) {
         setDownbeatNoteX(firstX)
-        // Bare measures (no clef/time-sig) define the canonical downbeat inset.
+        // Bare measures (no clef/time-sig) define the scrolling-phase downbeat inset.
         if (!measure.showClef && !measure.showTimeSig) onDownbeatInset?.(firstX)
+        // The first measure (clef + time-sig) defines the static-phase inset.
+        onFirstMeasureInset?.(firstX)
       }
     } catch {
       // silently ignore render errors

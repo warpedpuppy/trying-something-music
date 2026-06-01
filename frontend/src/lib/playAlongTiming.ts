@@ -114,6 +114,23 @@ export function cursorLineX(
   return vpWidth * CURSOR_FRAC + downbeatInsetPx
 }
 
+/**
+ * Which downbeat inset the cursor line should use.
+ *
+ * In the static (pre-START) phase the first measure sits under the cursor, and it
+ * shows a clef + time signature, so its first note is inset further than a bare
+ * measure. The line must use that larger inset so it sits over count-one of the
+ * first measure. Once playing, the scrolling bare measures dominate, so the
+ * smaller bare inset is used.
+ */
+export function cursorInsetForPhase(
+  phase: 'welcome' | 'static' | 'playing',
+  firstMeasureInset: number,
+  bareInset: number,
+): number {
+  return phase === 'playing' ? bareInset : firstMeasureInset
+}
+
 // ── Pause / resume ────────────────────────────────────────────────────────────
 
 /**

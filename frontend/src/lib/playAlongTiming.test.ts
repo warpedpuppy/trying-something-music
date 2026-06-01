@@ -12,6 +12,7 @@ import {
   onsetDueMs,
   shouldShowDownbeat,
   cursorLineX,
+  cursorInsetForPhase,
   resumedStartTime,
 } from './playAlongTiming'
 
@@ -181,6 +182,32 @@ describe('cursorLineX', () => {
   it('scales the 25% fraction with viewport width', () => {
     expect(cursorLineX(1200, 0)).toBe(300)
     expect(cursorLineX(400, 0)).toBe(100)
+  })
+})
+
+describe('cursorInsetForPhase', () => {
+  const FIRST = 70   // measure-0 inset (clef + time-sig pushes the note right)
+  const BARE = 24    // bare-measure inset
+
+  it('uses the first-measure inset in the static (pre-START) phase', () => {
+    expect(cursorInsetForPhase('static', FIRST, BARE)).toBe(FIRST)
+  })
+
+  it('uses the first-measure inset on the welcome screen too', () => {
+    expect(cursorInsetForPhase('welcome', FIRST, BARE)).toBe(FIRST)
+  })
+
+  it('uses the bare-measure inset while playing (scrolling)', () => {
+    expect(cursorInsetForPhase('playing', FIRST, BARE)).toBe(BARE)
+  })
+
+  it('puts the static line over the first measure downbeat, not the barline', () => {
+    // Initial line must be to the right of the barline by the first-measure inset.
+    const vp = 800
+    expect(cursorLineX(vp, cursorInsetForPhase('static', FIRST, BARE)))
+      .toBe(vp * CURSOR_FRAC + FIRST)
+    expect(cursorLineX(vp, cursorInsetForPhase('static', FIRST, BARE)))
+      .toBeGreaterThan(vp * CURSOR_FRAC) // strictly right of the barline
   })
 })
 

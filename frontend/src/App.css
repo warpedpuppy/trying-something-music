@@ -1131,6 +1131,11 @@
   margin: 0;
   min-height: 1.3em;
   line-height: 1.3;
+  /* Fixed width so the centred status row never changes size as the count-in
+     text updates — otherwise the whole row (and the metronome) would shift. */
+  width: 150px;
+  text-align: left;
+  flex: 0 0 auto;
 }
 
 /* Staff centred in the modal */

@@ -181,22 +181,48 @@ export function ensureNoTrailingRest(events: PatternEvent[]): PatternEvent[] {
   return [...events.slice(0, -1), fixed]
 }
 
-// ── Safe wrapper ──────────────────────────────────────────────────────────────
+// ── Note-count floor ───────────────────────────────────────────────────────────
 
-function safeGenerate(beats: number, level: number, rng: () => number): PatternEvent[] {
-  try {
-    const events = fillMeasure(beats, level, rng)
-    const total = events.reduce((s, e) => {
-      const b = durationBeats(e.duration)
-      return s + b + (e.dots ? b * 0.5 : 0)
-    }, 0)
-    if (Math.abs(total - beats) < 0.01) return events
-    return fallback(beats)
-  } catch {
-    return fallback(beats)
-  }
+/** Count tappable notes (rests don't count). */
+export function countNotes(events: PatternEvent[]): number {
+  return events.filter(e => e.type === 'note').length
 }
 
+/**
+ * Minimum number of NOTES a measure must contain.
+ * Early/slower measures (levels 1–3) must feel substantial — no sparse 1–2 note
+ * bars. Breathers (whole notes, sparse syncopation) are only allowed once the
+ * game has sped up, i.e. levels 4–5.
+ */
+export function minNotesForLevel(level: number): number {
+  return level <= 3 ? 3 : 1
+}
+
+// ── Safe wrapper ──────────────────────────────────────────────────────────────
+
+function fillsBar(events: PatternEvent[], beats: number): boolean {
+  const total = events.reduce((s, e) => {
+    const b = durationBeats(e.duration)
+    return s + b + (e.dots ? b * 0.5 : 0)
+  }, 0)
+  return Math.abs(total - beats) < 0.01
+}
+
+function safeGenerate(beats: number, level: number, rng: () => number): PatternEvent[] {
+  const minNotes = minNotesForLevel(level)
+  // Retry until we get a measure that both fills the bar and meets the note floor.
+  for (let attempt = 0; attempt < 40; attempt++) {
+    try {
+      const events = fillMeasure(beats, level, rng)
+      if (fillsBar(events, beats) && countNotes(events) >= minNotes) return events
+    } catch {
+      // try again
+    }
+  }
+  return fallback(beats)
+}
+
+/** Dense, all-quarter fallback — always satisfies the ≥3-note floor. */
 function fallback(beats: number): PatternEvent[] {
   if (beats === 4) return [n('q'), n('q'), n('q'), n('q')]
   return [n('q'), n('q'), n('q')]  // 3 beats (3/4 or 6/8)

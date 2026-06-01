@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest'
-import { generateReel, ensureNoLeadingRest, ensureNoTrailingRest } from './rhythmGenerator'
+import { generateReel, ensureNoLeadingRest, ensureNoTrailingRest, countNotes, minNotesForLevel } from './rhythmGenerator'
 import { DURATION_BEATS } from './rhythm'
 
 // ── ensureNoLeadingRest ────────────────────────────────────────────────────────
@@ -261,6 +261,48 @@ describe('generateReel — game invariants', () => {
     for (let seed = 1; seed <= 20; seed++) {
       for (const m of generateReel(24, seed)) {
         expect(m.events.length).toBeGreaterThan(0)
+      }
+    }
+  })
+})
+
+// ── Note-count floor (no sparse early measures) ─────────────────────────────────
+
+describe('minNotesForLevel', () => {
+  it('requires at least 3 notes for the easy/slow levels 1–3', () => {
+    expect(minNotesForLevel(1)).toBe(3)
+    expect(minNotesForLevel(2)).toBe(3)
+    expect(minNotesForLevel(3)).toBe(3)
+  })
+  it('relaxes the floor at the faster levels 4–5 (breathers allowed)', () => {
+    expect(minNotesForLevel(4)).toBe(1)
+    expect(minNotesForLevel(5)).toBe(1)
+  })
+})
+
+describe('generateReel — note-count floor', () => {
+  it('never produces a one-note measure below level 4, across many seeds', () => {
+    for (let seed = 1; seed <= 60; seed++) {
+      for (const m of generateReel(24, seed)) {
+        if (m.level <= 3) {
+          expect(countNotes(m.events)).toBeGreaterThanOrEqual(3)
+        }
+      }
+    }
+  })
+
+  it('the third measure (index 2) always has at least 3 notes', () => {
+    // This is the exact regression the user reported: measure 3 had a single note.
+    for (let seed = 1; seed <= 60; seed++) {
+      const third = generateReel(24, seed)[2]
+      expect(countNotes(third.events)).toBeGreaterThanOrEqual(3)
+    }
+  })
+
+  it('no measure anywhere has zero notes', () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      for (const m of generateReel(24, seed)) {
+        expect(countNotes(m.events)).toBeGreaterThanOrEqual(1)
       }
     }
   })
