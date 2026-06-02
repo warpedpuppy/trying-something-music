@@ -138,8 +138,9 @@ class TheoryAudioEngine {
    * @param durSec   Note duration (default 1.2s)
    */
   playNote(midi: number, durSec = 1.2): void {
+    this.stop()   // cut any audio already playing so examples never overlap
     const ctx  = this.ensureCtx()
-    // Restore gain in case stop() was called recently
+    // Restore gain after the stop above
     this.master!.gain.cancelScheduledValues(ctx.currentTime)
     this.master!.gain.setValueAtTime(1, ctx.currentTime)
     this.scheduleNote(ctx, midi, ctx.currentTime + 0.02, durSec)
@@ -150,7 +151,8 @@ class TheoryAudioEngine {
    * @param notes    Array of MIDI note numbers
    * @param durSec   Duration (default 2s)
    */
-  playChord(notes: number[], durSec = 2): void {
+  playChord(notes: readonly number[], durSec = 2): void {
+    this.stop()   // cut any audio already playing so examples never overlap
     const ctx = this.ensureCtx()
     this.master!.gain.cancelScheduledValues(ctx.currentTime)
     this.master!.gain.setValueAtTime(1, ctx.currentTime)
@@ -166,6 +168,7 @@ class TheoryAudioEngine {
    * Useful for interval demonstration.
    */
   playInterval(midi1: number, midi2: number, noteDurSec = 1): void {
+    this.stop()   // cut any audio already playing so examples never overlap
     const ctx  = this.ensureCtx()
     this.master!.gain.cancelScheduledValues(ctx.currentTime)
     this.master!.gain.setValueAtTime(1, ctx.currentTime)
