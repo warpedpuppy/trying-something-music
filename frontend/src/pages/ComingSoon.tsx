@@ -12,10 +12,7 @@ export function ComingSoon() {
           An interactive platform for learning rhythm and music theory —
           free, no account required to start, all data stays in your browser.
         </p>
-        <div className="cs-hero-actions">
-          <Link to="/rhythm/learn" className="cs-cta-primary">Start learning</Link>
-          <Link to="/rhythm/play-along" className="cs-cta-secondary">▶ Play Along</Link>
-        </div>
+        <p className="cs-coming-soon">Coming soon</p>
       </section>
 
       {/* ── Decorative staff ─────────────────────────────────────────────── */}

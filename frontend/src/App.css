@@ -3792,6 +3792,15 @@ a.theory-card:hover {
   margin: 0;
 }
 
+.cs-coming-soon {
+  font-size: clamp(1.4rem, 4vw, 2rem);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 8px 0 0;
+}
+
 /* Decorative staff divider */
 
 .cs-staff-divider {
