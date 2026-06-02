@@ -278,23 +278,21 @@ export function NavBar() {
               onClick={() => setMobileSection(s => s === 'rhythm' ? null : 'rhythm')}
             >
               Rhythm
-              <span className="mobile-nav-chevron">{mobileSection === 'rhythm' ? '▲' : '▼'}</span>
+              <span className="mobile-nav-chevron">▼</span>
             </button>
-            {mobileSection === 'rhythm' && (
-              <div className="mobile-nav-sub">
-                {user && <NavLink to="/rhythm/dashboard" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Dashboard</NavLink>}
-                {user && <NavLink to="/rhythm/exercises" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Exercises</NavLink>}
-                <NavLink to="/rhythm/learn" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Learn</NavLink>
-                <NavLink to="/rhythm/play-along" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Play Along</NavLink>
-                <button
-                  type="button"
-                  className="mobile-nav-link sub subnav-welcome-btn"
-                  onClick={() => { setMenuOpen(false); setShowWelcome(true) }}
-                >
-                  Overview & where to start
-                </button>
-              </div>
-            )}
+            <div className={`mobile-nav-sub${mobileSection === 'rhythm' ? ' open' : ''}`}>
+              {user && <NavLink to="/rhythm/dashboard" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Dashboard</NavLink>}
+              {user && <NavLink to="/rhythm/exercises" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Exercises</NavLink>}
+              <NavLink to="/rhythm/learn" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Learn</NavLink>
+              <NavLink to="/rhythm/play-along" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Play Along</NavLink>
+              <button
+                type="button"
+                className="mobile-nav-link sub subnav-welcome-btn"
+                onClick={() => { setMenuOpen(false); setShowWelcome(true) }}
+              >
+                Overview & where to start
+              </button>
+            </div>
 
             {/* Theory accordion */}
             <button
@@ -303,23 +301,21 @@ export function NavBar() {
               onClick={() => setMobileSection(s => s === 'theory' ? null : 'theory')}
             >
               Theory
-              <span className="mobile-nav-chevron">{mobileSection === 'theory' ? '▲' : '▼'}</span>
+              <span className="mobile-nav-chevron">▼</span>
             </button>
-            {mobileSection === 'theory' && (
-              <div className="mobile-nav-sub">
-                <NavLink to="/theory" end onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Dashboard</NavLink>
-                <NavLink to="/theory/beginner" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Beginner</NavLink>
-                <NavLink to="/theory/intermediate" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Intermediate</NavLink>
-                <NavLink to="/theory/advanced" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Advanced</NavLink>
-                <button
-                  type="button"
-                  className="mobile-nav-link sub subnav-welcome-btn"
-                  onClick={() => { setMenuOpen(false); setShowWelcome(true) }}
-                >
-                  Overview & where to start
-                </button>
-              </div>
-            )}
+            <div className={`mobile-nav-sub${mobileSection === 'theory' ? ' open' : ''}`}>
+              <NavLink to="/theory" end onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Dashboard</NavLink>
+              <NavLink to="/theory/beginner" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Beginner</NavLink>
+              <NavLink to="/theory/intermediate" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Intermediate</NavLink>
+              <NavLink to="/theory/advanced" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Advanced</NavLink>
+              <button
+                type="button"
+                className="mobile-nav-link sub subnav-welcome-btn"
+                onClick={() => { setMenuOpen(false); setShowWelcome(true) }}
+              >
+                Overview & where to start
+              </button>
+            </div>
 
             <Link to="/about" className="mobile-nav-link" onClick={() => setMenuOpen(false)}>About</Link>
           </nav>

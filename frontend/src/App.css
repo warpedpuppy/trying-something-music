@@ -214,9 +214,20 @@
   display: flex;
   flex-direction: column;
   gap: 1px;
-  margin: 2px 0 4px 12px;
+  margin: 0 0 0 12px;
   padding-left: 12px;
   border-left: 2px solid rgba(0,0,0,0.08);
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.3s ease, opacity 0.2s ease, margin 0.3s ease;
+}
+
+.mobile-nav-sub.open {
+  max-height: 300px;
+  opacity: 1;
+  margin-top: 2px;
+  margin-bottom: 4px;
 }
 
 .mobile-nav-link.sub {
@@ -3738,6 +3749,12 @@ a.theory-card:hover {
   font-size: 0.6rem;
   opacity: 0.5;
   margin-left: auto;
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+.mobile-nav-accordion.expanded .mobile-nav-chevron {
+  transform: rotate(180deg);
 }
 
 .mobile-nav-accordion.expanded {
