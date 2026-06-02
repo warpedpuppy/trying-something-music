@@ -31,6 +31,5 @@ ENV/
 *.suo
 *.sw?
 
-
 # Pytest
 .pytest_cache/
