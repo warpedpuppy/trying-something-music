@@ -24,6 +24,7 @@ import {
   reelLevel,
   type PlayAlongConfig,
 } from '../lib/playAlongConfig'
+import { getSession, updatePlayAlongBest } from '../lib/localDb'
 
 // ── Reel setup ────────────────────────────────────────────────────────────────
 
@@ -320,6 +321,9 @@ export function PlayAlong() {
 
   function triggerGameOver() {
     tickEngine.cancelAll()
+    // Save best streak before transitioning
+    const session = getSession()
+    if (session) updatePlayAlongBest(session.userId, successfulMeasuresRef.current)
     phaseRef.current = 'gameover'
     setPhase('gameover')
     const indices = Array.from(mistakenLoopIndicesRef.current)
@@ -336,6 +340,11 @@ export function PlayAlong() {
 
   function stopToWelcome() {
     tickEngine.cancelAll()
+    // Save best streak if the user played before stopping
+    const session = getSession()
+    if (session && phaseRef.current === 'playing') {
+      updatePlayAlongBest(session.userId, successfulMeasuresRef.current)
+    }
     phaseRef.current = 'welcome'
     setPhase('welcome')
     setBeatIndex(null)

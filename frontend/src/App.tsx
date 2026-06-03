@@ -40,8 +40,12 @@ function TestingParamPreserver() {
 
   return null
 }
+import { Outlet } from 'react-router-dom'
+import { useAuth } from './auth/AuthContext'
+import { recordTheoryVisit } from './lib/localDb'
 import { About } from './pages/About'
 import { Admin } from './pages/admin/Admin'
+import { UserProfile } from './pages/UserProfile'
 import { Dashboard } from './pages/Dashboard'
 import { ExerciseList } from './pages/ExerciseList'
 import { ExercisePlayer } from './pages/ExercisePlayer'
@@ -73,6 +77,19 @@ import { Counterpoint } from './pages/theory/Counterpoint'
 import { FormAndStructure } from './pages/theory/FormAndStructure'
 import { Reharmonization } from './pages/theory/Reharmonization'
 import './App.css'
+
+// Records theory topic visits for badge tracking.
+// Sits as a layout route wrapping all /theory/* routes.
+function TheoryTracker() {
+  const { pathname } = useLocation()
+  const { user } = useAuth()
+  useEffect(() => {
+    if (!user) return
+    const slug = pathname.replace(/^\/theory\/?/, '')
+    if (slug) recordTheoryVisit(user.id, slug)
+  }, [pathname, user])
+  return <Outlet />
+}
 
 function App() {
   // ── Testing gate — show landing page unless ?testing=true is present ──────
@@ -111,32 +128,37 @@ function App() {
             <Route path="/rhythm/exercises/:id" element={<ProtectedRoute><ExercisePlayer /></ProtectedRoute>} />
             <Route path="/rhythm/play-along" element={<PlayAlong />} />
 
-            {/* theory section */}
-            <Route path="/theory" element={<TheoryHome />} />
-            <Route path="/theory/beginner"     element={<TheoryLevelPage levelName="Beginner" />} />
-            <Route path="/theory/intermediate" element={<TheoryLevelPage levelName="Intermediate" />} />
-            <Route path="/theory/advanced"     element={<TheoryLevelPage levelName="Advanced" />} />
-            <Route path="/theory/circle-of-fifths" element={<CircleOfFifths />} />
-            <Route path="/theory/notes"        element={<NotesAndStaff />} />
-            <Route path="/theory/keys"         element={<KeySignatures />} />
-            <Route path="/theory/intervals"    element={<IntervalsPage />} />
-            <Route path="/theory/scales"       element={<ScalesAndMajorScale />} />
-            <Route path="/theory/chords"       element={<TriadsAndChords />} />
-            <Route path="/theory/cadences"     element={<Cadences />} />
-            <Route path="/theory/progressions" element={<ChordProgressions />} />
-            <Route path="/theory/diatonic-harmony"     element={<DiatonicHarmony />} />
-            <Route path="/theory/voice-leading"        element={<VoiceLeading />} />
-            <Route path="/theory/secondary-dominants"  element={<SecondaryDominants />} />
-            <Route path="/theory/modal-mixture"        element={<ModalMixture />} />
-            <Route path="/theory/blues"                element={<Blues />} />
-            <Route path="/theory/chord-symbols"        element={<ChordSymbols />} />
-            <Route path="/theory/modulation"           element={<Modulation />} />
-            <Route path="/theory/modes"                element={<ModesPage />} />
-            <Route path="/theory/extended-chords"      element={<ExtendedChords />} />
-            <Route path="/theory/tritone-sub"          element={<TritoneSubstitution />} />
-            <Route path="/theory/counterpoint"         element={<Counterpoint />} />
-            <Route path="/theory/form"                 element={<FormAndStructure />} />
-            <Route path="/theory/reharmonization"      element={<Reharmonization />} />
+            {/* theory section — TheoryTracker records visits for badge tracking */}
+            <Route path="/theory" element={<TheoryTracker />}>
+              <Route index                    element={<TheoryHome />} />
+              <Route path="beginner"          element={<TheoryLevelPage levelName="Beginner" />} />
+              <Route path="intermediate"      element={<TheoryLevelPage levelName="Intermediate" />} />
+              <Route path="advanced"          element={<TheoryLevelPage levelName="Advanced" />} />
+              <Route path="circle-of-fifths"  element={<CircleOfFifths />} />
+              <Route path="notes"             element={<NotesAndStaff />} />
+              <Route path="keys"              element={<KeySignatures />} />
+              <Route path="intervals"         element={<IntervalsPage />} />
+              <Route path="scales"            element={<ScalesAndMajorScale />} />
+              <Route path="chords"            element={<TriadsAndChords />} />
+              <Route path="cadences"          element={<Cadences />} />
+              <Route path="progressions"      element={<ChordProgressions />} />
+              <Route path="diatonic-harmony"  element={<DiatonicHarmony />} />
+              <Route path="voice-leading"     element={<VoiceLeading />} />
+              <Route path="secondary-dominants" element={<SecondaryDominants />} />
+              <Route path="modal-mixture"     element={<ModalMixture />} />
+              <Route path="blues"             element={<Blues />} />
+              <Route path="chord-symbols"     element={<ChordSymbols />} />
+              <Route path="modulation"        element={<Modulation />} />
+              <Route path="modes"             element={<ModesPage />} />
+              <Route path="extended-chords"   element={<ExtendedChords />} />
+              <Route path="tritone-sub"       element={<TritoneSubstitution />} />
+              <Route path="counterpoint"      element={<Counterpoint />} />
+              <Route path="form"              element={<FormAndStructure />} />
+              <Route path="reharmonization"   element={<Reharmonization />} />
+            </Route>
+
+            {/* user profile */}
+            <Route path="/profile" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
 
             {/* admin */}
             <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />

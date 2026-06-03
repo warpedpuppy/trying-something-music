@@ -53,6 +53,11 @@ export interface LocalCustomExercise {
   is_active: boolean
 }
 
+export interface PlayAlongBest {
+  maxCleanMeasures: number
+  updatedAt: string
+}
+
 const K = {
   users: 'rhythm:users',
   session: 'rhythm:session',
@@ -62,6 +67,8 @@ const K = {
   remediation: (uid: number) => `rhythm:remediation:${uid}`,
   customExercises: 'rhythm:custom-exercises',
   nextId: (ns: string) => `rhythm:nextid:${ns}`,
+  playAlongBest: (uid: number) => `rhythm:playalong-best:${uid}`,
+  theoryVisits: (uid: number) => `rhythm:theory-visits:${uid}`,
 }
 
 function load<T>(key: string, fallback: T): T {
@@ -186,4 +193,32 @@ export function saveCustomExercises(exercises: LocalCustomExercise[]): void {
 
 export function nextExerciseId(): number {
   return nextId('exercises')
+}
+
+// Play Along best streak
+export function getPlayAlongBest(userId: number): PlayAlongBest {
+  return load<PlayAlongBest>(K.playAlongBest(userId), { maxCleanMeasures: 0, updatedAt: '' })
+}
+
+export function updatePlayAlongBest(userId: number, cleanMeasures: number): void {
+  const current = getPlayAlongBest(userId)
+  if (cleanMeasures > current.maxCleanMeasures) {
+    save(K.playAlongBest(userId), {
+      maxCleanMeasures: cleanMeasures,
+      updatedAt: new Date().toISOString(),
+    })
+  }
+}
+
+// Theory page visits — tracked by slug (e.g. 'notes', 'intervals')
+export function getTheoryVisits(userId: number): string[] {
+  return load<string[]>(K.theoryVisits(userId), [])
+}
+
+export function recordTheoryVisit(userId: number, slug: string): void {
+  const visits = getTheoryVisits(userId)
+  if (!visits.includes(slug)) {
+    visits.push(slug)
+    save(K.theoryVisits(userId), visits)
+  }
 }

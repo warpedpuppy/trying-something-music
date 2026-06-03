@@ -125,6 +125,12 @@
   font-size: 0.88rem;
   color: var(--ink);
   padding: 0 4px;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.navbar-username:hover {
+  color: var(--accent);
+  text-decoration: none;
 }
 
 /* hamburger button */
@@ -4747,4 +4753,87 @@ a.theory-card:hover {
 
 .pa-mistake-card-inner .pa-notation-container svg {
   max-width: 100%;
+}
+
+/* ── User Profile page ────────────────────────────────────────────────────── */
+
+.profile-page {
+  max-width: 720px;
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+.profile-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent) 0%, #6c63ff 100%);
+  color: #fff;
+  font-size: 1.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.profile-username {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.profile-since {
+  color: var(--muted);
+  font-size: 0.88rem;
+  margin: 0;
+}
+
+.profile-section {
+  margin-top: 36px;
+}
+
+.profile-section h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.profile-topic-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ── About page badge catalog ─────────────────────────────────────────────── */
+
+.about-badge-grid {
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  margin-top: 16px;
+}
+
+.about-badge-entry {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.about-badge-desc {
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-align: center;
+  margin: 0;
+  line-height: 1.3;
 }

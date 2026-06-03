@@ -229,7 +229,7 @@ export function NavBar() {
         <div className="navbar-user">
           {user ? (
             <>
-              <span className="navbar-username">{user.username}</span>
+              <Link to="/profile" className="navbar-username">{user.username}</Link>
               {user.is_admin && isLocalhost() && (
                 <NavLink to="/admin" className={({ isActive }) => isActive ? 'active' : ''}>
                   Admin
@@ -322,7 +322,7 @@ export function NavBar() {
           <div className="mobile-nav-user">
             {user ? (
               <>
-                <span className="navbar-username">{user.username}</span>
+                <Link to="/profile" className="navbar-username">{user.username}</Link>
                 {user.is_admin && isLocalhost() && (
                   <NavLink to="/admin" className="mobile-nav-link">Admin</NavLink>
                 )}
