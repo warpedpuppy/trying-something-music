@@ -1,4 +1,4 @@
-import { MusicNoteCanvas } from '../components/MusicNoteCanvas'
+import { VexflowScrollingStaff } from '../components/VexflowScrollingStaff'
 import { usePageTitle } from '../hooks/usePageTitle'
 
 export function About() {
@@ -7,7 +7,7 @@ export function About() {
     <div>
       {/* Hero banner with music-note animation */}
       <section className="about-hero">
-        <MusicNoteCanvas />
+        <VexflowScrollingStaff />
         <div className="about-hero-text">
           <p className="about-tagline">Learn the basics of music.<br />Rewire your brain.</p>
         </div>

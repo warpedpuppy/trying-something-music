@@ -1,33 +1,18 @@
-import { useCallback, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import { MusicNoteCanvas } from '../components/MusicNoteCanvas'
+import { VexflowScrollingStaff } from '../components/VexflowScrollingStaff'
 
 export function Home() {
   const { user } = useAuth()
-  const [beatLabel, setBeatLabel] = useState('')
-  const [flashKey,  setFlashKey]  = useState(0)
-
-  const handleBeatLabel = useCallback((label: string) => {
-    setBeatLabel(label)
-    setFlashKey(k => k + 1)
-  }, [])
 
   return (
     <div>
-      {/* Hero with music note animation */}
+      {/* Hero with scrolling VexFlow notation */}
       <section className="home-hero">
-        <MusicNoteCanvas onBeatLabel={handleBeatLabel} />
+        <VexflowScrollingStaff />
       </section>
 
       <div className="home-tap-wrap">
-        <p
-          key={flashKey}
-          className="home-beat-label"
-          style={{ animation: beatLabel ? 'beat-label-flash 1.5s ease-out forwards' : 'none' }}
-        >
-          {beatLabel}
-        </p>
         <Link
           to={user ? '/rhythm/dashboard' : '/rhythm/learn'}
           className="home-cta-btn"
