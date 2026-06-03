@@ -329,7 +329,7 @@ function Quiz() {
         )}
       </div>
 
-      <div className="nq-choices">
+      <div className="nq-choices nq-choices--text">
         {question.choices.map(choice => {
           const isCorrect = choice === question.answer; const isSelected = choice === selected
           let cls = 'nq-choice'

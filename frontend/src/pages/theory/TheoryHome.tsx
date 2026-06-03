@@ -1,5 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { usePageTitle } from '../../hooks/usePageTitle'
+import { useAuth } from '../../auth/AuthContext'
+import { getTheoryCompletions } from '../../lib/localDb'
 
 interface Topic {
   title: string
@@ -192,9 +194,12 @@ export const LEVELS: Level[] = [
 
 const ALL_TOPICS     = LEVELS.flatMap((l) => l.topics)
 const AVAILABLE_TOPICS = ALL_TOPICS.filter((t) => t.available)
-const TOTAL_TOPICS   = ALL_TOPICS.length
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+function slugFromHref(href: string): string {
+  return href.split('/').pop() ?? ''
+}
 
 export const LEVEL_BADGE_CLASS: Record<Level['name'], string> = {
   Beginner:     'theory-level-badge theory-level-badge-beginner',
@@ -208,29 +213,18 @@ const LEVEL_ROUTE: Record<Level['name'], string> = {
   Advanced:     '/theory/advanced',
 }
 
-function TopicCard({ topic }: { topic: Topic }) {
-  if (topic.available) {
-    return (
-      <Link to={topic.href} className="theory-card">
-        <span className="theory-card-icon">{topic.icon}</span>
-        <div>
-          <h3>{topic.title}</h3>
-          <p>{topic.description}</p>
-        </div>
-      </Link>
-    )
-  }
+function TopicCard({ topic, completed }: { topic: Topic; completed: boolean }) {
   return (
-    <div className="theory-card theory-card-soon">
+    <Link to={topic.href} className={`theory-card${completed ? ' theory-card-completed' : ''}`}>
       <span className="theory-card-icon">{topic.icon}</span>
       <div>
         <h3>
           {topic.title}
-          <span className="coming-soon-badge">Coming soon</span>
+          {completed && <span className="theory-card-done">✓</span>}
         </h3>
         <p>{topic.description}</p>
       </div>
-    </div>
+    </Link>
   )
 }
 
@@ -238,7 +232,9 @@ function TopicCard({ topic }: { topic: Topic }) {
 
 function TheoryDashboard() {
   const navigate = useNavigate()
-  const comingSoon = TOTAL_TOPICS - AVAILABLE_TOPICS.length
+  const { user } = useAuth()
+  const completions = user ? getTheoryCompletions(user.id) : []
+  const completedCount = ALL_TOPICS.filter((t) => completions.includes(slugFromHref(t.href))).length
 
   return (
     <div className="theory-dashboard">
@@ -246,11 +242,11 @@ function TheoryDashboard() {
       <div className="stat-grid">
         <div className="stat-card">
           <div className="stat-value">{AVAILABLE_TOPICS.length}</div>
-          <div className="stat-label">Topics available now</div>
+          <div className="stat-label">Topics available</div>
         </div>
         <div className="stat-card">
-          <div className="stat-value">{comingSoon}</div>
-          <div className="stat-label">Topics coming soon</div>
+          <div className="stat-value">{completedCount}</div>
+          <div className="stat-label">Sections completed</div>
         </div>
         <div className="stat-card">
           <div className="stat-value">{LEVELS.length}</div>
@@ -262,7 +258,7 @@ function TheoryDashboard() {
       <h2 style={{ marginBottom: '12px' }}>Explore by level</h2>
       <div className="theory-dashboard-levels">
         {LEVELS.map((level) => {
-          const available = level.topics.filter((t) => t.available).length
+          const levelCompleted = level.topics.filter((t) => completions.includes(slugFromHref(t.href))).length
           return (
             <button
               key={level.name}
@@ -273,14 +269,14 @@ function TheoryDashboard() {
               <div className="theory-dashboard-level-top">
                 <span className={LEVEL_BADGE_CLASS[level.name]}>{level.name}</span>
                 <span className="theory-dashboard-level-count">
-                  {available} / {level.topics.length}
+                  {levelCompleted} / {level.topics.length} completed
                 </span>
               </div>
               <p className="theory-dashboard-level-tagline">{level.tagline}</p>
               <div className="theory-dashboard-level-bar">
                 <div
                   className="theory-dashboard-level-bar-fill"
-                  style={{ width: `${(available / level.topics.length) * 100}%` }}
+                  style={{ width: `${(levelCompleted / level.topics.length) * 100}%` }}
                 />
               </div>
               <span className="theory-overview-card-cta">Browse topics →</span>
@@ -295,6 +291,9 @@ function TheoryDashboard() {
 // ── Level section (shared between level pages) ────────────────────────────────
 
 export function LevelSection({ level }: { level: Level }) {
+  const { user } = useAuth()
+  const completions = user ? getTheoryCompletions(user.id) : []
+
   return (
     <section className="theory-level-section">
       <div className="theory-level-header">
@@ -303,7 +302,11 @@ export function LevelSection({ level }: { level: Level }) {
       </div>
       <div className="theory-grid">
         {level.topics.map((topic) => (
-          <TopicCard key={topic.title} topic={topic} />
+          <TopicCard
+            key={topic.title}
+            topic={topic}
+            completed={completions.includes(slugFromHref(topic.href))}
+          />
         ))}
       </div>
     </section>

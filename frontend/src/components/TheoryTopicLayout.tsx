@@ -12,6 +12,9 @@
 
 import type { ReactNode } from 'react'
 import { useState } from 'react'
+import { useLocation } from 'react-router-dom'
+import { useAuth } from '../auth/AuthContext'
+import { getTheoryCompletions, markTheoryComplete } from '../lib/localDb'
 
 export type TheoryTab = 'overview' | 'learn' | 'games'
 
@@ -45,6 +48,18 @@ export function TheoryTopicLayout({
   // True when the user clicked the help link from the games panel —
   // causes "← Back to [gamesLabel]" to appear in the Learn panel.
   const [cameFromGame, setCameFromGame] = useState(false)
+
+  const { user } = useAuth()
+  const slug = useLocation().pathname.split('/').pop() ?? ''
+  const [completed, setCompleted] = useState<boolean>(() =>
+    user ? getTheoryCompletions(user.id).includes(slug) : false
+  )
+
+  function handleMarkComplete() {
+    if (!user || !slug) return
+    markTheoryComplete(user.id, slug)
+    setCompleted(true)
+  }
 
   function openLearnFromGame() {
     setCameFromGame(true)
@@ -120,6 +135,20 @@ export function TheoryTopicLayout({
           <div className="tt-learn-body">
             {learnContent}
           </div>
+          {user && (
+            <div className="tt-completion">
+              {completed ? (
+                <div className="tt-completed-badge">
+                  <span className="tt-completed-check">✓</span>
+                  I've completed this!
+                </div>
+              ) : (
+                <button type="button" className="tt-complete-btn" onClick={handleMarkComplete}>
+                  I've completed this!
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 

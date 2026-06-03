@@ -69,6 +69,7 @@ const K = {
   nextId: (ns: string) => `rhythm:nextid:${ns}`,
   playAlongBest: (uid: number) => `rhythm:playalong-best:${uid}`,
   theoryVisits: (uid: number) => `rhythm:theory-visits:${uid}`,
+  theoryCompletions: (uid: number) => `rhythm:theory-completions:${uid}`,
 }
 
 function load<T>(key: string, fallback: T): T {
@@ -220,5 +221,18 @@ export function recordTheoryVisit(userId: number, slug: string): void {
   if (!visits.includes(slug)) {
     visits.push(slug)
     save(K.theoryVisits(userId), visits)
+  }
+}
+
+// Theory learn completions — user-marked "I've completed this!" per slug
+export function getTheoryCompletions(userId: number): string[] {
+  return load<string[]>(K.theoryCompletions(userId), [])
+}
+
+export function markTheoryComplete(userId: number, slug: string): void {
+  const completions = getTheoryCompletions(userId)
+  if (!completions.includes(slug)) {
+    completions.push(slug)
+    save(K.theoryCompletions(userId), completions)
   }
 }
