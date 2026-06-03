@@ -1,11 +1,27 @@
 /**
- * VexflowScrollingStaff — auto-scrolling sheet music animation.
+ * VexflowScrollingStaff — truly infinite auto-scrolling sheet music animation.
  *
- * Replaces the hand-rolled MusicNoteCanvas on the Home and About pages.
- * Renders a looping reel of VexFlow measures and fires a white-noise click
- * + rainbow ripple each time a note head crosses the centre of the screen.
+ * ### Why three copies?
  *
- * No user input. Purely decorative.
+ * Two copies (previous approach) caused a visible "tail flash": at the moment
+ * we reset startTime, the last measure of copy 1 was still ~20 px visible on
+ * the left side of the screen.  When tx jumped back, that measure vanished.
+ *
+ * Three copies solve this cleanly:
+ *   - Copy 1  fills the LEFT  (provides the "tail" already past the cursor)
+ *   - Copy 2  is the LIVE copy  (its notes fire clicks/ripples)
+ *   - Copy 3  fills the RIGHT  (provides upcoming measures before copy 2 loops)
+ *
+ * tx is initialised so that copy 2's first measure is exactly at the cursor
+ * when elapsed = 0:
+ *
+ *   tx = cursorX − REEL_COUNT × SLOT_PX − elapsed × (SLOT_PX / mspM)
+ *
+ * At elapsed = loopMs we advance startTime by loopMs and clear firedRef.
+ * At that instant, copy 3 is visually where copy 2 was, copy 2 is where
+ * copy 1 was — identical content in identical positions, no jump ever.
+ *
+ * No user input. Purely decorative. PlayAlong.tsx is not touched.
  */
 
 import { memo, useEffect, useRef, useState } from 'react'
@@ -14,15 +30,14 @@ import { generateReel, type GeneratedMeasure } from '../lib/rhythmGenerator'
 import { triggerRainbowBurst } from '../lib/rippleEngine'
 import { SLOT_PX, msPerMeasure } from '../lib/playAlongTiming'
 
-const REEL_COUNT      = 12
-const BPM             = 60
+const REEL_COUNT       = 12
+const BPM              = 60
 // Cursor at screen centre — notes fire + ripple at the midpoint.
-// (PlayAlong uses 0.25; this component deliberately uses its own value.)
 const HOME_CURSOR_FRAC = 0.5
 
 // ── Toneless click — high-pass filtered white-noise burst ─────────────────────
 // Matches the original MusicNoteCanvas sound: percussive, pitch-neutral, 40 ms.
-// Uses its own short-lived AudioContext so it never interferes with tickEngine.
+// Uses its own short-lived AudioContext, independent of tickEngine.
 function playClick() {
   try {
     const ctx    = new AudioContext()
@@ -56,7 +71,7 @@ export function VexflowScrollingStaff() {
   const startTimeRef = useRef(0)
   const firedRef     = useRef(new Set<string>())
 
-  // Note anchors for the FIRST copy only (second copy is visual only)
+  // Anchors for copy 2's measures (indices 0..REEL_COUNT-1 used for timing)
   const anchorsRef = useRef<Map<number, Array<{ eventIndex: number; x: number }>>>(
     new Map(),
   )
@@ -68,16 +83,15 @@ export function VexflowScrollingStaff() {
   useEffect(() => {
     startTimeRef.current = performance.now()
     const mspM   = msPerMeasure(BPM)
-    const loopMs = REEL_COUNT * mspM  // duration of one full reel pass
+    const loopMs = REEL_COUNT * mspM
 
     const frame = () => {
       let elapsed = performance.now() - startTimeRef.current
 
       // ── Seamless loop reset ──────────────────────────────────────────────────
-      // When one loop has elapsed, step startTime forward by exactly loopMs.
-      // Because the track holds TWO copies of the measures side by side, the
-      // second copy is now visually identical to where the first copy was at
-      // elapsed = 0 — no jump, no flash, infinite scroll.
+      // Step startTime forward by exactly one loop duration so elapsed resets
+      // to ≈0.  Copy 3 is now visually at copy 2's former position (identical
+      // content) — the scroll looks continuous from every vantage point.
       if (elapsed >= loopMs) {
         startTimeRef.current += loopMs
         elapsed -= loopMs
@@ -85,25 +99,29 @@ export function VexflowScrollingStaff() {
       }
 
       const vpWidth = viewportRef.current?.offsetWidth ?? window.innerWidth
+      if (vpWidth === 0) { rafRef.current = requestAnimationFrame(frame); return }
       const cursorX = vpWidth * HOME_CURSOR_FRAC
 
-      // Linear translation (no modulo — the reset above keeps elapsed < loopMs)
-      const tx = cursorX - elapsed * (SLOT_PX / mspM)
+      // tx positions copy 2's first measure at cursorX when elapsed = 0.
+      // Copy 1 is one reel-width to the left; copy 3 one reel-width to the right.
+      const tx = cursorX - REEL_COUNT * SLOT_PX - elapsed * (SLOT_PX / mspM)
 
       if (trackRef.current) {
         trackRef.current.style.transform = `translateX(${tx}px)`
       }
 
-      // ── Note-crossing detection (first copy only) ────────────────────────────
-      // The second copy is purely visual; its notes fire when it becomes the
-      // first copy on the next loop iteration.
+      // ── Note-crossing detection (copy 2 only) ────────────────────────────────
+      // Copy 2's measure mi occupies slot (REEL_COUNT + mi) in the track.
+      // Its absolute screen-x: (REEL_COUNT + mi)*SLOT_PX + anchor.x + tx
+      //   = mi*SLOT_PX + anchor.x + cursorX − elapsed*(SLOT_PX/mspM)
+      // It crosses cursorX when: elapsed ≥ (mi*SLOT_PX + anchor.x) * mspM/SLOT_PX
       for (let mi = 0; mi < REEL_COUNT; mi++) {
         const anchors = anchorsRef.current.get(mi) ?? []
         for (const a of anchors) {
           const key = `${mi}-${a.eventIndex}`
           if (firedRef.current.has(key)) continue
-          // Absolute screen-X of this note head
-          const absX = mi * SLOT_PX + a.x + tx
+          // Use copy 2's actual track position for the absX check
+          const absX = (REEL_COUNT + mi) * SLOT_PX + a.x + tx
           if (absX <= cursorX) {
             firedRef.current.add(key)
             const rect = viewportRef.current?.getBoundingClientRect()
@@ -122,21 +140,22 @@ export function VexflowScrollingStaff() {
     return () => cancelAnimationFrame(rafRef.current)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Render TWO copies of the measures back-to-back for seamless looping
-  const doubled = [...measures, ...measures]
+  // Three copies: copy1 (tail) | copy2 (live) | copy3 (head)
+  const tripled = [...measures, ...measures, ...measures]
 
   return (
     <div ref={viewportRef} className="vss-viewport">
       <div
         ref={trackRef}
         className="vss-track"
-        style={{ width: `${doubled.length * SLOT_PX}px` }}
+        style={{ width: `${tripled.length * SLOT_PX}px` }}
       >
-        {doubled.map((measure, i) => (
+        {tripled.map((measure, i) => (
           <VSSMeasureBlock
             key={i}
             measure={measure}
-            // Only register anchors for the first copy
+            // Only register anchors for copy 1's blocks (indices 0..REEL_COUNT-1).
+            // These are used as the timing reference — the formula is copy-agnostic.
             onAnchors={i < REEL_COUNT
               ? (anchors) => { anchorsRef.current.set(i, anchors) }
               : undefined
