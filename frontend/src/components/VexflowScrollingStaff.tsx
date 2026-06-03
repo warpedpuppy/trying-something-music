@@ -11,7 +11,6 @@
 import { memo, useEffect, useRef, useState } from 'react'
 import { renderPattern } from '../lib/vexflowPattern'
 import { generateReel, type GeneratedMeasure } from '../lib/rhythmGenerator'
-import { tickEngine } from '../lib/audio'
 import { triggerRainbowBurst } from '../lib/rippleEngine'
 import {
   SLOT_PX,
@@ -24,6 +23,36 @@ import {
 // short enough to never feel static.
 const REEL_COUNT = 12
 const BPM = 60
+
+// ── Toneless click — high-pass filtered white-noise burst ─────────────────────
+// Matches the original MusicNoteCanvas sound: percussive, pitch-neutral,
+// 40 ms decay.  Uses its own short-lived AudioContext so it doesn't interfere
+// with tickEngine (which drives the exercises and Play Along metronome).
+function playClick() {
+  try {
+    const ctx    = new AudioContext()
+    const bufLen = Math.ceil(ctx.sampleRate * 0.04)
+    const buf    = ctx.createBuffer(1, bufLen, ctx.sampleRate)
+    const data   = buf.getChannelData(0)
+    for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1
+    const src  = ctx.createBufferSource()
+    src.buffer = buf
+    const hp   = ctx.createBiquadFilter()
+    hp.type    = 'highpass'
+    hp.frequency.value = 800
+    const gain = ctx.createGain()
+    gain.gain.setValueAtTime(0, ctx.currentTime)
+    gain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.003)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04)
+    src.connect(hp)
+    hp.connect(gain)
+    gain.connect(ctx.destination)
+    src.start()
+    src.onended = () => void ctx.close()
+  } catch { /* audio unavailable — silently skip */ }
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 
 export function VexflowScrollingStaff() {
   const viewportRef  = useRef<HTMLDivElement>(null)
@@ -78,7 +107,7 @@ export function VexflowScrollingStaff() {
             firedRef.current.add(key)
             const rect = viewportRef.current?.getBoundingClientRect()
             if (rect) {
-              tickEngine.tick('tap')
+              playClick()
               triggerRainbowBurst(rect.left + cursorX, rect.top + rect.height / 2)
             }
           }
@@ -122,8 +151,7 @@ const VSSMeasureBlock = memo(function VSSMeasureBlock({
   measure,
   onAnchors,
 }: VSSMeasureBlockProps) {
-  const containerRef  = useRef<HTMLDivElement>(null)
-  const [downbeatX, setDownbeatX] = useState<number | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const el = containerRef.current
@@ -142,7 +170,6 @@ const VSSMeasureBlock = memo(function VSSMeasureBlock({
         },
       )
       onAnchors(result.anchors)
-      if (result.firstEventX !== undefined) setDownbeatX(result.firstEventX)
     } catch {
       // silently ignore VexFlow render errors
     }
@@ -152,16 +179,6 @@ const VSSMeasureBlock = memo(function VSSMeasureBlock({
   return (
     <div className="vss-measure">
       <div className="vss-notation-wrapper">
-        {/* Orange downbeat arrow above beat 1, same as PlayAlong reel */}
-        {downbeatX !== null && (
-          <div
-            className="pa-beat1-arrow"
-            aria-hidden="true"
-            style={{ left: downbeatX }}
-          >
-            ▼
-          </div>
-        )}
         <div ref={containerRef} className="pa-notation-container" />
       </div>
     </div>
