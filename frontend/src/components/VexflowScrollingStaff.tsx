@@ -2,8 +2,8 @@
  * VexflowScrollingStaff — auto-scrolling sheet music animation.
  *
  * Replaces the hand-rolled MusicNoteCanvas on the Home and About pages.
- * Renders a looping reel of VexFlow measures (same approach as PlayAlong)
- * and fires a click + rainbow ripple each time a note head crosses the cursor.
+ * Renders a looping reel of VexFlow measures and fires a white-noise click
+ * + rainbow ripple each time a note head crosses the centre of the screen.
  *
  * No user input. Purely decorative.
  */
@@ -12,22 +12,17 @@ import { memo, useEffect, useRef, useState } from 'react'
 import { renderPattern } from '../lib/vexflowPattern'
 import { generateReel, type GeneratedMeasure } from '../lib/rhythmGenerator'
 import { triggerRainbowBurst } from '../lib/rippleEngine'
-import {
-  SLOT_PX,
-  CURSOR_FRAC,
-  msPerMeasure,
-  reelTranslateX,
-} from '../lib/playAlongTiming'
+import { SLOT_PX, msPerMeasure } from '../lib/playAlongTiming'
 
-// 12 measures × 4 s each = 48-second loop at 60 BPM — enough variety,
-// short enough to never feel static.
-const REEL_COUNT = 12
-const BPM = 60
+const REEL_COUNT      = 12
+const BPM             = 60
+// Cursor at screen centre — notes fire + ripple at the midpoint.
+// (PlayAlong uses 0.25; this component deliberately uses its own value.)
+const HOME_CURSOR_FRAC = 0.5
 
 // ── Toneless click — high-pass filtered white-noise burst ─────────────────────
-// Matches the original MusicNoteCanvas sound: percussive, pitch-neutral,
-// 40 ms decay.  Uses its own short-lived AudioContext so it doesn't interfere
-// with tickEngine (which drives the exercises and Play Along metronome).
+// Matches the original MusicNoteCanvas sound: percussive, pitch-neutral, 40 ms.
+// Uses its own short-lived AudioContext so it never interferes with tickEngine.
 function playClick() {
   try {
     const ctx    = new AudioContext()
@@ -59,15 +54,13 @@ export function VexflowScrollingStaff() {
   const trackRef     = useRef<HTMLDivElement>(null)
   const rafRef       = useRef(0)
   const startTimeRef = useRef(0)
-  const prevGenRef   = useRef(0)
   const firedRef     = useRef(new Set<string>())
 
-  // note anchors populated by VSSMeasureBlock after VexFlow renders
+  // Note anchors for the FIRST copy only (second copy is visual only)
   const anchorsRef = useRef<Map<number, Array<{ eventIndex: number; x: number }>>>(
     new Map(),
   )
 
-  // Fresh random reel on every mount
   const [measures] = useState<GeneratedMeasure[]>(() =>
     generateReel(REEL_COUNT, Math.floor(Math.random() * 99_999)),
   )
@@ -75,33 +68,41 @@ export function VexflowScrollingStaff() {
   useEffect(() => {
     startTimeRef.current = performance.now()
     const mspM   = msPerMeasure(BPM)
-    const loopMs = REEL_COUNT * mspM
+    const loopMs = REEL_COUNT * mspM  // duration of one full reel pass
 
     const frame = () => {
-      const elapsed = performance.now() - startTimeRef.current
-      const vpWidth = viewportRef.current?.offsetWidth ?? window.innerWidth
+      let elapsed = performance.now() - startTimeRef.current
 
-      // Detect loop wrap and reset fired-set so notes fire again next cycle
-      const gen = Math.floor(elapsed / loopMs)
-      if (gen > prevGenRef.current) {
-        prevGenRef.current = gen
+      // ── Seamless loop reset ──────────────────────────────────────────────────
+      // When one loop has elapsed, step startTime forward by exactly loopMs.
+      // Because the track holds TWO copies of the measures side by side, the
+      // second copy is now visually identical to where the first copy was at
+      // elapsed = 0 — no jump, no flash, infinite scroll.
+      if (elapsed >= loopMs) {
+        startTimeRef.current += loopMs
+        elapsed -= loopMs
         firedRef.current.clear()
       }
 
-      // Scroll the reel
-      const tx = reelTranslateX(elapsed, vpWidth, mspM, loopMs)
+      const vpWidth = viewportRef.current?.offsetWidth ?? window.innerWidth
+      const cursorX = vpWidth * HOME_CURSOR_FRAC
+
+      // Linear translation (no modulo — the reset above keeps elapsed < loopMs)
+      const tx = cursorX - elapsed * (SLOT_PX / mspM)
+
       if (trackRef.current) {
         trackRef.current.style.transform = `translateX(${tx}px)`
       }
 
-      // Note-crossing detection
-      const cursorX = vpWidth * CURSOR_FRAC
+      // ── Note-crossing detection (first copy only) ────────────────────────────
+      // The second copy is purely visual; its notes fire when it becomes the
+      // first copy on the next loop iteration.
       for (let mi = 0; mi < REEL_COUNT; mi++) {
         const anchors = anchorsRef.current.get(mi) ?? []
         for (const a of anchors) {
           const key = `${mi}-${a.eventIndex}`
           if (firedRef.current.has(key)) continue
-          // absoluteX = left edge of this measure slot + note's x within it + scroll
+          // Absolute screen-X of this note head
           const absX = mi * SLOT_PX + a.x + tx
           if (absX <= cursorX) {
             firedRef.current.add(key)
@@ -121,18 +122,25 @@ export function VexflowScrollingStaff() {
     return () => cancelAnimationFrame(rafRef.current)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Render TWO copies of the measures back-to-back for seamless looping
+  const doubled = [...measures, ...measures]
+
   return (
     <div ref={viewportRef} className="vss-viewport">
       <div
         ref={trackRef}
         className="vss-track"
-        style={{ width: `${REEL_COUNT * SLOT_PX}px` }}
+        style={{ width: `${doubled.length * SLOT_PX}px` }}
       >
-        {measures.map((measure, i) => (
+        {doubled.map((measure, i) => (
           <VSSMeasureBlock
             key={i}
             measure={measure}
-            onAnchors={anchors => { anchorsRef.current.set(i, anchors) }}
+            // Only register anchors for the first copy
+            onAnchors={i < REEL_COUNT
+              ? (anchors) => { anchorsRef.current.set(i, anchors) }
+              : undefined
+            }
           />
         ))}
       </div>
@@ -144,7 +152,7 @@ export function VexflowScrollingStaff() {
 
 interface VSSMeasureBlockProps {
   measure: GeneratedMeasure
-  onAnchors: (anchors: Array<{ eventIndex: number; x: number }>) => void
+  onAnchors?: (anchors: Array<{ eventIndex: number; x: number }>) => void
 }
 
 const VSSMeasureBlock = memo(function VSSMeasureBlock({
@@ -169,7 +177,7 @@ const VSSMeasureBlock = memo(function VSSMeasureBlock({
           seamless: true,
         },
       )
-      onAnchors(result.anchors)
+      onAnchors?.(result.anchors)
     } catch {
       // silently ignore VexFlow render errors
     }
