@@ -9,7 +9,7 @@ export function Home() {
     <div>
       {/* Hero with scrolling VexFlow notation */}
       <section className="home-hero">
-        <VexflowScrollingStaff />
+        <VexflowScrollingStaff silent />
       </section>
 
       {/* Section chooser */}
