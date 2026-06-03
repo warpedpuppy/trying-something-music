@@ -265,6 +265,37 @@ describe('resumedStartTime', () => {
   })
 })
 
+// ── shouldPulseDownbeat ───────────────────────────────────────────────────────
+
+describe('shouldPulseDownbeat', () => {
+  it('returns true only in playing phase at beat 0', () => {
+    expect(shouldPulseDownbeat('playing', 0)).toBe(true)
+  })
+
+  it('returns false in playing phase on non-zero beats', () => {
+    expect(shouldPulseDownbeat('playing', 1)).toBe(false)
+    expect(shouldPulseDownbeat('playing', 2)).toBe(false)
+    expect(shouldPulseDownbeat('playing', 3)).toBe(false)
+  })
+
+  it('returns false in playing phase when beatIndex is null', () => {
+    expect(shouldPulseDownbeat('playing', null)).toBe(false)
+  })
+
+  it('returns false in static phase even at beat 0', () => {
+    expect(shouldPulseDownbeat('static', 0)).toBe(false)
+  })
+
+  it('returns false in welcome phase', () => {
+    expect(shouldPulseDownbeat('welcome', 0)).toBe(false)
+  })
+
+  it('returns false in gameover phase', () => {
+    expect(shouldPulseDownbeat('gameover', 0)).toBe(false)
+    expect(shouldPulseDownbeat('gameover', null)).toBe(false)
+  })
+})
+
 // ── Arrow / beat indicator ────────────────────────────────────────────────────
 
 describe('shouldShowDownbeat', () => {

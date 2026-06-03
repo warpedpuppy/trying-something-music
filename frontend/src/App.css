@@ -3103,7 +3103,7 @@ a.theory-card:hover {
 }
 @keyframes pa-arrow-pulse {
   0%   { transform: translateX(-50%) scale(1); }
-  45%  { transform: translateX(-50%) scale(1.25); }
+  45%  { transform: translateX(-50%) scale(1.75); }
   100% { transform: translateX(-50%) scale(1); }
 }
 
@@ -4934,4 +4934,74 @@ a.theory-card:hover {
   text-align: left;
   width: 100%;
   box-sizing: border-box;
+}
+
+/* ── Game Over screen ─────────────────────────────────────────────────────── */
+
+.pa-gameover-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+}
+
+.pa-gameover-body {
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.6;
+  max-width: 420px;
+  margin: 0;
+  text-align: center;
+}
+
+/* Review list — shown when user clicks "Review mistaken measures" */
+.pa-gameover-review {
+  max-width: 400px;
+  margin: 32px auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 0 16px 48px;
+}
+
+.pa-mistakes-header {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+  text-align: center;
+}
+
+.pa-mistakes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.pa-mistake-card {
+  background: #fff;
+  border: 1.5px solid rgba(0,0,0,0.10);
+  border-radius: 12px;
+  padding: 8px 0 4px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  overflow: hidden;
+}
+
+.pa-mistake-card:hover {
+  background: rgba(249, 115, 22, 0.05);
+  border-color: #f97316;
+}
+
+.pa-mistake-card-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.pa-mistake-card-inner .pa-notation-container svg {
+  max-width: 100%;
 }

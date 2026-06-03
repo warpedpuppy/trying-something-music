@@ -97,7 +97,7 @@ export function onsetDueMs(
  * count-one (beat index 0) and only while actually playing.
  */
 export function shouldPulseDownbeat(
-  phase: 'welcome' | 'static' | 'playing',
+  phase: 'welcome' | 'static' | 'playing' | 'gameover',
   beatIndex: number | null,
 ): boolean {
   return phase === 'playing' && beatIndex === 0
