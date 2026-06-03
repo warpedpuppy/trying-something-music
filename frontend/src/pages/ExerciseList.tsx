@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PIECES } from '../lib/sheetMusicData'
 import { api } from '../api/client'
 import type { ExerciseListItem } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
@@ -67,22 +66,6 @@ export function ExerciseList() {
   return (
     <div>
       <h1>Exercises</h1>
-
-      {/* ── Sheet Music Game section ── */}
-      <section className="game-promo-section">
-        <div className="game-promo-header">
-          <h2 className="game-promo-title">Sheet Music Game</h2>
-          <p className="game-promo-desc">
-            Tap along to real public-domain pieces at your own pace. Change the tempo on the fly — green means on time, red means miss. Ten misses and the game resets.
-          </p>
-          <div className="game-promo-pieces">
-            {PIECES.map(p => (
-              <span key={p.id} className="game-promo-piece-tag">{p.title}</span>
-            ))}
-          </div>
-          <Link to="/rhythm/game" className="game-promo-btn">Play now →</Link>
-        </div>
-      </section>
 
       <p className="muted">
         Pass two exercises at your highest unlocked level to open the next one.

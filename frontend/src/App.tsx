@@ -45,7 +45,6 @@ import { Admin } from './pages/admin/Admin'
 import { Dashboard } from './pages/Dashboard'
 import { ExerciseList } from './pages/ExerciseList'
 import { ExercisePlayer } from './pages/ExercisePlayer'
-import { SheetMusicGame } from './pages/SheetMusicGame'
 import { Home } from './pages/Home'
 import { Learn } from './pages/Learn'
 import { Login } from './pages/Login'
@@ -110,7 +109,6 @@ function App() {
             <Route path="/rhythm/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/rhythm/exercises" element={<ProtectedRoute><ExerciseList /></ProtectedRoute>} />
             <Route path="/rhythm/exercises/:id" element={<ProtectedRoute><ExercisePlayer /></ProtectedRoute>} />
-            <Route path="/rhythm/game" element={<ProtectedRoute><SheetMusicGame /></ProtectedRoute>} />
             <Route path="/rhythm/play-along" element={<PlayAlong />} />
 
             {/* theory section */}
