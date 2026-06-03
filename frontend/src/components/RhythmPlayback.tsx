@@ -47,6 +47,7 @@ export function RhythmPlayback({
   const [countingBeats, setCountingBeats] = useState<CountingBeat[]>([])
   const [playheadX, setPlayheadX] = useState<number | null>(null)
   const [hasDoneFirstPlay, setHasDoneFirstPlay] = useState(false)
+  const [showCountingArea, setShowCountingArea] = useState(false)
 
   // Refs so that the metronome callback (stale closure) can always read the
   // latest anchor positions even though they arrive asynchronously via onRendered.
@@ -154,6 +155,7 @@ export function RhythmPlayback({
     setPlayingIndex(null)
     setCountInBeat(null)
     setPhase('count-in')
+    setShowCountingArea(withCounting)
     // Park the playhead at the start of the measure (downbeat) — the first event's
     // x whether it's a note or a rest — so the orange line always begins at count one.
     setPlayheadX(staffFirstEventXRef.current ?? staffAnchorsRef.current[0]?.x ?? 0)
@@ -274,13 +276,16 @@ export function RhythmPlayback({
         />
       </div>
 
-      {countingBeats.length > 0 && (
+      {showCountingArea && (
         <p className="playback-count-label">
-          {countingBeats.map((beat, i) => (
-            <span key={i} style={{ color: beat.hasNote ? '#f97316' : 'var(--muted)' }}>
-              {i > 0 ? ' ' : ''}{beat.label}
-            </span>
-          ))}
+          {countingBeats.length === 0
+            ? <span className="rp-count-placeholder">counting will appear here</span>
+            : countingBeats.map((beat, i) => (
+                <span key={i} style={{ color: beat.hasNote ? '#f97316' : 'var(--muted)' }}>
+                  {i > 0 ? ' ' : ''}{beat.label}
+                </span>
+              ))
+          }
         </p>
       )}
 

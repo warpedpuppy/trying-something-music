@@ -1047,6 +1047,14 @@
   user-select: none;
 }
 
+.rp-count-placeholder {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-style: italic;
+  font-family: inherit;
+  letter-spacing: normal;
+}
+
 .counting-replay-note {
   margin: 4px 0 0;
   font-size: 0.78rem;

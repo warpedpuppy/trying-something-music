@@ -714,6 +714,9 @@ export function GameOverScreen({ mistakenMeasures, onReviewMeasure, onReturnToSt
 
   return (
     <div className="pa-gameover-review">
+      <button type="button" className="btn-primary pa-cta" onClick={onReturnToStart}>
+        Return to start page
+      </button>
       <p className="pa-mistakes-header">Click each measure to see its rhythm</p>
       <div className="pa-mistakes-list">
         {mistakenMeasures.map((measure, i) => (
