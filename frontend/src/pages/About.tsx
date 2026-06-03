@@ -7,7 +7,7 @@ export function About() {
     <div>
       {/* Hero banner with music-note animation */}
       <section className="about-hero">
-        <VexflowScrollingStaff />
+        <VexflowScrollingStaff silent />
         <div className="about-hero-text">
           <p className="about-tagline">Learn the basics of music.<br />Rewire your brain.</p>
         </div>

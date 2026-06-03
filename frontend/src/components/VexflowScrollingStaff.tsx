@@ -64,7 +64,7 @@ function playClick() {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function VexflowScrollingStaff() {
+export function VexflowScrollingStaff({ silent = false }: { silent?: boolean }) {
   const viewportRef  = useRef<HTMLDivElement>(null)
   const trackRef     = useRef<HTMLDivElement>(null)
   const rafRef       = useRef(0)
@@ -126,7 +126,7 @@ export function VexflowScrollingStaff() {
             firedRef.current.add(key)
             const rect = viewportRef.current?.getBoundingClientRect()
             if (rect) {
-              playClick()
+              if (!silent) playClick()
               triggerRainbowBurst(rect.left + cursorX, rect.top + rect.height / 2)
             }
           }
