@@ -12,15 +12,6 @@ export function Home() {
         <VexflowScrollingStaff />
       </section>
 
-      <div className="home-tap-wrap">
-        <Link
-          to={user ? '/rhythm/dashboard' : '/rhythm/learn'}
-          className="home-cta-btn"
-        >
-          Start reading music today
-        </Link>
-      </div>
-
       {/* Section chooser */}
       <section className="section-chooser">
 

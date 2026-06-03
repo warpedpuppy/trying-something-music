@@ -2258,8 +2258,13 @@ a.theory-card:hover {
   margin: -8px -24px 32px;
   overflow: hidden;
   border-radius: var(--radius-lg);
-  background: var(--card);
-  border: 1px solid rgba(229,231,235,0.5);
+  background: transparent;
+  border: none;
+}
+
+/* Fade the scrolling staff on the About hero to 50% so the tagline reads clearly */
+.about-hero .vss-viewport {
+  opacity: 0.5;
 }
 
 .about-hero-text {
@@ -2273,7 +2278,7 @@ a.theory-card:hover {
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1.25;
-  color: var(--ink);
+  color: var(--accent);
   margin: 0;
 }
 
