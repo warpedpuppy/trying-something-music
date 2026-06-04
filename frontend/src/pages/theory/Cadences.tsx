@@ -176,7 +176,7 @@ function CadencesQuiz() {
       setStreak(0)
     }
     if (timerRef.current) clearTimeout(timerRef.current)
-    timerRef.current = window.setTimeout(() => advance(question.id), correct ? 650 : 1400)
+    if (correct) timerRef.current = window.setTimeout(() => advance(question.id), 650)
   }
 
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
@@ -237,11 +237,25 @@ function CadencesQuiz() {
             <button key={choice} type="button" className={cls}
               onClick={() => handleAnswer(choice)} disabled={selected !== null}
               style={selected === null ? { borderLeftColor: TYPE_COLOR[choice], borderLeftWidth: 3 } : {}}>
-              {choice}
+              {cls.split(' ').includes('nq-reveal') ? (
+                <>
+                  <span className="nq-reveal-top">correct answer</span>
+                  <span className="nq-reveal-val">{choice}</span>
+                </>
+              ) : choice}
             </button>
           )
         })}
       </div>
+      {selected !== null && selected !== question.type && (
+        <button
+          type="button"
+          className="nq-next-btn"
+          onClick={() => { if (timerRef.current) clearTimeout(timerRef.current); advance(question.id) }}
+        >
+          Next →
+        </button>
+      )}
 
       <p className="nq-hint">
         V→I Authentic · IV→I Plagal · ends on V = Half · V→vi Deceptive

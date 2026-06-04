@@ -1,16 +1,17 @@
 /**
  * Key Signatures — theory topic page.
  *
- * Learn  — what a key signature is, sharp/flat orders, identification shortcuts
- * Practice — bidirectional quiz: key ↔ signature
+ * Learn    — what a key signature is, sharp/flat orders, identification shortcuts
+ * Practice — visual quiz: identify key from a rendered key signature
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Renderer, Stave } from 'vexflow'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
-import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
 import { usePageTitle } from '../../hooks/usePageTitle'
+import { KeySignaturesOverview } from './KeySignaturesOverview'
 
-// ── Data ──────────────────────────────────────────────────────────────────────
+// ── Learn data ────────────────────────────────────────────────────────────────
 
 const SHARP_ORDER = ['F♯','C♯','G♯','D♯','A♯','E♯','B♯']
 const FLAT_ORDER  = ['B♭','E♭','A♭','D♭','G♭','C♭','F♭']
@@ -38,6 +39,82 @@ const KEY_SIGS: KeySig[] = [
   { key: 'G♭', sf: -6, sfLabel: '6♭', accidentals: FLAT_ORDER.slice(0, 6) },
 ]
 
+// ── Quiz data ─────────────────────────────────────────────────────────────────
+
+interface KeyQuizEntry {
+  vfKey: string    // VexFlow addKeySignature() string
+  sf: number
+  major: string    // major key display name, e.g. 'G', 'B♭'
+  minor: string    // relative minor display name, e.g. 'E', 'G'
+}
+
+const KEY_QUIZ: KeyQuizEntry[] = [
+  { vfKey: 'C',  sf:  0, major: 'C',  minor: 'A'  },
+  { vfKey: 'G',  sf:  1, major: 'G',  minor: 'E'  },
+  { vfKey: 'D',  sf:  2, major: 'D',  minor: 'B'  },
+  { vfKey: 'A',  sf:  3, major: 'A',  minor: 'F♯' },
+  { vfKey: 'E',  sf:  4, major: 'E',  minor: 'C♯' },
+  { vfKey: 'B',  sf:  5, major: 'B',  minor: 'G♯' },
+  { vfKey: 'F#', sf:  6, major: 'F♯', minor: 'D♯' },
+  { vfKey: 'F',  sf: -1, major: 'F',  minor: 'D'  },
+  { vfKey: 'Bb', sf: -2, major: 'B♭', minor: 'G'  },
+  { vfKey: 'Eb', sf: -3, major: 'E♭', minor: 'C'  },
+  { vfKey: 'Ab', sf: -4, major: 'A♭', minor: 'F'  },
+  { vfKey: 'Db', sf: -5, major: 'D♭', minor: 'B♭' },
+  { vfKey: 'Gb', sf: -6, major: 'G♭', minor: 'E♭' },
+]
+
+// ── Quiz helpers ──────────────────────────────────────────────────────────────
+
+type KSAsk  = 'major' | 'minor'
+type KSMode = 'major' | 'minor' | 'both'
+
+interface KSQuestion {
+  entry:   KeyQuizEntry
+  asking:  KSAsk
+  answer:  string
+  choices: string[]
+}
+
+function ksPickQ(mode: KSMode, excludeVfKey?: string): KSQuestion {
+  const pool = excludeVfKey
+    ? KEY_QUIZ.filter(k => k.vfKey !== excludeVfKey)
+    : KEY_QUIZ
+  const entry  = pool[Math.floor(Math.random() * pool.length)]
+  const asking: KSAsk =
+    mode === 'both' ? (Math.random() > 0.5 ? 'major' : 'minor') : mode
+  const answer = asking === 'major' ? entry.major : entry.minor
+  const allNames = KEY_QUIZ.map(k => asking === 'major' ? k.major : k.minor)
+  const wrong = [...new Set(allNames.filter(n => n !== answer))]
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 3)
+  const choices = [...wrong, answer].sort(() => Math.random() - 0.5)
+  return { entry, asking, answer, choices }
+}
+
+// ── VexFlow key sig renderer (quiz only — compact, no note) ───────────────────
+
+function renderQuizKeySig(container: HTMLDivElement, vfKey: string): void {
+  container.innerHTML = ''
+  // STAVE_Y=38 leaves 38 px above the top staff line for the treble-clef curl.
+  // H=115 leaves 37 px below the bottom staff line (y=78) for the clef tail.
+  const W = 200, H = 115, STAVE_Y = 38
+  const renderer = new Renderer(container, Renderer.Backends.SVG)
+  renderer.resize(W, H)
+  const ctx = renderer.getContext()
+  const svgEl = container.querySelector('svg')
+  if (svgEl) {
+    svgEl.setAttribute('viewBox', `0 0 ${W} ${H}`)
+    svgEl.style.width    = '100%'
+    svgEl.style.height   = 'auto'
+    svgEl.style.display  = 'block'
+    svgEl.style.overflow = 'visible'
+  }
+  const stave = new Stave(8, STAVE_Y, W - 16)
+  stave.addClef('treble').addKeySignature(vfKey)
+  stave.setContext(ctx).draw()
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // LEARN CONTENT
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -51,7 +128,8 @@ function KeySigsLearnContent() {
         <p>
           A <strong>key signature</strong> appears at the start of every staff line, right
           after the clef. It lists the notes that are permanently sharp or flat throughout the
-          piece, so the composer doesn't need to write accidentals on every individual note.
+          piece, so the composer doesn't need to write accidentals (the ♯, ♭, and ♮ signs
+          that raise, lower, or restore individual notes) on every single note.
         </p>
         <p>
           Two sharps (F♯ and C♯) at the start of every line means every F and C in the
@@ -134,59 +212,43 @@ function KeySigsLearnContent() {
 // QUIZ
 // ═══════════════════════════════════════════════════════════════════════════════
 
-type KSMode = 'key-to-sig' | 'sig-to-key'
-
-function ksPickQuestion(exclude?: string): KeySig {
-  const pool = exclude ? KEY_SIGS.filter(k => k.key !== exclude) : KEY_SIGS
-  return pool[Math.floor(Math.random() * pool.length)]
-}
-
-function ksPickChoices(mode: KSMode, correct: KeySig): string[] {
-  const answer = mode === 'key-to-sig' ? correct.sfLabel : correct.key
-  const others = KEY_SIGS
-    .map(k => (mode === 'key-to-sig' ? k.sfLabel : k.key))
-    .filter(v => v !== answer)
-    .filter((v, i, a) => a.indexOf(v) === i)
-    .sort(() => Math.random() - 0.5)
-    .slice(0, 3)
-  return [...others, answer].sort(() => Math.random() - 0.5)
-}
-
 function KeySigsQuiz() {
-  const [mode, setMode]         = useState<KSMode>('key-to-sig')
-  const [question, setQuestion] = useState<KeySig>(() => ksPickQuestion())
-  const [choices, setChoices]   = useState<string[]>(() => ksPickChoices('key-to-sig', question))
+  const [mode, setMode]         = useState<KSMode>('major')
+  const [question, setQuestion] = useState<KSQuestion>(() => ksPickQ('major'))
   const [selected, setSelected] = useState<string | null>(null)
   const [score, setScore]       = useState(0)
   const [total, setTotal]       = useState(0)
   const [streak, setStreak]     = useState(0)
   const [best, setBest]         = useState(0)
-  const timerRef  = useRef<number | null>(null)
-  const modeRef   = useRef<KSMode>('key-to-sig')
-  modeRef.current = mode
+  const containerRef = useRef<HTMLDivElement>(null)
+  const timerRef     = useRef<number | null>(null)
+  const modeRef      = useRef<KSMode>('major')
+  modeRef.current    = mode
+
+  // Render key signature whenever question changes
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    try { renderQuizKeySig(el, question.entry.vfKey) } catch { /* ignore */ }
+  }, [question])
 
   const switchMode = useCallback((m: KSMode) => {
     if (timerRef.current) clearTimeout(timerRef.current)
-    const q = ksPickQuestion()
     modeRef.current = m
     setMode(m)
-    setQuestion(q)
-    setChoices(ksPickChoices(m, q))
+    setQuestion(ksPickQ(m))
     setSelected(null)
     setScore(0); setTotal(0); setStreak(0); setBest(0)
   }, [])
 
-  function advance(fromKey: string) {
-    const q = ksPickQuestion(fromKey)
-    setQuestion(q)
-    setChoices(ksPickChoices(modeRef.current, q))
+  function advance(fromVfKey: string) {
+    setQuestion(ksPickQ(modeRef.current, fromVfKey))
     setSelected(null)
   }
 
   function handleAnswer(choice: string) {
     if (selected !== null) return
-    const answer = modeRef.current === 'key-to-sig' ? question.sfLabel : question.key
-    const correct = choice === answer
+    const correct = choice === question.answer
     setSelected(choice)
     setTotal(t => t + 1)
     if (correct) {
@@ -196,24 +258,34 @@ function KeySigsQuiz() {
       setStreak(0)
     }
     if (timerRef.current) clearTimeout(timerRef.current)
-    timerRef.current = window.setTimeout(() => advance(question.key), correct ? 650 : 1200)
+    if (correct) timerRef.current = window.setTimeout(() => advance(question.entry.vfKey), 650)
   }
 
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
 
-  const answer   = mode === 'key-to-sig' ? question.sfLabel : question.key
   const accuracy = total > 0 ? Math.round((score / total) * 100) : null
+  const sfCount  = Math.abs(question.entry.sf)
+  const sfText   =
+    question.entry.sf === 0 ? 'no accidentals'
+    : question.entry.sf > 0 ? `${sfCount} sharp${sfCount !== 1 ? 's' : ''}`
+    :                          `${sfCount} flat${sfCount !== 1 ? 's' : ''}`
 
   return (
     <div className="nq-root">
 
+      {/* Mode buttons */}
       <div className="nq-mode-row">
-        <button type="button" className={`nq-mode-btn${mode === 'key-to-sig' ? ' active' : ''}`}
-          onClick={() => switchMode('key-to-sig')}>Key → Signature</button>
-        <button type="button" className={`nq-mode-btn${mode === 'sig-to-key' ? ' active' : ''}`}
-          onClick={() => switchMode('sig-to-key')}>Signature → Key</button>
+        {(['major', 'minor', 'both'] as KSMode[]).map(m => (
+          <button key={m} type="button"
+            className={`nq-mode-btn${mode === m ? ' active' : ''}`}
+            onClick={() => switchMode(m)}
+          >
+            {m === 'major' ? 'Major' : m === 'minor' ? 'Minor' : 'Both'}
+          </button>
+        ))}
       </div>
 
+      {/* Score strip */}
       <div className="nq-score-row">
         <div className="nq-stat">
           <span className="nq-stat-value">{score}<span className="nq-stat-denom">/{total}</span></span>
@@ -231,31 +303,27 @@ function KeySigsQuiz() {
         </div>
       </div>
 
-      {/* Question card */}
-      <div className={`theory-q-card${selected !== null ? (selected === answer ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
-        {mode === 'key-to-sig' ? (
-          <>
-            <div className="theory-q-main">{question.key} major</div>
-            <div className="theory-q-sub">How many sharps or flats?</div>
-          </>
-        ) : (
-          <>
-            <div className="theory-q-main" style={{ fontSize: '3rem' }}>
-              {question.sfLabel === '—' ? '♮' : question.sfLabel}
-            </div>
-            <div className="theory-q-sub">
-              {question.sf === 0 ? 'No sharps or flats' :
-               question.sf > 0 ? `${question.sf} sharp${question.sf > 1 ? 's' : ''}` :
-                                 `${-question.sf} flat${-question.sf > 1 ? 's' : ''}`}
-              {' — which major key?'}
-            </div>
-          </>
-        )}
+      {/* Key signature display */}
+      <div className="nq-staff-wrap">
+        <div
+          ref={containerRef}
+          className={`nq-staff-svg${selected !== null
+            ? (selected === question.answer ? ' nq-staff-correct' : ' nq-staff-wrong')
+            : ''}`}
+          style={{ maxWidth: '150px', overflow: 'visible' }}
+        />
+        <p className="nq-clef-label">{sfText}</p>
       </div>
 
+      {/* Prompt */}
+      <p className="nq-question">
+        Which {question.asking} key has this key signature?
+      </p>
+
+      {/* Answer buttons */}
       <div className="nq-choices">
-        {choices.map(choice => {
-          const isCorrect  = choice === answer
+        {question.choices.map(choice => {
+          const isCorrect  = choice === question.answer
           const isSelected = choice === selected
           let cls = 'nq-choice'
           if (selected !== null) {
@@ -265,16 +333,29 @@ function KeySigsQuiz() {
           }
           return (
             <button key={choice} type="button" className={cls}
-              onClick={() => handleAnswer(choice)} disabled={selected !== null}>
-              {choice}
+              onClick={() => handleAnswer(choice)} disabled={selected !== null}
+            >
+              {cls.split(' ').includes('nq-reveal') ? (
+                <>
+                  <span className="nq-reveal-top">correct answer</span>
+                  <span className="nq-reveal-val">{choice}</span>
+                </>
+              ) : choice}
             </button>
           )
         })}
       </div>
+      {selected !== null && selected !== question.answer && (
+        <button
+          type="button"
+          className="nq-next-btn"
+          onClick={() => { if (timerRef.current) clearTimeout(timerRef.current); advance(question.entry.vfKey) }}
+        >
+          Next →
+        </button>
+      )}
 
-      <p className="nq-hint">
-        Sharps: F C G D A E B  ·  Flats: B E A D G C F
-      </p>
+      <p className="nq-hint">Sharps: F C G D A E B  ·  Flats: B E A D G C F</p>
 
     </div>
   )
@@ -295,13 +376,7 @@ export function KeySignatures() {
         </p>
       </div>
       <TheoryTopicLayout
-        overviewContent={<TheoryOverviewCard
-          icon="🔑"
-          title="Key Signatures"
-          description="A key signature is a group of sharps or flats at the beginning of a staff that tells you which scale the piece is written in — so you don't have to write accidentals on every note."
-          keyFact="The Circle of Fifths shows all 15 key signatures in order: each step clockwise adds one sharp; each step counter-clockwise adds one flat."
-          color="hsl(35, 80%, 45%)"
-        />}
+        overviewContent={<KeySignaturesOverview />}
         learnContent={<KeySigsLearnContent />}
         gamesContent={<KeySigsQuiz />}
         topicName="key signatures"

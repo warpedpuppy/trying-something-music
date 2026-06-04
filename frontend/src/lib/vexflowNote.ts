@@ -15,10 +15,9 @@ export function renderSingleNote(
 ): void {
   container.innerHTML = ''
 
-  // Bass clef notes can extend further below the staff (e.g. G2, F2 ledger lines),
-  // so give a little extra height and push the stave down to make room.
-  const staveY  = clef === 'bass' ? 42 : 32
-  const height  = staveY + 100
+  // Fixed dimensions for both clefs so the container height never shifts on switch.
+  const staveY  = 42
+  const height  = 142
 
   const renderer = new Renderer(container, Renderer.Backends.SVG)
   renderer.resize(width, height)

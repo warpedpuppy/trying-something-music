@@ -256,7 +256,7 @@ function Quiz() {
     if (correct) { setScore(s => s + 1); setStreak(s => { const n = s + 1; setBest(b => Math.max(b, n)); return n }) }
     else setStreak(0)
     if (timerRef.current) clearTimeout(timerRef.current)
-    timerRef.current = window.setTimeout(() => advance(question.ext.symbol), correct ? 650 : 1500)
+    if (correct) timerRef.current = window.setTimeout(() => advance(question.ext.symbol), 650)
   }
 
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
@@ -282,9 +282,25 @@ function Quiz() {
           const isCorrect = choice === answer; const isSelected = choice === selected
           let cls = 'nq-choice'
           if (selected !== null) { if (isSelected && isCorrect) cls += ' nq-correct'; else if (isSelected) cls += ' nq-wrong'; else if (isCorrect) cls += ' nq-reveal' }
-          return <button key={choice} type="button" className={cls} onClick={() => handleAnswer(choice)} disabled={selected !== null}>{choice}</button>
+          return <button key={choice} type="button" className={cls} onClick={() => handleAnswer(choice)} disabled={selected !== null}>
+            {cls.split(' ').includes('nq-reveal') ? (
+              <>
+                <span className="nq-reveal-top">correct answer</span>
+                <span className="nq-reveal-val">{choice}</span>
+              </>
+            ) : choice}
+          </button>
         })}
       </div>
+      {selected !== null && selected !== answer && (
+        <button
+          type="button"
+          className="nq-next-btn"
+          onClick={() => { if (timerRef.current) clearTimeout(timerRef.current); advance(question.ext.symbol) }}
+        >
+          Next →
+        </button>
+      )}
       <p className="nq-hint">7 = dom 7th · maj7 = major 7th · m7 = minor 7th · 9 adds 9th · ♭9/♯9/♯11 = alterations</p>
     </div>
   )

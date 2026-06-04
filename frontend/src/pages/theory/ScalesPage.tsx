@@ -218,7 +218,7 @@ function ScalesQuiz() {
       setStreak(0)
     }
     if (timerRef.current) clearTimeout(timerRef.current)
-    timerRef.current = window.setTimeout(() => advance(question.key), correct ? 650 : 1200)
+    if (correct) timerRef.current = window.setTimeout(() => advance(question.key), 650)
   }
 
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
@@ -296,11 +296,25 @@ function ScalesQuiz() {
           return (
             <button key={choice} type="button" className={cls}
               onClick={() => handleAnswer(choice)} disabled={selected !== null}>
-              {mode === 'note-to-degree' ? DEGREE_NAMES[Number(choice) - 1] ?? choice : choice}
+              {cls.split(' ').includes('nq-reveal') ? (
+                <>
+                  <span className="nq-reveal-top">correct answer</span>
+                  <span className="nq-reveal-val">{mode === 'note-to-degree' ? DEGREE_NAMES[Number(choice) - 1] ?? choice : choice}</span>
+                </>
+              ) : (mode === 'note-to-degree' ? DEGREE_NAMES[Number(choice) - 1] ?? choice : choice)}
             </button>
           )
         })}
       </div>
+      {selected !== null && selected !== answer && (
+        <button
+          type="button"
+          className="nq-next-btn"
+          onClick={() => { if (timerRef.current) clearTimeout(timerRef.current); advance(question.key) }}
+        >
+          Next →
+        </button>
+      )}
 
       <p className="nq-hint">Pattern: W – W – H – W – W – W – H</p>
 

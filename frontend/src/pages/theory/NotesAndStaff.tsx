@@ -305,7 +305,7 @@ function NotesQuiz() {
       setStreak(0)
     }
     if (advanceTimer.current) clearTimeout(advanceTimer.current)
-    advanceTimer.current = window.setTimeout(() => advance(currentNote), correct ? 650 : 1100)
+    if (correct) advanceTimer.current = window.setTimeout(() => advance(currentNote), 650)
   }
 
   useEffect(() => () => { if (advanceTimer.current) clearTimeout(advanceTimer.current) }, [])
@@ -374,11 +374,25 @@ function NotesQuiz() {
             <button key={name} type="button" className={cls}
               onClick={() => handleAnswer(name)} disabled={selected !== null}
             >
-              {name}
+              {cls.split(' ').includes('nq-reveal') ? (
+                <>
+                  <span className="nq-reveal-top">correct answer</span>
+                  <span className="nq-reveal-val">{name}</span>
+                </>
+              ) : name}
             </button>
           )
         })}
       </div>
+      {selected !== null && selected !== currentNote.name && (
+        <button
+          type="button"
+          className="nq-next-btn"
+          onClick={() => { if (advanceTimer.current) clearTimeout(advanceTimer.current); advance(currentNote) }}
+        >
+          Next →
+        </button>
+      )}
 
       {/* Mnemonic hint */}
       <p className="nq-hint">{mode.hint}</p>

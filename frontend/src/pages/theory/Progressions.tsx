@@ -215,7 +215,7 @@ function ProgressionsQuiz() {
       setStreak(0)
     }
     if (timerRef.current) clearTimeout(timerRef.current)
-    timerRef.current = window.setTimeout(() => advance(question.id), correct ? 700 : 1400)
+    if (correct) timerRef.current = window.setTimeout(() => advance(question.id), 700)
   }
 
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
@@ -281,11 +281,25 @@ function ProgressionsQuiz() {
             <button key={choice} type="button" className={cls}
               style={{ fontFamily: 'Georgia, serif', fontWeight: 700 }}
               onClick={() => handleAnswer(choice)} disabled={selected !== null}>
-              {choice}
+              {cls.split(' ').includes('nq-reveal') ? (
+                <>
+                  <span className="nq-reveal-top">correct answer</span>
+                  <span className="nq-reveal-val">{choice}</span>
+                </>
+              ) : choice}
             </button>
           )
         })}
       </div>
+      {selected !== null && selected !== answer && (
+        <button
+          type="button"
+          className="nq-next-btn"
+          onClick={() => { if (timerRef.current) clearTimeout(timerRef.current); advance(question.id) }}
+        >
+          Next →
+        </button>
+      )}
 
       <p className="nq-hint">
         I = tonic · IV = subdominant · V = dominant · vi = relative minor

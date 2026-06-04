@@ -3856,6 +3856,7 @@ a.theory-card:hover {
   align-items: center;
   gap: 6px;
   width: 100%;
+  overflow: visible;
 }
 
 .nq-staff-svg {
@@ -3943,11 +3944,41 @@ a.theory-card:hover {
   box-shadow: 0 4px 16px rgba(220,38,38,0.3) !important;
 }
 
-/* Correct answer highlighted when user chose the wrong one */
+/* Correct answer revealed after a wrong pick — amber glow, no green */
 .nq-reveal {
-  background: rgba(5,150,105,0.10) !important;
-  border-color: #059669 !important;
-  color: #059669 !important;
+  background: rgba(249, 115, 22, 0.07) !important;
+  border-color: hsl(35, 90%, 52%) !important;
+  color: hsl(25, 80%, 32%) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 1px;
+  height: auto !important;
+  min-height: 68px !important;
+  padding: 6px 8px !important;
+  animation: nq-reveal-glow 1.5s ease-in-out infinite;
+}
+
+@keyframes nq-reveal-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(249,115,22,0.0), 0 2px 8px rgba(249,115,22,0.12); }
+  50%       { box-shadow: 0 0 0 5px rgba(249,115,22,0.18), 0 4px 20px rgba(249,115,22,0.30); }
+}
+
+/* Labels inside the glowing reveal button */
+.nq-reveal-top {
+  font-size: 0.48em;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.75;
+  line-height: 1.3;
+}
+
+.nq-reveal-val {
+  font-size: 1em;
+  font-weight: 800;
+  line-height: 1.2;
 }
 
 /* Mnemonic hint */
@@ -4775,6 +4806,121 @@ a.theory-card:hover {
   width: 100%;
   box-sizing: border-box;
 }
+
+/* ══ Key Signatures overview animation ══════════════════════════════════════ */
+
+.ks-overview {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 1rem 0 0.5rem;
+}
+
+.ks-overview-key {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--ink, #1e293b);
+  margin: 0;
+  animation: ks-fade-in 0.4s ease;
+}
+
+.ks-overview-sf {
+  font-size: 0.85rem;
+  color: var(--muted, #64748b);
+  margin: 0 0 0.4rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Half-size staff container — never clips the treble-clef glyph */
+.ks-staff-wrap {
+  position: relative;
+  width: 50%;
+  max-width: 200px;
+  overflow: visible;
+}
+
+.ks-staff-fadein {
+  width: 100%;
+  overflow: visible;
+  animation: ks-fade-in 0.4s ease;
+}
+
+.ks-staff-fadein svg {
+  overflow: visible !important;
+}
+
+.ks-arrow-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+@keyframes ks-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Progress dots */
+.ks-dots {
+  display: flex;
+  gap: 5px;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.ks-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--border, #cbd5e1);
+  transition: background 0.3s ease;
+}
+
+.ks-dot.active {
+  background: hsl(35, 80%, 45%);
+}
+
+/* Summary text beneath the staff */
+.ks-description {
+  max-width: 420px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.ks-description p {
+  font-size: 0.92rem;
+  color: var(--text, #334155);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Next button — shown on wrong answers so user must acknowledge before advancing */
+.nq-next-btn {
+  margin-top: 0.75rem;
+  padding: 0.55rem 1.6rem;
+  border-radius: var(--radius, 8px);
+  border: none;
+  background: var(--accent, #f97316);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+.nq-next-btn:hover { opacity: 0.85; }
 
 /* ── Game Over screen ─────────────────────────────────────────────────────── */
 

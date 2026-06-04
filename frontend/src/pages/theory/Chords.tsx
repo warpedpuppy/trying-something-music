@@ -232,10 +232,7 @@ function ChordsQuiz() {
       setStreak(0)
     }
     if (timerRef.current) clearTimeout(timerRef.current)
-    timerRef.current = window.setTimeout(
-      () => advance(`${question.root}${question.quality}`),
-      correct ? 650 : 1200,
-    )
+    if (correct) timerRef.current = window.setTimeout(() => advance(`${question.root}${question.quality}`), 650)
   }
 
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
@@ -309,11 +306,25 @@ function ChordsQuiz() {
           return (
             <button key={choice} type="button" className={cls}
               onClick={() => handleAnswer(choice)} disabled={selected !== null}>
-              {choice}
+              {cls.split(' ').includes('nq-reveal') ? (
+                <>
+                  <span className="nq-reveal-top">correct answer</span>
+                  <span className="nq-reveal-val">{choice}</span>
+                </>
+              ) : choice}
             </button>
           )
         })}
       </div>
+      {selected !== null && selected !== answer && (
+        <button
+          type="button"
+          className="nq-next-btn"
+          onClick={() => { if (timerRef.current) clearTimeout(timerRef.current); advance(`${question.root}${question.quality}`) }}
+        >
+          Next →
+        </button>
+      )}
 
       <p className="nq-hint">
         Major: M3+m3 · Minor: m3+M3 · Dim: m3+m3 · Aug: M3+M3

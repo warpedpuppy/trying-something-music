@@ -256,8 +256,8 @@ function Quiz() {
         setPivotChoices(makePivotChoices(pivotQ, 'to'))
         setSelected(null)
       }, 650)
-    } else {
-      timerRef.current = window.setTimeout(advance, correct ? 650 : 1400)
+    } else if (correct) {
+      timerRef.current = window.setTimeout(advance, 650)
     }
   }
 
@@ -307,9 +307,25 @@ function Quiz() {
           const isCorrect = choice === answer; const isSelected = choice === selected
           let cls = 'nq-choice'
           if (selected !== null) { if (isSelected && isCorrect) cls += ' nq-correct'; else if (isSelected) cls += ' nq-wrong'; else if (isCorrect) cls += ' nq-reveal' }
-          return <button key={choice} type="button" className={cls} style={{ fontFamily: 'Georgia, serif' }} onClick={() => handleAnswer(choice)} disabled={selected !== null}>{choice}</button>
+          return <button key={choice} type="button" className={cls} style={{ fontFamily: 'Georgia, serif' }} onClick={() => handleAnswer(choice)} disabled={selected !== null}>
+            {cls.split(' ').includes('nq-reveal') ? (
+              <>
+                <span className="nq-reveal-top">correct answer</span>
+                <span className="nq-reveal-val">{choice}</span>
+              </>
+            ) : choice}
+          </button>
         })}
       </div>
+      {selected !== null && selected !== answer && (
+        <button
+          type="button"
+          className="nq-next-btn"
+          onClick={() => { if (timerRef.current) clearTimeout(timerRef.current); advance() }}
+        >
+          Next →
+        </button>
+      )}
       <p className="nq-hint">Pivot = same chord, two functions · Confirmed by V–I in new key</p>
     </div>
   )

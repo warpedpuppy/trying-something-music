@@ -35,9 +35,8 @@ const INTERVALS: Interval[] = [
   { semitones: 12, name: 'Octave',      abbrev: 'P8',  quality: 'perfect' },
 ]
 
-// Beginner pool — exclude tritone until "all intervals" mode
-const BEGINNER_POOL  = INTERVALS.filter(i => i.semitones !== 6)
-const FULL_POOL      = INTERVALS
+// Exclude tritone from the practice pool — too ambiguous for beginners
+const BEGINNER_POOL = INTERVALS.filter(i => i.semitones !== 6)
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // LEARN CONTENT
@@ -141,7 +140,7 @@ function IntervalsLearnContent() {
 // QUIZ
 // ═══════════════════════════════════════════════════════════════════════════════
 
-type IVMode = 'count-to-name' | 'name-to-count' | 'listen-to-name' | 'sing-along'
+type IVMode = 'listen-to-name' | 'sing-along'
 
 interface IVModeConfig {
   id: IVMode
@@ -151,18 +150,6 @@ interface IVModeConfig {
 }
 
 const IV_MODES: IVModeConfig[] = [
-  {
-    id: 'count-to-name',
-    label: 'Count→Name',
-    pool: BEGINNER_POOL,
-    hint: 'Minor/Major = 2nds, 3rds, 6ths, 7ths  ·  Perfect = 4ths, 5ths, Octave',
-  },
-  {
-    id: 'name-to-count',
-    label: 'Name→Count',
-    pool: FULL_POOL,
-    hint: 'Count half-steps: W = 2, 3rd = 3–4, 4th = 5, 5th = 7, Octave = 12',
-  },
   {
     id: 'listen-to-name',
     label: 'Listen→Name',
@@ -184,24 +171,14 @@ function ivPickQuestion(pool: Interval[], excludeSemitones?: number): Interval {
   return candidates[Math.floor(Math.random() * candidates.length)]
 }
 
-function ivPickChoices(mode: IVMode, correct: Interval, pool: Interval[]): string[] {
-  if (mode === 'count-to-name' || mode === 'listen-to-name' || mode === 'sing-along') {
-    const answer = correct.name
-    const others = pool
-      .filter(i => i.name !== answer)
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 3)
-      .map(i => i.name)
-    return [...others, answer].sort(() => Math.random() - 0.5)
-  } else {
-    const answer = String(correct.semitones)
-    const others = pool
-      .filter(i => i.semitones !== correct.semitones)
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 3)
-      .map(i => String(i.semitones))
-    return [...others, answer].sort(() => Math.random() - 0.5)
-  }
+function ivPickChoices(correct: Interval, pool: Interval[]): string[] {
+  const answer = correct.name
+  const others = pool
+    .filter(i => i.name !== answer)
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 3)
+    .map(i => i.name)
+  return [...others, answer].sort(() => Math.random() - 0.5)
 }
 
 // ── Sing Along sub-component ──────────────────────────────────────────────────
@@ -276,20 +253,20 @@ function IntervalSingAlong({ question, onAdvance }: IntervalSingAlongProps) {
 // ── Main quiz component ───────────────────────────────────────────────────────
 
 function IntervalsQuiz() {
-  const [modeId, setModeId]     = useState<IVMode>('count-to-name')
+  const [modeId, setModeId]     = useState<IVMode>('listen-to-name')
   const modeConfig              = IV_MODES.find(m => m.id === modeId)!
   const [question, setQuestion] = useState<Interval>(() => ivPickQuestion(modeConfig.pool))
-  const [choices, setChoices]   = useState<string[]>(() => ivPickChoices(modeId, question, modeConfig.pool))
+  const [choices, setChoices]   = useState<string[]>(() => ivPickChoices(question, modeConfig.pool))
   const [selected, setSelected] = useState<string | null>(null)
   const [score, setScore]       = useState(0)
   const [total, setTotal]       = useState(0)
   const [streak, setStreak]     = useState(0)
   const [best, setBest]         = useState(0)
-  const timerRef   = useRef<number | null>(null)
-  const modeIdRef  = useRef<IVMode>('count-to-name')
+  const timerRef    = useRef<number | null>(null)
+  const modeIdRef   = useRef<IVMode>('listen-to-name')
   modeIdRef.current = modeId
 
-  // Auto-play interval when in listen-to-name mode and question changes
+  // Auto-play when in listen-to-name mode and question changes
   useEffect(() => {
     if (modeId !== 'listen-to-name') return
     const t = window.setTimeout(() => {
@@ -305,24 +282,22 @@ function IntervalsQuiz() {
     const q = ivPickQuestion(cfg.pool)
     setModeId(m)
     setQuestion(q)
-    setChoices(ivPickChoices(m, q, cfg.pool))
+    setChoices(ivPickChoices(q, cfg.pool))
     setSelected(null)
     setScore(0); setTotal(0); setStreak(0); setBest(0)
   }, [])
 
   function advance(fromSemitones: number) {
-    const m = modeIdRef.current
-    const cfg = IV_MODES.find(x => x.id === m)!
+    const cfg = IV_MODES.find(x => x.id === modeIdRef.current)!
     const q = ivPickQuestion(cfg.pool, fromSemitones)
     setQuestion(q)
-    setChoices(ivPickChoices(m, q, cfg.pool))
+    setChoices(ivPickChoices(q, cfg.pool))
     setSelected(null)
   }
 
   function handleAnswer(choice: string) {
     if (selected !== null) return
-    const answer = modeId === 'name-to-count' ? String(question.semitones) : question.name
-    const correct = choice === answer
+    const correct = choice === question.name
     setSelected(choice)
     setTotal(t => t + 1)
     if (correct) {
@@ -332,13 +307,12 @@ function IntervalsQuiz() {
       setStreak(0)
     }
     if (timerRef.current) clearTimeout(timerRef.current)
-    timerRef.current = window.setTimeout(() => advance(question.semitones), correct ? 650 : 1200)
+    if (correct) timerRef.current = window.setTimeout(() => advance(question.semitones), 650)
   }
 
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
 
-  const answer   = modeId === 'name-to-count' ? String(question.semitones) : question.name
-  const accuracy = total > 0 ? Math.round((score / total) * 100) : null
+  const accuracy    = total > 0 ? Math.round((score / total) * 100) : null
   const isSingAlong = modeId === 'sing-along'
 
   return (
@@ -377,41 +351,22 @@ function IntervalsQuiz() {
         <IntervalSingAlong question={question} onAdvance={advance} />
       ) : (
         <>
-          <div className={`theory-q-card${selected !== null ? (selected === answer ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
-            {modeId === 'count-to-name' ? (
-              <>
-                <div className="theory-q-main">
-                  {question.semitones}
-                  <span style={{ fontSize: '1.1rem', fontWeight: 600, marginLeft: 6 }}>
-                    {question.semitones === 1 ? 'semitone' : 'semitones'}
-                  </span>
-                </div>
-                <div className="theory-q-sub">What is this interval called?</div>
-              </>
-            ) : modeId === 'listen-to-name' ? (
-              <>
-                <div className="theory-q-main">🎵</div>
-                <div className="theory-q-sub">What interval did you hear?</div>
-                <button
-                  type="button"
-                  className="iv-play-btn"
-                  style={{ marginTop: '0.5rem' }}
-                  onClick={() => theoryAudio.playInterval(MIDI.C4, MIDI.C4 + question.semitones)}
-                >
-                  ▶ Play again
-                </button>
-              </>
-            ) : (
-              <>
-                <div className="theory-q-main">{question.name}</div>
-                <div className="theory-q-sub">How many semitones?</div>
-              </>
-            )}
+          <div className={`theory-q-card${selected !== null ? (selected === question.name ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
+            <div className="theory-q-main">🎵</div>
+            <div className="theory-q-sub">What interval did you hear?</div>
+            <button
+              type="button"
+              className="iv-play-btn"
+              style={{ marginTop: '0.5rem' }}
+              onClick={() => theoryAudio.playInterval(MIDI.C4, MIDI.C4 + question.semitones)}
+            >
+              ▶ Play again
+            </button>
           </div>
 
           <div className="nq-choices">
             {choices.map(choice => {
-              const isCorrect  = choice === answer
+              const isCorrect  = choice === question.name
               const isSelected = choice === selected
               let cls = 'nq-choice'
               if (selected !== null) {
@@ -422,11 +377,25 @@ function IntervalsQuiz() {
               return (
                 <button key={choice} type="button" className={cls}
                   onClick={() => handleAnswer(choice)} disabled={selected !== null}>
-                  {modeId === 'name-to-count' ? `${choice} semitone${choice === '1' ? '' : 's'}` : choice}
+                  {cls.split(' ').includes('nq-reveal') ? (
+                    <>
+                      <span className="nq-reveal-top">correct answer</span>
+                      <span className="nq-reveal-val">{choice}</span>
+                    </>
+                  ) : choice}
                 </button>
               )
             })}
           </div>
+          {selected !== null && selected !== question.name && (
+            <button
+              type="button"
+              className="nq-next-btn"
+              onClick={() => { if (timerRef.current) clearTimeout(timerRef.current); advance(question.semitones) }}
+            >
+              Next →
+            </button>
+          )}
 
           <p className="nq-hint">{modeConfig.hint}</p>
         </>
