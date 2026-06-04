@@ -5,9 +5,9 @@
  * Practice — fill-in-the-blank: identify the missing chord in a progression
  */
 
-import { useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
 import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
+import { TheoryQuiz, type QuizMode } from '../../components/TheoryQuiz'
 import { usePageTitle } from '../../hooks/usePageTitle'
 import { ProgressionPlayer } from '../../components/ProgressionPlayer'
 import { PROGRESSION_SEQUENCES } from '../../lib/theoryAudio'
@@ -186,126 +186,54 @@ function progPickChoices(correct: string): string[] {
   return [...others, correct].sort(() => Math.random() - 0.5)
 }
 
+const PROGRESSIONS_MODE: QuizMode<ProgQuestion>[] = [
+  {
+    id: 'fill-in',
+    label: 'Fill In',
+    pool: ALL_QUESTIONS,
+    hint: 'I = tonic · IV = subdominant · V = dominant · vi = relative minor',
+  },
+]
+
 function ProgressionsQuiz() {
-  const [question, setQuestion] = useState<ProgQuestion>(() => progPickQuestion())
-  const [choices, setChoices]   = useState<string[]>(() => progPickChoices(question.answer))
-  const [selected, setSelected] = useState<string | null>(null)
-  const [score, setScore]       = useState(0)
-  const [total, setTotal]       = useState(0)
-  const [streak, setStreak]     = useState(0)
-  const [best, setBest]         = useState(0)
-  const timerRef = useRef<number | null>(null)
-
-  function advance(fromId: string) {
-    const q = progPickQuestion(fromId)
-    setQuestion(q)
-    setChoices(progPickChoices(q.answer))
-    setSelected(null)
-  }
-
-  function handleAnswer(choice: string) {
-    if (selected !== null) return
-    const correct = choice === question.answer
-    setSelected(choice)
-    setTotal(t => t + 1)
-    if (correct) {
-      setScore(s => s + 1)
-      setStreak(s => { const n = s + 1; setBest(b => Math.max(b, n)); return n })
-    } else {
-      setStreak(0)
-    }
-    if (timerRef.current) clearTimeout(timerRef.current)
-    if (correct) timerRef.current = window.setTimeout(() => advance(question.id), 700)
-  }
-
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
-
-  const { progression, blankIndex, answer } = question
-  const accuracy = total > 0 ? Math.round((score / total) * 100) : null
-  const isCorrect = selected !== null && selected === answer
-
   return (
-    <div className="nq-root">
-
-      <div className="nq-score-row">
-        <div className="nq-stat">
-          <span className="nq-stat-value">{score}<span className="nq-stat-denom">/{total}</span></span>
-          <span className="nq-stat-label">correct</span>
-        </div>
-        {accuracy !== null && (
-          <div className="nq-stat">
-            <span className="nq-stat-value">{accuracy}%</span>
-            <span className="nq-stat-label">accuracy</span>
-          </div>
-        )}
-        <div className="nq-stat">
-          <span className="nq-stat-value">{streak >= 3 ? `🔥 ${streak}` : streak}</span>
-          <span className="nq-stat-label">streak {best > 0 ? `(best ${best})` : ''}</span>
-        </div>
-      </div>
-
-      <p className="nq-question" style={{ marginBottom: 4 }}>
-        Fill in the missing chord:
-      </p>
-      <p style={{ fontSize: '0.78rem', color: 'var(--muted)', textAlign: 'center', margin: '0 0 16px' }}>
-        {progression.name} — {progression.examples}
-      </p>
-
-      {/* Progression display */}
-      <div className="theory-q-prog">
-        {progression.chords.map((chord, i) => {
-          const isBlank = i === blankIndex
-          const isReveal = selected !== null && isBlank
-          return (
-            <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              {i > 0 && <span className="theory-q-prog-sep">–</span>}
-              <span className={`theory-q-prog-chord${isBlank ? ' theory-q-prog-blank' : ''}${isReveal ? (isCorrect ? ' theory-q-prog-reveal-correct' : ' theory-q-prog-reveal-wrong') : ''}`}>
-                {isBlank ? (selected ?? '?') : chord}
-              </span>
-            </span>
-          )
-        })}
-      </div>
-
-      <div className="nq-choices">
-        {choices.map(choice => {
-          const isThisCorrect  = choice === answer
-          const isThisSelected = choice === selected
-          let cls = 'nq-choice'
-          if (selected !== null) {
-            if (isThisSelected && isThisCorrect)  cls += ' nq-correct'
-            else if (isThisSelected)              cls += ' nq-wrong'
-            else if (isThisCorrect)               cls += ' nq-reveal'
-          }
-          return (
-            <button key={choice} type="button" className={cls}
-              style={{ fontFamily: 'Georgia, serif', fontWeight: 700 }}
-              onClick={() => handleAnswer(choice)} disabled={selected !== null}>
-              {cls.split(' ').includes('nq-reveal') ? (
-                <>
-                  <span className="nq-reveal-top">correct answer</span>
-                  <span className="nq-reveal-val">{choice}</span>
-                </>
-              ) : choice}
-            </button>
-          )
-        })}
-      </div>
-      {selected !== null && selected !== answer && (
-        <button
-          type="button"
-          className="nq-next-btn"
-          onClick={() => { if (timerRef.current) clearTimeout(timerRef.current); advance(question.id) }}
-        >
-          Next →
-        </button>
-      )}
-
-      <p className="nq-hint">
-        I = tonic · IV = subdominant · V = dominant · vi = relative minor
-      </p>
-
-    </div>
+    <TheoryQuiz<ProgQuestion>
+      modes={PROGRESSIONS_MODE}
+      pickQuestion={(pool, excludeKey) => {
+        const candidates = excludeKey ? pool.filter(q => q.id !== excludeKey) : pool
+        return candidates[Math.floor(Math.random() * candidates.length)]
+      }}
+      getExcludeKey={(q) => q.id}
+      pickChoices={(q) => progPickChoices(q.answer)}
+      getAnswer={(q) => q.answer}
+      renderQuestion={(q, _modeId, selected, answer) => {
+        const isCorrect = selected !== null && selected === answer
+        return (
+          <>
+            <p className="nq-question" style={{ marginBottom: 4 }}>Fill in the missing chord:</p>
+            <p style={{ fontSize: '0.78rem', color: 'var(--muted)', textAlign: 'center', margin: '0 0 16px' }}>
+              {q.progression.name} — {q.progression.examples}
+            </p>
+            <div className="theory-q-prog">
+              {q.progression.chords.map((chord, i) => {
+                const isBlank = i === q.blankIndex
+                const isReveal = selected !== null && isBlank
+                return (
+                  <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {i > 0 && <span className="theory-q-prog-sep">–</span>}
+                    <span className={`theory-q-prog-chord${isBlank ? ' theory-q-prog-blank' : ''}${isReveal ? (isCorrect ? ' theory-q-prog-reveal-correct' : ' theory-q-prog-reveal-wrong') : ''}`}>
+                      {isBlank ? (selected ?? '?') : chord}
+                    </span>
+                  </span>
+                )
+              })}
+            </div>
+          </>
+        )
+      }}
+      correctDelayMs={700}
+      choiceButtonStyle={{ fontFamily: 'Georgia, serif', fontWeight: 700 }}
+    />
   )
 }
 

@@ -1,9 +1,9 @@
 /**
  * Modes as Tonal Centers — theory topic page.
  */
-import { useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
 import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
+import { TheoryQuiz, type QuizMode } from '../../components/TheoryQuiz'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -202,103 +202,57 @@ function LearnContent() {
 // QUIZ
 // ═══════════════════════════════════════════════════════════════════════════════
 
+function mGetAnswer(q: ModeQuestion): string {
+  switch (q.type) {
+    case 'degree-to-name':
+    case 'character-to-name': return q.mode.name
+    case 'name-to-degree': return String(q.mode.degree)
+    case 'name-to-character': return q.mode.relativeToMajor
+  }
+}
+
+function mGetPrompt(q: ModeQuestion): string {
+  switch (q.type) {
+    case 'degree-to-name': return `Which mode starts on degree ${q.mode.degree} of the major scale?`
+    case 'name-to-degree': return `${q.mode.name} mode starts on which degree of the major scale?`
+    case 'name-to-character': return `How does ${q.mode.name} relate to the major scale?`
+    case 'character-to-name': return `"${q.mode.character}" — which mode is this?`
+  }
+}
+
+function mGetDisplay(q: ModeQuestion): string {
+  switch (q.type) {
+    case 'degree-to-name': return `Degree ${q.mode.degree}`
+    case 'name-to-degree': return q.mode.name
+    case 'name-to-character': return q.mode.name
+    case 'character-to-name': return q.mode.character
+  }
+}
+
+const MODES_QUIZ_MODE: QuizMode<ModeQuestion>[] = [
+  {
+    id: 'mixed',
+    label: 'Mixed',
+    pool: MODES.map(() => mPick()),
+    hint: 'Ionian=1 · Dorian=2 · Phrygian=3 · Lydian=4 · Mixolydian=5 · Aeolian=6 · Locrian=7',
+  },
+]
+
 function Quiz() {
-  const [question, setQuestion] = useState<ModeQuestion>(() => mPick())
-  const [choices, setChoices] = useState<string[]>(() => mChoices(mPick()))
-  const [selected, setSelected] = useState<string | null>(null)
-  const [score, setScore] = useState(0)
-  const [total, setTotal] = useState(0)
-  const [streak, setStreak] = useState(0)
-  const [best, setBest] = useState(0)
-  const timerRef = useRef<number | null>(null)
-
-  function advance(excludeName: string) {
-    const q = mPick(excludeName)
-    setQuestion(q); setChoices(mChoices(q)); setSelected(null)
-  }
-
-  function getAnswer(q: ModeQuestion): string {
-    switch (q.type) {
-      case 'degree-to-name':
-      case 'character-to-name': return q.mode.name
-      case 'name-to-degree': return String(q.mode.degree)
-      case 'name-to-character': return q.mode.relativeToMajor
-    }
-  }
-
-  function getPrompt(q: ModeQuestion): string {
-    switch (q.type) {
-      case 'degree-to-name': return `Which mode starts on degree ${q.mode.degree} of the major scale?`
-      case 'name-to-degree': return `${q.mode.name} mode starts on which degree of the major scale?`
-      case 'name-to-character': return `How does ${q.mode.name} relate to the major scale?`
-      case 'character-to-name': return `"${q.mode.character}" — which mode is this?`
-    }
-  }
-
-  function getDisplay(q: ModeQuestion): string {
-    switch (q.type) {
-      case 'degree-to-name': return `Degree ${q.mode.degree}`
-      case 'name-to-degree': return q.mode.name
-      case 'name-to-character': return q.mode.name
-      case 'character-to-name': return q.mode.character
-    }
-  }
-
-  function handleAnswer(choice: string) {
-    if (selected !== null) return
-    const answer = getAnswer(question)
-    const correct = choice === answer
-    setSelected(choice); setTotal(t => t + 1)
-    if (correct) { setScore(s => s + 1); setStreak(s => { const n = s + 1; setBest(b => Math.max(b, n)); return n }) }
-    else setStreak(0)
-    if (timerRef.current) clearTimeout(timerRef.current)
-    if (correct) timerRef.current = window.setTimeout(() => advance(question.mode.name), 650)
-  }
-
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
-
-  const answer = getAnswer(question)
-  const accuracy = total > 0 ? Math.round((score / total) * 100) : null
-
   return (
-    <div className="nq-root">
-      <div className="nq-score-row">
-        <div className="nq-stat"><span className="nq-stat-value">{score}<span className="nq-stat-denom">/{total}</span></span><span className="nq-stat-label">correct</span></div>
-        {accuracy !== null && <div className="nq-stat"><span className="nq-stat-value">{accuracy}%</span><span className="nq-stat-label">accuracy</span></div>}
-        <div className="nq-stat"><span className="nq-stat-value">{streak >= 3 ? `🔥 ${streak}` : streak}</span><span className="nq-stat-label">streak {best > 0 ? `(best ${best})` : ''}</span></div>
-      </div>
-
-      <div className={`theory-q-card${selected !== null ? (selected === answer ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
-        <div className="theory-q-main" style={{ fontFamily: 'Georgia, serif', fontSize: '1.2rem' }}>{getDisplay(question)}</div>
-        <div className="theory-q-sub">{getPrompt(question)}</div>
-      </div>
-
-      <div className="nq-choices">
-        {choices.map(choice => {
-          const isCorrect = choice === answer; const isSelected = choice === selected
-          let cls = 'nq-choice'
-          if (selected !== null) { if (isSelected && isCorrect) cls += ' nq-correct'; else if (isSelected) cls += ' nq-wrong'; else if (isCorrect) cls += ' nq-reveal' }
-          return <button key={choice} type="button" className={cls} onClick={() => handleAnswer(choice)} disabled={selected !== null}>
-            {cls.split(' ').includes('nq-reveal') ? (
-              <>
-                <span className="nq-reveal-top">correct answer</span>
-                <span className="nq-reveal-val">{choice}</span>
-              </>
-            ) : choice}
-          </button>
-        })}
-      </div>
-      {selected !== null && selected !== answer && (
-        <button
-          type="button"
-          className="nq-next-btn"
-          onClick={() => { if (timerRef.current) clearTimeout(timerRef.current); advance(question.mode.name) }}
-        >
-          Next →
-        </button>
+    <TheoryQuiz<ModeQuestion>
+      modes={MODES_QUIZ_MODE}
+      pickQuestion={(_pool, excludeKey) => mPick(excludeKey)}
+      getExcludeKey={(q) => q.mode.name}
+      pickChoices={mChoices}
+      getAnswer={mGetAnswer}
+      renderQuestion={(q, _modeId, selected, answer) => (
+        <div className={`theory-q-card${selected !== null ? (selected === answer ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
+          <div className="theory-q-main" style={{ fontFamily: 'Georgia, serif', fontSize: '1.2rem' }}>{mGetDisplay(q)}</div>
+          <div className="theory-q-sub">{mGetPrompt(q)}</div>
+        </div>
       )}
-      <p className="nq-hint">Ionian=1 · Dorian=2 · Phrygian=3 · Lydian=4 · Mixolydian=5 · Aeolian=6 · Locrian=7</p>
-    </div>
+    />
   )
 }
 

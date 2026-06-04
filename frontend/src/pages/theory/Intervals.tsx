@@ -5,9 +5,10 @@
  * Practice — two modes: half-step count ↔ interval name
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
 import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
+import { TheoryQuiz } from '../../components/TheoryQuiz'
 import { usePageTitle } from '../../hooks/usePageTitle'
 import { theoryAudio, MIDI } from '../../lib/theoryAudio'
 
@@ -185,7 +186,7 @@ function ivPickChoices(correct: Interval, pool: Interval[]): string[] {
 
 interface IntervalSingAlongProps {
   question: Interval
-  onAdvance: (fromSemitones: number) => void
+  onAdvance: () => void
 }
 
 function IntervalSingAlong({ question, onAdvance }: IntervalSingAlongProps) {
@@ -229,7 +230,7 @@ function IntervalSingAlong({ question, onAdvance }: IntervalSingAlongProps) {
             type="button"
             className="nq-choice nq-correct"
             style={{ flex: 1, maxWidth: 160 }}
-            onClick={() => onAdvance(question.semitones)}
+            onClick={() => onAdvance()}
           >
             ✓ I heard it
           </button>
@@ -237,7 +238,7 @@ function IntervalSingAlong({ question, onAdvance }: IntervalSingAlongProps) {
             type="button"
             className="nq-choice nq-wrong"
             style={{ flex: 1, maxWidth: 160 }}
-            onClick={() => onAdvance(question.semitones)}
+            onClick={() => onAdvance()}
           >
             ✗ I missed it
           </button>
@@ -253,155 +254,42 @@ function IntervalSingAlong({ question, onAdvance }: IntervalSingAlongProps) {
 // ── Main quiz component ───────────────────────────────────────────────────────
 
 function IntervalsQuiz() {
-  const [modeId, setModeId]     = useState<IVMode>('listen-to-name')
-  const modeConfig              = IV_MODES.find(m => m.id === modeId)!
-  const [question, setQuestion] = useState<Interval>(() => ivPickQuestion(modeConfig.pool))
-  const [choices, setChoices]   = useState<string[]>(() => ivPickChoices(question, modeConfig.pool))
-  const [selected, setSelected] = useState<string | null>(null)
-  const [score, setScore]       = useState(0)
-  const [total, setTotal]       = useState(0)
-  const [streak, setStreak]     = useState(0)
-  const [best, setBest]         = useState(0)
-  const timerRef    = useRef<number | null>(null)
-  const modeIdRef   = useRef<IVMode>('listen-to-name')
-  modeIdRef.current = modeId
-
-  // Auto-play when in listen-to-name mode and question changes
-  useEffect(() => {
-    if (modeId !== 'listen-to-name') return
-    const t = window.setTimeout(() => {
-      theoryAudio.playInterval(MIDI.C4, MIDI.C4 + question.semitones)
-    }, 300)
-    return () => clearTimeout(t)
-  }, [question, modeId])
-
-  const switchMode = useCallback((m: IVMode) => {
-    if (timerRef.current) clearTimeout(timerRef.current)
-    const cfg = IV_MODES.find(x => x.id === m)!
-    modeIdRef.current = m
-    const q = ivPickQuestion(cfg.pool)
-    setModeId(m)
-    setQuestion(q)
-    setChoices(ivPickChoices(q, cfg.pool))
-    setSelected(null)
-    setScore(0); setTotal(0); setStreak(0); setBest(0)
-  }, [])
-
-  function advance(fromSemitones: number) {
-    const cfg = IV_MODES.find(x => x.id === modeIdRef.current)!
-    const q = ivPickQuestion(cfg.pool, fromSemitones)
-    setQuestion(q)
-    setChoices(ivPickChoices(q, cfg.pool))
-    setSelected(null)
-  }
-
-  function handleAnswer(choice: string) {
-    if (selected !== null) return
-    const correct = choice === question.name
-    setSelected(choice)
-    setTotal(t => t + 1)
-    if (correct) {
-      setScore(s => s + 1)
-      setStreak(s => { const n = s + 1; setBest(b => Math.max(b, n)); return n })
-    } else {
-      setStreak(0)
-    }
-    if (timerRef.current) clearTimeout(timerRef.current)
-    if (correct) timerRef.current = window.setTimeout(() => advance(question.semitones), 650)
-  }
-
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
-
-  const accuracy    = total > 0 ? Math.round((score / total) * 100) : null
-  const isSingAlong = modeId === 'sing-along'
-
   return (
-    <div className="nq-root">
-
-      <div className="nq-mode-row">
-        {IV_MODES.map(m => (
-          <button key={m.id} type="button"
-            className={`nq-mode-btn${modeId === m.id ? ' active' : ''}`}
-            onClick={() => switchMode(m.id)}>
-            {m.label}
+    <TheoryQuiz<Interval>
+      modes={IV_MODES}
+      pickQuestion={(pool, excludeKey) =>
+        ivPickQuestion(pool, excludeKey !== undefined ? Number(excludeKey) : undefined)
+      }
+      getExcludeKey={(q) => String(q.semitones)}
+      pickChoices={(q, pool) => ivPickChoices(q, pool)}
+      getAnswer={(q) => q.name}
+      renderQuestion={(q, _modeId, selected, answer) => (
+        <div className={`theory-q-card${selected !== null ? (selected === answer ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
+          <div className="theory-q-main">🎵</div>
+          <div className="theory-q-sub">What interval did you hear?</div>
+          <button
+            type="button"
+            className="iv-play-btn"
+            style={{ marginTop: '0.5rem' }}
+            onClick={() => theoryAudio.playInterval(MIDI.C4, MIDI.C4 + q.semitones)}
+          >
+            ▶ Play again
           </button>
-        ))}
-      </div>
-
-      {!isSingAlong && (
-        <div className="nq-score-row">
-          <div className="nq-stat">
-            <span className="nq-stat-value">{score}<span className="nq-stat-denom">/{total}</span></span>
-            <span className="nq-stat-label">correct</span>
-          </div>
-          {accuracy !== null && (
-            <div className="nq-stat">
-              <span className="nq-stat-value">{accuracy}%</span>
-              <span className="nq-stat-label">accuracy</span>
-            </div>
-          )}
-          <div className="nq-stat">
-            <span className="nq-stat-value">{streak >= 3 ? `🔥 ${streak}` : streak}</span>
-            <span className="nq-stat-label">streak {best > 0 ? `(best ${best})` : ''}</span>
-          </div>
         </div>
       )}
-
-      {isSingAlong ? (
-        <IntervalSingAlong question={question} onAdvance={advance} />
-      ) : (
-        <>
-          <div className={`theory-q-card${selected !== null ? (selected === question.name ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
-            <div className="theory-q-main">🎵</div>
-            <div className="theory-q-sub">What interval did you hear?</div>
-            <button
-              type="button"
-              className="iv-play-btn"
-              style={{ marginTop: '0.5rem' }}
-              onClick={() => theoryAudio.playInterval(MIDI.C4, MIDI.C4 + question.semitones)}
-            >
-              ▶ Play again
-            </button>
-          </div>
-
-          <div className="nq-choices">
-            {choices.map(choice => {
-              const isCorrect  = choice === question.name
-              const isSelected = choice === selected
-              let cls = 'nq-choice'
-              if (selected !== null) {
-                if (isSelected && isCorrect)  cls += ' nq-correct'
-                else if (isSelected)          cls += ' nq-wrong'
-                else if (isCorrect)           cls += ' nq-reveal'
-              }
-              return (
-                <button key={choice} type="button" className={cls}
-                  onClick={() => handleAnswer(choice)} disabled={selected !== null}>
-                  {cls.split(' ').includes('nq-reveal') ? (
-                    <>
-                      <span className="nq-reveal-top">correct answer</span>
-                      <span className="nq-reveal-val">{choice}</span>
-                    </>
-                  ) : choice}
-                </button>
-              )
-            })}
-          </div>
-          {selected !== null && selected !== question.name && (
-            <button
-              type="button"
-              className="nq-next-btn"
-              onClick={() => { if (timerRef.current) clearTimeout(timerRef.current); advance(question.semitones) }}
-            >
-              Next →
-            </button>
-          )}
-
-          <p className="nq-hint">{modeConfig.hint}</p>
-        </>
-      )}
-
-    </div>
+      onQuestionChange={(q, modeId) => {
+        if (modeId !== 'listen-to-name') return
+        const t = window.setTimeout(() => {
+          theoryAudio.playInterval(MIDI.C4, MIDI.C4 + q.semitones)
+        }, 300)
+        return () => clearTimeout(t)
+      }}
+      renderCustomMode={(modeId, q, advance) =>
+        modeId === 'sing-along'
+          ? <IntervalSingAlong question={q} onAdvance={() => advance(String(q.semitones))} />
+          : null
+      }
+    />
   )
 }
 

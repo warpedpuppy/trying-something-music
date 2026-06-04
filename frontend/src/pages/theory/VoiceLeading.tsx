@@ -1,9 +1,9 @@
 /**
  * Voice Leading — theory topic page.
  */
-import { useCallback, useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
 import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
+import { TheoryQuiz, type QuizMode } from '../../components/TheoryQuiz'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -38,6 +38,13 @@ const MOTION_DESC: Record<MotionType, string> = {
   Contrary: 'The voices move in opposite directions.',
   Oblique: 'One voice stays on the same note while the other moves.',
   Similar: 'Both voices move in the same direction but by different intervals.',
+}
+
+// ── VL question types ─────────────────────────────────────────────────────────
+
+interface VLQuestion {
+  example?: MotionExample
+  ruleQ?: RuleQuestion
 }
 
 // ── VL RULES quiz ─────────────────────────────────────────────────────────────
@@ -174,134 +181,60 @@ function LearnContent() {
 // QUIZ
 // ═══════════════════════════════════════════════════════════════════════════════
 
-type VLMode = 'motion-type' | 'rules'
+const MOTION_POOL: VLQuestion[] = MOTION_EXAMPLES.map(e => ({ example: e }))
+const RULES_POOL: VLQuestion[]  = RULE_QUESTIONS.map(q => ({ ruleQ: q }))
 
-function motionChoices(): string[] {
-  return [...MOTION_TYPES].sort(() => Math.random() - 0.5)
+const VL_HINT = 'Parallel = same direction & interval · Contrary = opposite · Oblique = one holds · Similar = same direction, diff interval'
+
+const VL_MODES: QuizMode<VLQuestion>[] = [
+  { id: 'motion-type', label: 'Motion Types',       pool: MOTION_POOL, hint: VL_HINT },
+  { id: 'rules',       label: 'Rules & Principles', pool: RULES_POOL },
+]
+
+function vlPick(pool: VLQuestion[], excludeKey?: string): VLQuestion {
+  const filtered = excludeKey ? pool.filter(q =>
+    q.example ? q.example.motion !== excludeKey : q.ruleQ?.question !== excludeKey
+  ) : pool
+  const p = filtered.length > 0 ? filtered : pool
+  return p[Math.floor(Math.random() * p.length)]
 }
 
-function pickExample(excludeMotion?: MotionType): MotionExample {
-  const pool = excludeMotion
-    ? MOTION_EXAMPLES.filter(e => e.motion !== excludeMotion)
-    : MOTION_EXAMPLES
-  return pool[Math.floor(Math.random() * pool.length)]
+function vlChoices(q: VLQuestion, _pool: VLQuestion[], modeId: string): string[] {
+  if (modeId === 'motion-type') return [...MOTION_TYPES].sort(() => Math.random() - 0.5)
+  return q.ruleQ ? [...q.ruleQ.choices].sort(() => Math.random() - 0.5) : []
 }
 
-function pickRuleQ(excludeQ?: string): RuleQuestion {
-  const pool = excludeQ ? RULE_QUESTIONS.filter(q => q.question !== excludeQ) : RULE_QUESTIONS
-  return pool[Math.floor(Math.random() * pool.length)]
-}
-
-function Quiz() {
-  const [mode, setMode] = useState<VLMode>('motion-type')
-  const [example, setExample] = useState<MotionExample>(() => pickExample())
-  const [ruleQ, setRuleQ] = useState<RuleQuestion>(() => pickRuleQ())
-  const [choices, setChoices] = useState<string[]>(() => motionChoices())
-  const [selected, setSelected] = useState<string | null>(null)
-  const [score, setScore] = useState(0)
-  const [total, setTotal] = useState(0)
-  const [streak, setStreak] = useState(0)
-  const [best, setBest] = useState(0)
-  const timerRef = useRef<number | null>(null)
-  const modeRef = useRef<VLMode>('motion-type')
-  modeRef.current = mode
-
-  const switchMode = useCallback((m: VLMode) => {
-    if (timerRef.current) clearTimeout(timerRef.current)
-    modeRef.current = m
-    const ex = pickExample()
-    const rq = pickRuleQ()
-    setMode(m); setExample(ex); setRuleQ(rq)
-    setChoices(m === 'motion-type' ? motionChoices() : [...rq.choices].sort(() => Math.random() - 0.5))
-    setSelected(null); setScore(0); setTotal(0); setStreak(0); setBest(0)
-  }, [])
-
-  function advance() {
-    const m = modeRef.current
-    if (m === 'motion-type') {
-      const ex = pickExample()
-      setExample(ex); setChoices(motionChoices()); setSelected(null)
-    } else {
-      const rq = pickRuleQ(ruleQ.question)
-      setRuleQ(rq)
-      setChoices([...rq.choices].sort(() => Math.random() - 0.5))
-      setSelected(null)
-    }
-  }
-
-  function handleAnswer(choice: string) {
-    if (selected !== null) return
-    const answer = modeRef.current === 'motion-type' ? example.motion : ruleQ.answer
-    const correct = choice === answer
-    setSelected(choice); setTotal(t => t + 1)
-    if (correct) { setScore(s => s + 1); setStreak(s => { const n = s + 1; setBest(b => Math.max(b, n)); return n }) }
-    else setStreak(0)
-    if (timerRef.current) clearTimeout(timerRef.current)
-    if (correct) timerRef.current = window.setTimeout(advance, 650)
-  }
-
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
-
-  const answer = mode === 'motion-type' ? example.motion : ruleQ.answer
-  const accuracy = total > 0 ? Math.round((score / total) * 100) : null
-
+function VLQuiz() {
   return (
-    <div className="nq-root">
-      <div className="nq-mode-row">
-        <button type="button" className={`nq-mode-btn${mode === 'motion-type' ? ' active' : ''}`} onClick={() => switchMode('motion-type')}>Motion Types</button>
-        <button type="button" className={`nq-mode-btn${mode === 'rules' ? ' active' : ''}`} onClick={() => switchMode('rules')}>Rules & Principles</button>
-      </div>
-      <div className="nq-score-row">
-        <div className="nq-stat"><span className="nq-stat-value">{score}<span className="nq-stat-denom">/{total}</span></span><span className="nq-stat-label">correct</span></div>
-        {accuracy !== null && <div className="nq-stat"><span className="nq-stat-value">{accuracy}%</span><span className="nq-stat-label">accuracy</span></div>}
-        <div className="nq-stat"><span className="nq-stat-value">{streak >= 3 ? `🔥 ${streak}` : streak}</span><span className="nq-stat-label">streak {best > 0 ? `(best ${best})` : ''}</span></div>
-      </div>
-
-      <div className={`theory-q-card${selected !== null ? (selected === answer ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
-        {mode === 'motion-type' ? (
-          <>
-            <div className="theory-q-main" style={{ fontFamily: 'Georgia, serif', fontSize: '1.1rem' }}>
-              Bass: {example.bottom[0]} → {example.bottom[1]}<br />
-              <span style={{ color: '#6c7a8d' }}>Treble: {example.top[0]} → {example.top[1]}</span>
-            </div>
-            <div className="theory-q-sub">What type of voice motion is this?</div>
-          </>
-        ) : (
-          <>
-            <div className="theory-q-sub" style={{ fontSize: '1rem', textAlign: 'center', padding: '0 8px' }}>{ruleQ.question}</div>
-            {selected !== null && (
-              <div className="theory-q-sub" style={{ marginTop: 10, fontSize: '0.85rem', color: '#555' }}>{ruleQ.explanation}</div>
-            )}
-          </>
-        )}
-      </div>
-
-      <div className="nq-choices">
-        {choices.map(choice => {
-          const isCorrect = choice === answer; const isSelected = choice === selected
-          let cls = 'nq-choice'
-          if (selected !== null) { if (isSelected && isCorrect) cls += ' nq-correct'; else if (isSelected) cls += ' nq-wrong'; else if (isCorrect) cls += ' nq-reveal' }
-          return <button key={choice} type="button" className={cls} onClick={() => handleAnswer(choice)} disabled={selected !== null}>
-            {cls.split(' ').includes('nq-reveal') ? (
-              <>
-                <span className="nq-reveal-top">correct answer</span>
-                <span className="nq-reveal-val">{choice}</span>
-              </>
-            ) : choice}
-          </button>
-        })}
-      </div>
-      {selected !== null && selected !== answer && (
-        <button
-          type="button"
-          className="nq-next-btn"
-          onClick={() => { if (timerRef.current) clearTimeout(timerRef.current); advance() }}
-        >
-          Next →
-        </button>
+    <TheoryQuiz<VLQuestion>
+      modes={VL_MODES}
+      pickQuestion={vlPick}
+      getExcludeKey={q => q.example ? q.example.motion : (q.ruleQ?.question ?? '')}
+      pickChoices={vlChoices}
+      getAnswer={(q, modeId) =>
+        modeId === 'motion-type' ? (q.example?.motion ?? '') : (q.ruleQ?.answer ?? '')
+      }
+      renderQuestion={(q, modeId, selected, answer) => (
+        <div className={`theory-q-card${selected !== null ? (selected === answer ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
+          {modeId === 'motion-type' && q.example ? (
+            <>
+              <div className="theory-q-main" style={{ fontFamily: 'Georgia, serif', fontSize: '1.1rem' }}>
+                Bass: {q.example.bottom[0]} → {q.example.bottom[1]}<br />
+                <span style={{ color: '#6c7a8d' }}>Treble: {q.example.top[0]} → {q.example.top[1]}</span>
+              </div>
+              <div className="theory-q-sub">What type of voice motion is this?</div>
+            </>
+          ) : q.ruleQ ? (
+            <>
+              <div className="theory-q-sub" style={{ fontSize: '1rem', textAlign: 'center', padding: '0 8px' }}>{q.ruleQ.question}</div>
+              {selected !== null && (
+                <div className="theory-q-sub" style={{ marginTop: 10, fontSize: '0.85rem', color: '#555' }}>{q.ruleQ.explanation}</div>
+              )}
+            </>
+          ) : null}
+        </div>
       )}
-      <p className="nq-hint">Parallel = same direction & interval · Contrary = opposite · Oblique = one holds · Similar = same direction, diff interval</p>
-    </div>
+    />
   )
 }
 
@@ -322,7 +255,7 @@ export function VoiceLeading() {
           color="hsl(260, 60%, 50%)"
         />}
         learnContent={<LearnContent />}
-        gamesContent={<Quiz />}
+        gamesContent={<VLQuiz />}
         topicName="voice leading"
         gamesLabel="Practice"
       />

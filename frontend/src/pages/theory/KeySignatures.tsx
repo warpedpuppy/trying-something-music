@@ -5,9 +5,10 @@
  * Practice — visual quiz: identify key from a rendered key signature
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { Renderer, Stave } from 'vexflow'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
+import { TheoryQuiz, type QuizMode } from '../../components/TheoryQuiz'
 import { usePageTitle } from '../../hooks/usePageTitle'
 import { KeySignaturesOverview } from './KeySignaturesOverview'
 
@@ -74,6 +75,7 @@ interface KSQuestion {
   asking:  KSAsk
   answer:  string
   choices: string[]
+  ksMode:  KSMode
 }
 
 function ksPickQ(mode: KSMode, excludeVfKey?: string): KSQuestion {
@@ -89,7 +91,7 @@ function ksPickQ(mode: KSMode, excludeVfKey?: string): KSQuestion {
     .sort(() => Math.random() - 0.5)
     .slice(0, 3)
   const choices = [...wrong, answer].sort(() => Math.random() - 0.5)
-  return { entry, asking, answer, choices }
+  return { entry, asking, answer, choices, ksMode: mode }
 }
 
 // ── VexFlow key sig renderer (quiz only — compact, no note) ───────────────────
@@ -212,152 +214,50 @@ function KeySigsLearnContent() {
 // QUIZ
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function KeySigsQuiz() {
-  const [mode, setMode]         = useState<KSMode>('major')
-  const [question, setQuestion] = useState<KSQuestion>(() => ksPickQ('major'))
-  const [selected, setSelected] = useState<string | null>(null)
-  const [score, setScore]       = useState(0)
-  const [total, setTotal]       = useState(0)
-  const [streak, setStreak]     = useState(0)
-  const [best, setBest]         = useState(0)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const timerRef     = useRef<number | null>(null)
-  const modeRef      = useRef<KSMode>('major')
-  modeRef.current    = mode
-
-  // Render key signature whenever question changes
+function KeySigDisplay({ q, selected, answer }: { q: KSQuestion; selected: string | null; answer: string }) {
+  const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-    try { renderQuizKeySig(el, question.entry.vfKey) } catch { /* ignore */ }
-  }, [question])
-
-  const switchMode = useCallback((m: KSMode) => {
-    if (timerRef.current) clearTimeout(timerRef.current)
-    modeRef.current = m
-    setMode(m)
-    setQuestion(ksPickQ(m))
-    setSelected(null)
-    setScore(0); setTotal(0); setStreak(0); setBest(0)
-  }, [])
-
-  function advance(fromVfKey: string) {
-    setQuestion(ksPickQ(modeRef.current, fromVfKey))
-    setSelected(null)
-  }
-
-  function handleAnswer(choice: string) {
-    if (selected !== null) return
-    const correct = choice === question.answer
-    setSelected(choice)
-    setTotal(t => t + 1)
-    if (correct) {
-      setScore(s => s + 1)
-      setStreak(s => { const n = s + 1; setBest(b => Math.max(b, n)); return n })
-    } else {
-      setStreak(0)
+    if (ref.current) {
+      try { renderQuizKeySig(ref.current, q.entry.vfKey) } catch { /* ignore */ }
     }
-    if (timerRef.current) clearTimeout(timerRef.current)
-    if (correct) timerRef.current = window.setTimeout(() => advance(question.entry.vfKey), 650)
-  }
-
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
-
-  const accuracy = total > 0 ? Math.round((score / total) * 100) : null
-  const sfCount  = Math.abs(question.entry.sf)
-  const sfText   =
-    question.entry.sf === 0 ? 'no accidentals'
-    : question.entry.sf > 0 ? `${sfCount} sharp${sfCount !== 1 ? 's' : ''}`
-    :                          `${sfCount} flat${sfCount !== 1 ? 's' : ''}`
-
+  }, [q])
+  const sfCount = Math.abs(q.entry.sf)
+  const sfText = q.entry.sf === 0 ? 'no accidentals'
+    : q.entry.sf > 0 ? `${sfCount} sharp${sfCount !== 1 ? 's' : ''}`
+    : `${sfCount} flat${sfCount !== 1 ? 's' : ''}`
+  const feedback = selected !== null ? (selected === answer ? ' nq-staff-correct' : ' nq-staff-wrong') : ''
   return (
-    <div className="nq-root">
-
-      {/* Mode buttons */}
-      <div className="nq-mode-row">
-        {(['major', 'minor', 'both'] as KSMode[]).map(m => (
-          <button key={m} type="button"
-            className={`nq-mode-btn${mode === m ? ' active' : ''}`}
-            onClick={() => switchMode(m)}
-          >
-            {m === 'major' ? 'Major' : m === 'minor' ? 'Minor' : 'Both'}
-          </button>
-        ))}
-      </div>
-
-      {/* Score strip */}
-      <div className="nq-score-row">
-        <div className="nq-stat">
-          <span className="nq-stat-value">{score}<span className="nq-stat-denom">/{total}</span></span>
-          <span className="nq-stat-label">correct</span>
-        </div>
-        {accuracy !== null && (
-          <div className="nq-stat">
-            <span className="nq-stat-value">{accuracy}%</span>
-            <span className="nq-stat-label">accuracy</span>
-          </div>
-        )}
-        <div className="nq-stat">
-          <span className="nq-stat-value">{streak >= 3 ? `🔥 ${streak}` : streak}</span>
-          <span className="nq-stat-label">streak {best > 0 ? `(best ${best})` : ''}</span>
-        </div>
-      </div>
-
-      {/* Key signature display */}
-      <div className="nq-staff-wrap">
-        <div
-          ref={containerRef}
-          className={`nq-staff-svg${selected !== null
-            ? (selected === question.answer ? ' nq-staff-correct' : ' nq-staff-wrong')
-            : ''}`}
-          style={{ maxWidth: '150px', overflow: 'visible' }}
-        />
-        <p className="nq-clef-label">{sfText}</p>
-      </div>
-
-      {/* Prompt */}
-      <p className="nq-question">
-        Which {question.asking} key has this key signature?
-      </p>
-
-      {/* Answer buttons */}
-      <div className="nq-choices">
-        {question.choices.map(choice => {
-          const isCorrect  = choice === question.answer
-          const isSelected = choice === selected
-          let cls = 'nq-choice'
-          if (selected !== null) {
-            if (isSelected && isCorrect)  cls += ' nq-correct'
-            else if (isSelected)          cls += ' nq-wrong'
-            else if (isCorrect)           cls += ' nq-reveal'
-          }
-          return (
-            <button key={choice} type="button" className={cls}
-              onClick={() => handleAnswer(choice)} disabled={selected !== null}
-            >
-              {cls.split(' ').includes('nq-reveal') ? (
-                <>
-                  <span className="nq-reveal-top">correct answer</span>
-                  <span className="nq-reveal-val">{choice}</span>
-                </>
-              ) : choice}
-            </button>
-          )
-        })}
-      </div>
-      {selected !== null && selected !== question.answer && (
-        <button
-          type="button"
-          className="nq-next-btn"
-          onClick={() => { if (timerRef.current) clearTimeout(timerRef.current); advance(question.entry.vfKey) }}
-        >
-          Next →
-        </button>
-      )}
-
-      <p className="nq-hint">Sharps: F C G D A E B  ·  Flats: B E A D G C F</p>
-
+    <div className="nq-staff-wrap">
+      <div ref={ref} className={`nq-staff-svg${feedback}`} style={{ maxWidth: '150px', overflow: 'visible' }} />
+      <p className="nq-clef-label">{sfText}</p>
     </div>
+  )
+}
+
+const KS_MODES: QuizMode<KSQuestion>[] = [
+  { id: 'major', label: 'Major', pool: KEY_QUIZ.map(() => ksPickQ('major')), hint: 'Sharps: F C G D A E B  ·  Flats: B E A D G C F' },
+  { id: 'minor', label: 'Minor', pool: KEY_QUIZ.map(() => ksPickQ('minor')), hint: 'Sharps: F C G D A E B  ·  Flats: B E A D G C F' },
+  { id: 'both',  label: 'Both',  pool: KEY_QUIZ.map(() => ksPickQ('both')),  hint: 'Sharps: F C G D A E B  ·  Flats: B E A D G C F' },
+]
+
+function KeySigsQuiz() {
+  return (
+    <TheoryQuiz<KSQuestion>
+      modes={KS_MODES}
+      pickQuestion={(_pool, excludeKey) => {
+        const ksMode = _pool[0]?.ksMode ?? 'major'
+        return ksPickQ(ksMode, excludeKey)
+      }}
+      getExcludeKey={(q) => q.entry.vfKey}
+      pickChoices={(q) => q.choices}
+      getAnswer={(q) => q.answer}
+      renderQuestion={(q, _modeId, selected, answer) => (
+        <>
+          <KeySigDisplay q={q} selected={selected} answer={answer} />
+          <p className="nq-question">Which {q.asking} key has this key signature?</p>
+        </>
+      )}
+    />
   )
 }
 

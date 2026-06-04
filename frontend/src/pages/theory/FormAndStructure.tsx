@@ -1,9 +1,9 @@
 /**
  * Form & Structure — theory topic page.
  */
-import { useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
 import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
+import { TheoryQuiz, type QuizMode } from '../../components/TheoryQuiz'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -191,93 +191,47 @@ function LearnContent() {
 // QUIZ
 // ═══════════════════════════════════════════════════════════════════════════════
 
+function fsGetAnswer(q: FormQuestion): string {
+  if (q.type === 'name-to-label') return q.form.label
+  return q.form.name
+}
+
+function fsGetPrompt(q: FormQuestion): string {
+  if (q.type === 'name-to-label') return `What label represents ${q.form.name} form?`
+  if (q.type === 'label-to-name') return `What form does the label "${q.form.label}" represent?`
+  return `"${q.form.examples.split(',')[0].trim()}" — what form is this?`
+}
+
+function fsGetDisplay(q: FormQuestion): string {
+  if (q.type === 'name-to-label') return q.form.name
+  if (q.type === 'label-to-name') return q.form.label
+  return q.form.examples.split(',')[0].trim()
+}
+
+const FORM_MODE: QuizMode<FormQuestion>[] = [
+  {
+    id: 'mixed',
+    label: 'Mixed',
+    pool: FORMS.map(() => fPick()),
+    hint: 'AB=Binary · ABA=Ternary · ABACA=Rondo · AABA=32-bar · Expo/Dev/Recap=Sonata · V–C=Verse-Chorus',
+  },
+]
+
 function Quiz() {
-  const [question, setQuestion] = useState<FormQuestion>(() => fPick())
-  const [choices, setChoices] = useState<string[]>(() => fChoices(fPick()))
-  const [selected, setSelected] = useState<string | null>(null)
-  const [score, setScore] = useState(0)
-  const [total, setTotal] = useState(0)
-  const [streak, setStreak] = useState(0)
-  const [best, setBest] = useState(0)
-  const timerRef = useRef<number | null>(null)
-
-  function advance(excludeName: string) {
-    const q = fPick(excludeName)
-    setQuestion(q); setChoices(fChoices(q)); setSelected(null)
-  }
-
-  function getAnswer(q: FormQuestion): string {
-    if (q.type === 'name-to-label') return q.form.label
-    return q.form.name
-  }
-
-  function getPrompt(q: FormQuestion): string {
-    if (q.type === 'name-to-label') return `What label represents ${q.form.name} form?`
-    if (q.type === 'label-to-name') return `What form does the label "${q.form.label}" represent?`
-    return `"${q.form.examples.split(',')[0].trim()}" — what form is this?`
-  }
-
-  function getDisplay(q: FormQuestion): string {
-    if (q.type === 'name-to-label') return q.form.name
-    if (q.type === 'label-to-name') return q.form.label
-    return q.form.examples.split(',')[0].trim()
-  }
-
-  function handleAnswer(choice: string) {
-    if (selected !== null) return
-    const answer = getAnswer(question)
-    const correct = choice === answer
-    setSelected(choice); setTotal(t => t + 1)
-    if (correct) { setScore(s => s + 1); setStreak(s => { const n = s + 1; setBest(b => Math.max(b, n)); return n }) }
-    else setStreak(0)
-    if (timerRef.current) clearTimeout(timerRef.current)
-    if (correct) timerRef.current = window.setTimeout(() => advance(question.form.name), 650)
-  }
-
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
-
-  const answer = getAnswer(question)
-  const accuracy = total > 0 ? Math.round((score / total) * 100) : null
-
   return (
-    <div className="nq-root">
-      <div className="nq-score-row">
-        <div className="nq-stat"><span className="nq-stat-value">{score}<span className="nq-stat-denom">/{total}</span></span><span className="nq-stat-label">correct</span></div>
-        {accuracy !== null && <div className="nq-stat"><span className="nq-stat-value">{accuracy}%</span><span className="nq-stat-label">accuracy</span></div>}
-        <div className="nq-stat"><span className="nq-stat-value">{streak >= 3 ? `🔥 ${streak}` : streak}</span><span className="nq-stat-label">streak {best > 0 ? `(best ${best})` : ''}</span></div>
-      </div>
-
-      <div className={`theory-q-card${selected !== null ? (selected === answer ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
-        <div className="theory-q-main" style={{ fontFamily: 'Georgia, serif', fontSize: '1.2rem' }}>{getDisplay(question)}</div>
-        <div className="theory-q-sub">{getPrompt(question)}</div>
-      </div>
-
-      <div className="nq-choices">
-        {choices.map(choice => {
-          const isCorrect = choice === answer; const isSelected = choice === selected
-          let cls = 'nq-choice'
-          if (selected !== null) { if (isSelected && isCorrect) cls += ' nq-correct'; else if (isSelected) cls += ' nq-wrong'; else if (isCorrect) cls += ' nq-reveal' }
-          return <button key={choice} type="button" className={cls} onClick={() => handleAnswer(choice)} disabled={selected !== null}>
-            {cls.split(' ').includes('nq-reveal') ? (
-              <>
-                <span className="nq-reveal-top">correct answer</span>
-                <span className="nq-reveal-val">{choice}</span>
-              </>
-            ) : choice}
-          </button>
-        })}
-      </div>
-      {selected !== null && selected !== answer && (
-        <button
-          type="button"
-          className="nq-next-btn"
-          onClick={() => { if (timerRef.current) clearTimeout(timerRef.current); advance(question.form.name) }}
-        >
-          Next →
-        </button>
+    <TheoryQuiz<FormQuestion>
+      modes={FORM_MODE}
+      pickQuestion={(_pool, excludeKey) => fPick(excludeKey)}
+      getExcludeKey={(q) => q.form.name}
+      pickChoices={fChoices}
+      getAnswer={fsGetAnswer}
+      renderQuestion={(q, _modeId, selected, answer) => (
+        <div className={`theory-q-card${selected !== null ? (selected === answer ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
+          <div className="theory-q-main" style={{ fontFamily: 'Georgia, serif', fontSize: '1.2rem' }}>{fsGetDisplay(q)}</div>
+          <div className="theory-q-sub">{fsGetPrompt(q)}</div>
+        </div>
       )}
-      <p className="nq-hint">AB=Binary · ABA=Ternary · ABACA=Rondo · AABA=32-bar · Expo/Dev/Recap=Sonata · V–C=Verse-Chorus</p>
-    </div>
+    />
   )
 }
 

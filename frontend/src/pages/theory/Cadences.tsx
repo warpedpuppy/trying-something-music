@@ -5,9 +5,9 @@
  * Practice — identify the cadence type from a Roman numeral pair
  */
 
-import { useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
 import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
+import { TheoryQuiz, type QuizMode } from '../../components/TheoryQuiz'
 import { usePageTitle } from '../../hooks/usePageTitle'
 import { ProgressionPlayer } from '../../components/ProgressionPlayer'
 import { CADENCE_SEQUENCES } from '../../lib/theoryAudio'
@@ -136,132 +136,56 @@ function CadencesLearnContent() {
 // QUIZ
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function cadPickQuestion(excludeId?: string): Cadence {
-  const pool = excludeId ? CADENCES.filter(c => c.id !== excludeId) : CADENCES
-  return pool[Math.floor(Math.random() * pool.length)]
+function cadPickQuestion(pool: Cadence[], excludeId?: string): Cadence {
+  const candidates = excludeId ? pool.filter(c => c.id !== excludeId) : pool
+  return candidates[Math.floor(Math.random() * candidates.length)]
 }
 
-function cadPickChoices(correct: Cadence): CadenceType[] {
-  const others = TYPES.filter(t => t !== correct.type)
-    .sort(() => Math.random() - 0.5)
-  return [...others, correct.type].sort(() => Math.random() - 0.5)
+function cadPickChoices(_q: Cadence, _pool: Cadence[]): string[] {
+  const correct = _q.type
+  const others = TYPES.filter(t => t !== correct).sort(() => Math.random() - 0.5)
+  return [...others, correct].sort(() => Math.random() - 0.5)
 }
+
+const CADENCES_MODE: QuizMode<Cadence>[] = [
+  {
+    id: 'identify',
+    label: 'Identify',
+    pool: CADENCES,
+    hint: 'V→I Authentic · IV→I Plagal · ends on V = Half · V→vi Deceptive',
+  },
+]
 
 function CadencesQuiz() {
-  const [question, setQuestion] = useState<Cadence>(() => cadPickQuestion())
-  const [choices, setChoices]   = useState<CadenceType[]>(() => cadPickChoices(question))
-  const [selected, setSelected] = useState<CadenceType | null>(null)
-  const [score, setScore]       = useState(0)
-  const [total, setTotal]       = useState(0)
-  const [streak, setStreak]     = useState(0)
-  const [best, setBest]         = useState(0)
-  const timerRef = useRef<number | null>(null)
-
-  function advance(fromId: string) {
-    const q = cadPickQuestion(fromId)
-    setQuestion(q)
-    setChoices(cadPickChoices(q))
-    setSelected(null)
-  }
-
-  function handleAnswer(choice: CadenceType) {
-    if (selected !== null) return
-    const correct = choice === question.type
-    setSelected(choice)
-    setTotal(t => t + 1)
-    if (correct) {
-      setScore(s => s + 1)
-      setStreak(s => { const n = s + 1; setBest(b => Math.max(b, n)); return n })
-    } else {
-      setStreak(0)
-    }
-    if (timerRef.current) clearTimeout(timerRef.current)
-    if (correct) timerRef.current = window.setTimeout(() => advance(question.id), 650)
-  }
-
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
-
-  const accuracy = total > 0 ? Math.round((score / total) * 100) : null
-  const isCorrect = selected !== null && selected === question.type
-
   return (
-    <div className="nq-root">
-
-      <div className="nq-score-row">
-        <div className="nq-stat">
-          <span className="nq-stat-value">{score}<span className="nq-stat-denom">/{total}</span></span>
-          <span className="nq-stat-label">correct</span>
-        </div>
-        {accuracy !== null && (
-          <div className="nq-stat">
-            <span className="nq-stat-value">{accuracy}%</span>
-            <span className="nq-stat-label">accuracy</span>
+    <TheoryQuiz<Cadence>
+      modes={CADENCES_MODE}
+      pickQuestion={cadPickQuestion}
+      getExcludeKey={(q) => q.id}
+      pickChoices={cadPickChoices}
+      getAnswer={(q) => q.type}
+      renderQuestion={(q, _modeId, selected, answer) => {
+        const isCorrect = selected !== null && selected === answer
+        return (
+          <div className={`theory-q-card${selected !== null ? (isCorrect ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
+            <div className="theory-q-pair">
+              {q.numerals.map((n, i) => (
+                <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  {i > 0 && <span className="theory-q-arrow">→</span>}
+                  <span className="theory-q-numeral">{n}</span>
+                </span>
+              ))}
+            </div>
+            <div className="theory-q-sub">{q.description}</div>
+            {selected !== null && (
+              <div className="theory-q-verdict" style={{ color: isCorrect ? 'var(--green)' : 'var(--red)' }}>
+                {isCorrect ? `✓ ${q.type} cadence` : `✗ This is a ${q.type} cadence`}
+              </div>
+            )}
           </div>
-        )}
-        <div className="nq-stat">
-          <span className="nq-stat-value">{streak >= 3 ? `🔥 ${streak}` : streak}</span>
-          <span className="nq-stat-label">streak {best > 0 ? `(best ${best})` : ''}</span>
-        </div>
-      </div>
-
-      <div className={`theory-q-card${selected !== null ? (isCorrect ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
-        {/* Roman numeral pair with arrow */}
-        <div className="theory-q-pair">
-          {question.numerals.map((n, i) => (
-            <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              {i > 0 && <span className="theory-q-arrow">→</span>}
-              <span className="theory-q-numeral">{n}</span>
-            </span>
-          ))}
-        </div>
-        <div className="theory-q-sub">{question.description}</div>
-        {selected !== null && (
-          <div className="theory-q-verdict" style={{ color: isCorrect ? 'var(--green)' : 'var(--red)' }}>
-            {isCorrect ? `✓ ${question.type} cadence` : `✗ This is a ${question.type} cadence`}
-          </div>
-        )}
-      </div>
-
-      {/* Choices — single column for longer labels */}
-      <div className="nq-choices" style={{ gridTemplateColumns: '1fr 1fr' }}>
-        {choices.map(choice => {
-          const isThisCorrect  = choice === question.type
-          const isThisSelected = choice === selected
-          let cls = 'nq-choice'
-          if (selected !== null) {
-            if (isThisSelected && isThisCorrect)  cls += ' nq-correct'
-            else if (isThisSelected)              cls += ' nq-wrong'
-            else if (isThisCorrect)               cls += ' nq-reveal'
-          }
-          return (
-            <button key={choice} type="button" className={cls}
-              onClick={() => handleAnswer(choice)} disabled={selected !== null}
-              style={selected === null ? { borderLeftColor: TYPE_COLOR[choice], borderLeftWidth: 3 } : {}}>
-              {cls.split(' ').includes('nq-reveal') ? (
-                <>
-                  <span className="nq-reveal-top">correct answer</span>
-                  <span className="nq-reveal-val">{choice}</span>
-                </>
-              ) : choice}
-            </button>
-          )
-        })}
-      </div>
-      {selected !== null && selected !== question.type && (
-        <button
-          type="button"
-          className="nq-next-btn"
-          onClick={() => { if (timerRef.current) clearTimeout(timerRef.current); advance(question.id) }}
-        >
-          Next →
-        </button>
-      )}
-
-      <p className="nq-hint">
-        V→I Authentic · IV→I Plagal · ends on V = Half · V→vi Deceptive
-      </p>
-
-    </div>
+        )
+      }}
+    />
   )
 }
 

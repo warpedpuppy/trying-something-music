@@ -1,9 +1,9 @@
 /**
  * Tritone Substitution — theory topic page.
  */
-import { useCallback, useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
 import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
+import { TheoryQuiz, type QuizMode } from '../../components/TheoryQuiz'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -37,20 +37,6 @@ interface TSQuestion {
   mode: TSMode
 }
 
-function tsPick(excludeOriginal?: string): TSQuestion {
-  const pool = excludeOriginal ? TRITONE_PAIRS.filter(p => p.original !== excludeOriginal) : TRITONE_PAIRS
-  const pair = pool[Math.floor(Math.random() * pool.length)]
-  const modes: TSMode[] = ['find-sub', 'find-original']
-  const mode = modes[Math.floor(Math.random() * modes.length)]
-  return { pair, mode }
-}
-
-function tsChoices(q: TSQuestion): string[] {
-  const answer = q.mode === 'find-sub' ? q.pair.sub : q.pair.original
-  const pool = TRITONE_PAIRS.map(p => q.mode === 'find-sub' ? p.sub : p.original)
-  const others = [...new Set(pool.filter(v => v !== answer))].sort(() => Math.random() - 0.5).slice(0, 3)
-  return [...others, answer].sort(() => Math.random() - 0.5)
-}
 
 interface ConceptQuestion {
   question: string
@@ -103,12 +89,15 @@ const CONCEPT_QUESTIONS: ConceptQuestion[] = [
   },
 ]
 
-function pickConceptQ(excludeQ?: string): ConceptQuestion {
-  const pool = excludeQ ? CONCEPT_QUESTIONS.filter(q => q.question !== excludeQ) : CONCEPT_QUESTIONS
-  return pool[Math.floor(Math.random() * pool.length)]
-}
+type TSQ =
+  | { kind: 'find-chord'; tsQ: TSQuestion }
+  | { kind: 'concept';    conceptQ: ConceptQuestion }
 
-type TSQuizMode = 'find-chord' | 'concepts'
+const FIND_CHORD_POOL: TSQ[] = TRITONE_PAIRS.flatMap(p => [
+  { kind: 'find-chord', tsQ: { pair: p, mode: 'find-sub'      as TSMode } },
+  { kind: 'find-chord', tsQ: { pair: p, mode: 'find-original' as TSMode } },
+])
+const CONCEPTS_POOL: TSQ[] = CONCEPT_QUESTIONS.map(q => ({ kind: 'concept', conceptQ: q }))
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // LEARN
@@ -182,121 +171,69 @@ function LearnContent() {
 // QUIZ
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function Quiz() {
-  const [quizMode, setQuizMode] = useState<TSQuizMode>('find-chord')
-  const [tsQ, setTsQ] = useState<TSQuestion>(() => tsPick())
-  const [tsChoicesState, setTsChoicesState] = useState<string[]>(() => {
-    const q = tsPick(); return tsChoices(q)
-  })
-  const [conceptQ, setConceptQ] = useState<ConceptQuestion>(() => pickConceptQ())
-  const [selected, setSelected] = useState<string | null>(null)
-  const [score, setScore] = useState(0)
-  const [total, setTotal] = useState(0)
-  const [streak, setStreak] = useState(0)
-  const [best, setBest] = useState(0)
-  const timerRef = useRef<number | null>(null)
-  const modeRef = useRef<TSQuizMode>('find-chord')
-  modeRef.current = quizMode
+const TS_HINT = 'Tritone = 6 semitones · G7 ↔ D♭7 · same tritone, 3rd & 7th swap roles · bass moves by ½ step'
 
-  const switchMode = useCallback((m: TSQuizMode) => {
-    if (timerRef.current) clearTimeout(timerRef.current)
-    modeRef.current = m
-    const q = tsPick(); const cq = pickConceptQ()
-    setQuizMode(m); setTsQ(q); setTsChoicesState(tsChoices(q)); setConceptQ(cq)
-    setSelected(null); setScore(0); setTotal(0); setStreak(0); setBest(0)
-  }, [])
+const TS_MODES: QuizMode<TSQ>[] = [
+  { id: 'find-chord', label: 'Find the Sub', pool: FIND_CHORD_POOL, hint: TS_HINT },
+  { id: 'concepts',   label: 'Concepts',     pool: CONCEPTS_POOL,   hint: TS_HINT },
+]
 
-  function advance() {
-    if (modeRef.current === 'find-chord') {
-      const q = tsPick(tsQ.pair.original)
-      setTsQ(q); setTsChoicesState(tsChoices(q)); setSelected(null)
-    } else {
-      const cq = pickConceptQ(conceptQ.question)
-      setConceptQ(cq); setSelected(null)
-    }
+function tsPick(pool: TSQ[], excludeKey?: string): TSQ {
+  const filtered = excludeKey ? pool.filter(q =>
+    q.kind === 'find-chord' ? q.tsQ.pair.original !== excludeKey : q.conceptQ.question !== excludeKey
+  ) : pool
+  const p = filtered.length > 0 ? filtered : pool
+  return p[Math.floor(Math.random() * p.length)]
+}
+
+function tsPickChoices(q: TSQ, _pool: TSQ[], _modeId: string): string[] {
+  if (q.kind === 'find-chord') {
+    const answer = q.tsQ.mode === 'find-sub' ? q.tsQ.pair.sub : q.tsQ.pair.original
+    const vals = TRITONE_PAIRS.map(p => q.tsQ.mode === 'find-sub' ? p.sub : p.original)
+    const others = [...new Set(vals.filter(v => v !== answer))].sort(() => Math.random() - 0.5).slice(0, 3)
+    return [...others, answer].sort(() => Math.random() - 0.5)
   }
+  return [...q.conceptQ.choices].sort(() => Math.random() - 0.5)
+}
 
-  function handleAnswer(choice: string) {
-    if (selected !== null) return
-    const answer = quizMode === 'find-chord'
-      ? (tsQ.mode === 'find-sub' ? tsQ.pair.sub : tsQ.pair.original)
-      : conceptQ.answer
-    const correct = choice === answer
-    setSelected(choice); setTotal(t => t + 1)
-    if (correct) { setScore(s => s + 1); setStreak(s => { const n = s + 1; setBest(b => Math.max(b, n)); return n }) }
-    else setStreak(0)
-    if (timerRef.current) clearTimeout(timerRef.current)
-    if (correct) timerRef.current = window.setTimeout(advance, 650)
-  }
+function tsGetAnswer(q: TSQ, _modeId: string): string {
+  if (q.kind === 'find-chord') return q.tsQ.mode === 'find-sub' ? q.tsQ.pair.sub : q.tsQ.pair.original
+  return q.conceptQ.answer
+}
 
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
-
-  const answer = quizMode === 'find-chord'
-    ? (tsQ.mode === 'find-sub' ? tsQ.pair.sub : tsQ.pair.original)
-    : conceptQ.answer
-  const currentChoices = quizMode === 'find-chord' ? tsChoicesState : conceptQ.choices
-  const accuracy = total > 0 ? Math.round((score / total) * 100) : null
-
+function TSQuiz() {
   return (
-    <div className="nq-root">
-      <div className="nq-mode-row">
-        <button type="button" className={`nq-mode-btn${quizMode === 'find-chord' ? ' active' : ''}`} onClick={() => switchMode('find-chord')}>Find the Sub</button>
-        <button type="button" className={`nq-mode-btn${quizMode === 'concepts' ? ' active' : ''}`} onClick={() => switchMode('concepts')}>Concepts</button>
-      </div>
-      <div className="nq-score-row">
-        <div className="nq-stat"><span className="nq-stat-value">{score}<span className="nq-stat-denom">/{total}</span></span><span className="nq-stat-label">correct</span></div>
-        {accuracy !== null && <div className="nq-stat"><span className="nq-stat-value">{accuracy}%</span><span className="nq-stat-label">accuracy</span></div>}
-        <div className="nq-stat"><span className="nq-stat-value">{streak >= 3 ? `🔥 ${streak}` : streak}</span><span className="nq-stat-label">streak {best > 0 ? `(best ${best})` : ''}</span></div>
-      </div>
-
-      <div className={`theory-q-card${selected !== null ? (selected === answer ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
-        {quizMode === 'find-chord' ? (
-          <>
-            <div className="theory-q-main" style={{ fontFamily: 'Georgia, serif' }}>
-              {tsQ.mode === 'find-sub' ? tsQ.pair.original : tsQ.pair.sub}
-            </div>
-            <div className="theory-q-sub">
-              {tsQ.mode === 'find-sub'
-                ? <>What is the tritone substitution for <strong>{tsQ.pair.original}</strong>?</>
-                : <>This chord is a tritone sub — what is the original V7?</>}
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="theory-q-sub" style={{ fontSize: '0.95rem', textAlign: 'center', padding: '0 8px' }}>{conceptQ.question}</div>
-            {selected !== null && (
-              <div className="theory-q-sub" style={{ marginTop: 10, fontSize: '0.85rem', color: '#555' }}>{conceptQ.explanation}</div>
-            )}
-          </>
-        )}
-      </div>
-
-      <div className="nq-choices">
-        {currentChoices.map(choice => {
-          const isCorrect = choice === answer; const isSelected = choice === selected
-          let cls = 'nq-choice'
-          if (selected !== null) { if (isSelected && isCorrect) cls += ' nq-correct'; else if (isSelected) cls += ' nq-wrong'; else if (isCorrect) cls += ' nq-reveal' }
-          return <button key={choice} type="button" className={cls} style={{ fontFamily: 'Georgia, serif' }} onClick={() => handleAnswer(choice)} disabled={selected !== null}>
-            {cls.split(' ').includes('nq-reveal') ? (
-              <>
-                <span className="nq-reveal-top">correct answer</span>
-                <span className="nq-reveal-val">{choice}</span>
-              </>
-            ) : choice}
-          </button>
-        })}
-      </div>
-      {selected !== null && selected !== answer && (
-        <button
-          type="button"
-          className="nq-next-btn"
-          onClick={() => { if (timerRef.current) clearTimeout(timerRef.current); advance() }}
-        >
-          Next →
-        </button>
+    <TheoryQuiz<TSQ>
+      modes={TS_MODES}
+      pickQuestion={tsPick}
+      getExcludeKey={q => q.kind === 'find-chord' ? q.tsQ.pair.original : q.conceptQ.question}
+      pickChoices={tsPickChoices}
+      getAnswer={tsGetAnswer}
+      renderQuestion={(q, _modeId, selected, answer) => (
+        <div className={`theory-q-card${selected !== null ? (selected === answer ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
+          {q.kind === 'find-chord' ? (
+            <>
+              <div className="theory-q-main" style={{ fontFamily: 'Georgia, serif' }}>
+                {q.tsQ.mode === 'find-sub' ? q.tsQ.pair.original : q.tsQ.pair.sub}
+              </div>
+              <div className="theory-q-sub">
+                {q.tsQ.mode === 'find-sub'
+                  ? <>What is the tritone substitution for <strong>{q.tsQ.pair.original}</strong>?</>
+                  : <>This chord is a tritone sub — what is the original V7?</>}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="theory-q-sub" style={{ fontSize: '0.95rem', textAlign: 'center', padding: '0 8px' }}>{q.conceptQ.question}</div>
+              {selected !== null && (
+                <div className="theory-q-sub" style={{ marginTop: 10, fontSize: '0.85rem', color: '#555' }}>{q.conceptQ.explanation}</div>
+              )}
+            </>
+          )}
+        </div>
       )}
-      <p className="nq-hint">Tritone = 6 semitones · G7 ↔ D♭7 · same tritone, 3rd & 7th swap roles · bass moves by ½ step</p>
-    </div>
+      choiceButtonStyle={{ fontFamily: 'Georgia, serif' }}
+    />
   )
 }
 
@@ -317,7 +254,7 @@ export function TritoneSubstitution() {
           color="hsl(0, 65%, 45%)"
         />}
         learnContent={<LearnContent />}
-        gamesContent={<Quiz />}
+        gamesContent={<TSQuiz />}
         topicName="tritone substitution"
         gamesLabel="Practice"
       />

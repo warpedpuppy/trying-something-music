@@ -1,9 +1,9 @@
 /**
  * The 12-Bar Blues — theory topic page.
  */
-import { useCallback, useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
 import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
+import { TheoryQuiz, type QuizMode } from '../../components/TheoryQuiz'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -50,6 +50,21 @@ function bPick(excludeBar?: number): BluesQuestion {
 }
 
 type BluesMode = 'bar-to-roman' | 'bar-to-chord'
+
+const BLUES_MODES: QuizMode<BluesQuestion>[] = [
+  {
+    id: 'bar-to-roman',
+    label: 'Bar → Roman',
+    pool: BLUES_FORM.map(b => ({ key: QUIZ_KEYS[0], bar: b.bar, answer: b.chord })),
+    hint: 'Bars 1–4: I7 · Bars 5–6: IV7 · Bar 7–8: I7 · Bar 9: V7 · Bar 10: IV7 · Bars 11–12: I7–V7',
+  },
+  {
+    id: 'bar-to-chord',
+    label: 'Bar → Chord Name',
+    pool: BLUES_FORM.map(b => ({ key: QUIZ_KEYS[0], bar: b.bar, answer: b.chord })),
+    hint: 'Bars 1–4: I7 · Bars 5–6: IV7 · Bar 7–8: I7 · Bar 9: V7 · Bar 10: IV7 · Bars 11–12: I7–V7',
+  },
+]
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // LEARN
@@ -142,102 +157,33 @@ function LearnContent() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function Quiz() {
-  const [mode, setMode] = useState<BluesMode>('bar-to-roman')
-  const [question, setQuestion] = useState<BluesQuestion>(() => bPick())
-  const [selected, setSelected] = useState<string | null>(null)
-  const [score, setScore] = useState(0)
-  const [total, setTotal] = useState(0)
-  const [streak, setStreak] = useState(0)
-  const [best, setBest] = useState(0)
-  const timerRef = useRef<number | null>(null)
-  const modeRef = useRef<BluesMode>('bar-to-roman')
-  modeRef.current = mode
-
-  const switchMode = useCallback((m: BluesMode) => {
-    if (timerRef.current) clearTimeout(timerRef.current)
-    modeRef.current = m
-    setMode(m); setQuestion(bPick())
-    setSelected(null); setScore(0); setTotal(0); setStreak(0); setBest(0)
-  }, [])
-
-  function advance(excludeBar: number) {
-    setQuestion(bPick(excludeBar)); setSelected(null)
-  }
-
-  function handleAnswer(choice: string) {
-    if (selected !== null) return
-    const answer = modeRef.current === 'bar-to-roman'
-      ? question.answer
-      : CHORD_NAMES[question.key][question.answer]
-    const correct = choice === answer
-    setSelected(choice); setTotal(t => t + 1)
-    if (correct) { setScore(s => s + 1); setStreak(s => { const n = s + 1; setBest(b => Math.max(b, n)); return n }) }
-    else setStreak(0)
-    if (timerRef.current) clearTimeout(timerRef.current)
-    if (correct) timerRef.current = window.setTimeout(() => advance(question.bar), 650)
-  }
-
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
-
-  const answer = mode === 'bar-to-roman'
-    ? question.answer
-    : CHORD_NAMES[question.key][question.answer]
-
-  const choices = mode === 'bar-to-roman'
-    ? (ROMAN_OPTIONS as string[])
-    : ROMAN_OPTIONS.map(r => CHORD_NAMES[question.key][r])
-
-  const accuracy = total > 0 ? Math.round((score / total) * 100) : null
-
   return (
-    <div className="nq-root">
-      <div className="nq-mode-row">
-        <button type="button" className={`nq-mode-btn${mode === 'bar-to-roman' ? ' active' : ''}`} onClick={() => switchMode('bar-to-roman')}>Bar → Roman</button>
-        <button type="button" className={`nq-mode-btn${mode === 'bar-to-chord' ? ' active' : ''}`} onClick={() => switchMode('bar-to-chord')}>Bar → Chord Name</button>
-      </div>
-      <div className="nq-score-row">
-        <div className="nq-stat"><span className="nq-stat-value">{score}<span className="nq-stat-denom">/{total}</span></span><span className="nq-stat-label">correct</span></div>
-        {accuracy !== null && <div className="nq-stat"><span className="nq-stat-value">{accuracy}%</span><span className="nq-stat-label">accuracy</span></div>}
-        <div className="nq-stat"><span className="nq-stat-value">{streak >= 3 ? `🔥 ${streak}` : streak}</span><span className="nq-stat-label">streak {best > 0 ? `(best ${best})` : ''}</span></div>
-      </div>
-
-      <div className={`theory-q-card${selected !== null ? (selected === answer ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
-        <div className="theory-q-main" style={{ fontFamily: 'Georgia, serif', fontSize: '1.6rem' }}>
-          Bar {question.bar}
+    <TheoryQuiz<BluesQuestion>
+      modes={BLUES_MODES}
+      pickQuestion={(_pool, excludeKey) => bPick(excludeKey !== undefined ? Number(excludeKey) : undefined)}
+      getExcludeKey={(q) => String(q.bar)}
+      pickChoices={(q, _pool, modeId) =>
+        modeId === 'bar-to-roman'
+          ? (ROMAN_OPTIONS as string[])
+          : ROMAN_OPTIONS.map(r => CHORD_NAMES[q.key][r])
+      }
+      getAnswer={(q, modeId) =>
+        modeId === 'bar-to-roman' ? q.answer : CHORD_NAMES[q.key][q.answer]
+      }
+      renderQuestion={(q, modeId, selected, answer) => (
+        <div className={`theory-q-card${selected !== null ? (selected === answer ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
+          <div className="theory-q-main" style={{ fontFamily: 'Georgia, serif', fontSize: '1.6rem' }}>
+            Bar {q.bar}
+          </div>
+          <div className="theory-q-sub">
+            {modeId === 'bar-to-roman'
+              ? 'What chord (Roman numeral) is played here in the 12-bar blues?'
+              : <><strong>{q.key} blues</strong> — what chord is played here?</>}
+          </div>
         </div>
-        <div className="theory-q-sub">
-          {mode === 'bar-to-roman'
-            ? 'What chord (Roman numeral) is played here in the 12-bar blues?'
-            : <>What chord is played here in <strong>{question.key} blues</strong>?</>}
-        </div>
-      </div>
-
-      <div className="nq-choices">
-        {choices.map(choice => {
-          const isCorrect = choice === answer; const isSelected = choice === selected
-          let cls = 'nq-choice'
-          if (selected !== null) { if (isSelected && isCorrect) cls += ' nq-correct'; else if (isSelected) cls += ' nq-wrong'; else if (isCorrect) cls += ' nq-reveal' }
-          return <button key={choice} type="button" className={cls} style={{ fontFamily: 'Georgia, serif' }} onClick={() => handleAnswer(choice)} disabled={selected !== null}>
-            {cls.split(' ').includes('nq-reveal') ? (
-              <>
-                <span className="nq-reveal-top">correct answer</span>
-                <span className="nq-reveal-val">{choice}</span>
-              </>
-            ) : choice}
-          </button>
-        })}
-      </div>
-      {selected !== null && selected !== answer && (
-        <button
-          type="button"
-          className="nq-next-btn"
-          onClick={() => { if (timerRef.current) clearTimeout(timerRef.current); advance(question.bar) }}
-        >
-          Next →
-        </button>
       )}
-      <p className="nq-hint">Bars 1–4: I7 · Bars 5–6: IV7 · Bar 7–8: I7 · Bar 9: V7 · Bar 10: IV7 · Bars 11–12: I7–V7</p>
-    </div>
+      choiceButtonStyle={{ fontFamily: 'Georgia, serif' }}
+    />
   )
 }
 

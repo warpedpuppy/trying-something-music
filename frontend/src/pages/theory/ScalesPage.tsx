@@ -5,9 +5,9 @@
  * Practice — two modes: given root+degree → name the note; given root+note → name the degree
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
 import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
+import { TheoryQuiz, type QuizMode } from '../../components/TheoryQuiz'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -139,186 +139,82 @@ function ScalesLearnContent() {
 // QUIZ
 // ═══════════════════════════════════════════════════════════════════════════════
 
-type ScaleMode = 'degree-to-note' | 'note-to-degree'
-
 interface ScaleQuestion {
   key: string
-  degree: number   // 1-based (2-7 asked, 1 is trivially the root)
+  degree: number
   note: string
 }
 
-function scalePickQuestion(exclude?: string): ScaleQuestion {
-  const keys = exclude ? SCALE_KEYS.filter(k => k !== exclude) : SCALE_KEYS
-  const key  = keys[Math.floor(Math.random() * keys.length)]
-  const deg  = 1 + Math.floor(Math.random() * 7)  // 1–7
-  return { key, degree: deg, note: MAJOR_SCALES[key][deg - 1] }
+const SCALE_QUESTION_POOL: ScaleQuestion[] = SCALE_KEYS.flatMap(key =>
+  [1, 2, 3, 4, 5, 6, 7].map(deg => ({
+    key,
+    degree: deg,
+    note: MAJOR_SCALES[key][deg - 1],
+  }))
+)
+
+function scalePick(pool: ScaleQuestion[], excludeKey?: string): ScaleQuestion {
+  const filtered = excludeKey ? pool.filter(q => q.key !== excludeKey) : pool
+  const p = filtered.length > 0 ? filtered : pool
+  return p[Math.floor(Math.random() * p.length)]
 }
 
-function scalePickChoices(mode: ScaleMode, q: ScaleQuestion): string[] {
-  const scaleNotes = MAJOR_SCALES[q.key]
-  if (mode === 'degree-to-note') {
-    const answer = q.note
-    const others = scaleNotes
-      .filter(n => n !== answer)
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 3)
-    return [...others, answer].sort(() => Math.random() - 0.5)
-  } else {
-    const answer = String(q.degree)
-    const others = ['1','2','3','4','5','6','7']
-      .filter(d => d !== answer)
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 3)
-    return [...others, answer].sort(() => Math.random() - 0.5)
+function scalePickChoices(q: ScaleQuestion, _pool: ScaleQuestion[], modeId: string): string[] {
+  if (modeId === 'degree-to-note') {
+    const scaleNotes = MAJOR_SCALES[q.key]
+    const others = scaleNotes.filter(n => n !== q.note).sort(() => Math.random() - 0.5).slice(0, 3)
+    return [...others, q.note].sort(() => Math.random() - 0.5)
   }
+  // note-to-degree: return degree name strings so choices display correctly
+  const answer = DEGREE_NAMES[q.degree - 1]
+  const others = DEGREE_NAMES.filter(d => d !== answer).sort(() => Math.random() - 0.5).slice(0, 3)
+  return [...others, answer].sort(() => Math.random() - 0.5)
 }
+
+const SCALE_MODES: QuizMode<ScaleQuestion>[] = [
+  { id: 'degree-to-note', label: 'Degree → Note', pool: SCALE_QUESTION_POOL, hint: 'Pattern: W – W – H – W – W – W – H' },
+  { id: 'note-to-degree', label: 'Note → Degree', pool: SCALE_QUESTION_POOL, hint: 'Pattern: W – W – H – W – W – W – H' },
+]
 
 function ScalesQuiz() {
-  const [mode, setMode]         = useState<ScaleMode>('degree-to-note')
-  const [question, setQuestion] = useState<ScaleQuestion>(() => scalePickQuestion())
-  const [choices, setChoices]   = useState<string[]>(() => scalePickChoices('degree-to-note', question))
-  const [selected, setSelected] = useState<string | null>(null)
-  const [score, setScore]       = useState(0)
-  const [total, setTotal]       = useState(0)
-  const [streak, setStreak]     = useState(0)
-  const [best, setBest]         = useState(0)
-  const timerRef  = useRef<number | null>(null)
-  const modeRef   = useRef<ScaleMode>('degree-to-note')
-  modeRef.current = mode
-
-  const switchMode = useCallback((m: ScaleMode) => {
-    if (timerRef.current) clearTimeout(timerRef.current)
-    modeRef.current = m
-    const q = scalePickQuestion()
-    setMode(m)
-    setQuestion(q)
-    setChoices(scalePickChoices(m, q))
-    setSelected(null)
-    setScore(0); setTotal(0); setStreak(0); setBest(0)
-  }, [])
-
-  function advance(fromKey: string) {
-    const m = modeRef.current
-    const q = scalePickQuestion(fromKey)
-    setQuestion(q)
-    setChoices(scalePickChoices(m, q))
-    setSelected(null)
-  }
-
-  function handleAnswer(choice: string) {
-    if (selected !== null) return
-    const answer = mode === 'degree-to-note' ? question.note : String(question.degree)
-    const correct = choice === answer
-    setSelected(choice)
-    setTotal(t => t + 1)
-    if (correct) {
-      setScore(s => s + 1)
-      setStreak(s => { const n = s + 1; setBest(b => Math.max(b, n)); return n })
-    } else {
-      setStreak(0)
-    }
-    if (timerRef.current) clearTimeout(timerRef.current)
-    if (correct) timerRef.current = window.setTimeout(() => advance(question.key), 650)
-  }
-
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
-
-  const answer   = mode === 'degree-to-note' ? question.note : String(question.degree)
-  const accuracy = total > 0 ? Math.round((score / total) * 100) : null
-  const scaleDisplay = MAJOR_SCALES[question.key].map((n, i) => ({
-    note: n, degree: i + 1, isTarget: i + 1 === question.degree,
-  }))
-
   return (
-    <div className="nq-root">
-
-      <div className="nq-mode-row">
-        <button type="button" className={`nq-mode-btn${mode === 'degree-to-note' ? ' active' : ''}`}
-          onClick={() => switchMode('degree-to-note')}>Degree → Note</button>
-        <button type="button" className={`nq-mode-btn${mode === 'note-to-degree' ? ' active' : ''}`}
-          onClick={() => switchMode('note-to-degree')}>Note → Degree</button>
-      </div>
-
-      <div className="nq-score-row">
-        <div className="nq-stat">
-          <span className="nq-stat-value">{score}<span className="nq-stat-denom">/{total}</span></span>
-          <span className="nq-stat-label">correct</span>
-        </div>
-        {accuracy !== null && (
-          <div className="nq-stat">
-            <span className="nq-stat-value">{accuracy}%</span>
-            <span className="nq-stat-label">accuracy</span>
+    <TheoryQuiz<ScaleQuestion>
+      modes={SCALE_MODES}
+      pickQuestion={scalePick}
+      getExcludeKey={q => q.key}
+      pickChoices={scalePickChoices}
+      getAnswer={(q, modeId) => modeId === 'degree-to-note' ? q.note : DEGREE_NAMES[q.degree - 1]}
+      renderQuestion={(q, modeId, selected, answer) => {
+        const scaleDisplay = MAJOR_SCALES[q.key].map((n, i) => ({
+          note: n, degree: i + 1, isTarget: i + 1 === q.degree,
+        }))
+        return (
+          <div className={`theory-q-card${selected !== null ? (selected === answer ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
+            {modeId === 'degree-to-note' ? (
+              <>
+                <div className="theory-q-main">{DEGREE_NAMES[q.degree - 1]} degree</div>
+                <div className="theory-q-sub">of <strong>{q.key} major</strong></div>
+              </>
+            ) : (
+              <>
+                <div className="theory-q-main">{q.note}</div>
+                <div className="theory-q-sub">is the ___ degree of <strong>{q.key} major</strong></div>
+              </>
+            )}
+            <div className="scales-mini-strip">
+              {scaleDisplay.map(({ note, degree, isTarget }) => (
+                <div key={degree}
+                  className={`scales-mini-note${isTarget ? ' scales-mini-target' : ''}`}
+                  title={`Degree ${degree}`}>
+                  <span className="scales-mini-notename">{note}</span>
+                  <span className="scales-mini-deg">{degree}</span>
+                </div>
+              ))}
+            </div>
           </div>
-        )}
-        <div className="nq-stat">
-          <span className="nq-stat-value">{streak >= 3 ? `🔥 ${streak}` : streak}</span>
-          <span className="nq-stat-label">streak {best > 0 ? `(best ${best})` : ''}</span>
-        </div>
-      </div>
-
-      <div className={`theory-q-card${selected !== null ? (selected === answer ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
-        {mode === 'degree-to-note' ? (
-          <>
-            <div className="theory-q-main">{DEGREE_NAMES[question.degree - 1]} degree</div>
-            <div className="theory-q-sub">of <strong>{question.key} major</strong></div>
-          </>
-        ) : (
-          <>
-            <div className="theory-q-main">{question.note}</div>
-            <div className="theory-q-sub">
-              is the ___ degree of <strong>{question.key} major</strong>
-            </div>
-          </>
-        )}
-        {/* Mini scale strip */}
-        <div className="scales-mini-strip">
-          {scaleDisplay.map(({ note, degree, isTarget }) => (
-            <div key={degree}
-              className={`scales-mini-note${isTarget ? ' scales-mini-target' : ''}`}
-              title={`Degree ${degree}`}>
-              <span className="scales-mini-notename">{note}</span>
-              <span className="scales-mini-deg">{degree}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="nq-choices">
-        {choices.map(choice => {
-          const isCorrect  = choice === answer
-          const isSelected = choice === selected
-          let cls = 'nq-choice'
-          if (selected !== null) {
-            if (isSelected && isCorrect)  cls += ' nq-correct'
-            else if (isSelected)          cls += ' nq-wrong'
-            else if (isCorrect)           cls += ' nq-reveal'
-          }
-          return (
-            <button key={choice} type="button" className={cls}
-              onClick={() => handleAnswer(choice)} disabled={selected !== null}>
-              {cls.split(' ').includes('nq-reveal') ? (
-                <>
-                  <span className="nq-reveal-top">correct answer</span>
-                  <span className="nq-reveal-val">{mode === 'note-to-degree' ? DEGREE_NAMES[Number(choice) - 1] ?? choice : choice}</span>
-                </>
-              ) : (mode === 'note-to-degree' ? DEGREE_NAMES[Number(choice) - 1] ?? choice : choice)}
-            </button>
-          )
-        })}
-      </div>
-      {selected !== null && selected !== answer && (
-        <button
-          type="button"
-          className="nq-next-btn"
-          onClick={() => { if (timerRef.current) clearTimeout(timerRef.current); advance(question.key) }}
-        >
-          Next →
-        </button>
-      )}
-
-      <p className="nq-hint">Pattern: W – W – H – W – W – W – H</p>
-
-    </div>
+        )
+      }}
+    />
   )
 }
 

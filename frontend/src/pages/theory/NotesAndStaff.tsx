@@ -6,8 +6,9 @@
  *   Practice — multiple-choice note-name quiz using VexFlow notation
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
+import { TheoryQuiz } from '../../components/TheoryQuiz'
 import { renderSingleNote } from '../../lib/vexflowNote'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
@@ -246,158 +247,41 @@ function pickChoices(correct: QuizNote): string[] {
   return [...wrong, correct.name].sort(() => Math.random() - 0.5)
 }
 
+// ── NoteStaffDisplay sub-component ───────────────────────────────────────────
+
+function NoteStaffDisplay({ q, selected, answer }: { q: QuizNote; selected: string | null; answer: string }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (ref.current) {
+      try { renderSingleNote(ref.current, q.key, q.clef) } catch { /* ignore */ }
+    }
+  }, [q])
+  const feedback = selected !== null ? (selected === answer ? ' nq-staff-correct' : ' nq-staff-wrong') : ''
+  return (
+    <div className="nq-staff-wrap">
+      <div ref={ref} className={`nq-staff-svg${feedback}`} />
+      <p className="nq-clef-label">{q.clef === 'treble' ? '𝄞 Treble clef' : '𝄢 Bass clef'}</p>
+    </div>
+  )
+}
+
 // ── Quiz component ────────────────────────────────────────────────────────────
 
 function NotesQuiz() {
-  const [modeId, setModeId] = useState(MODES[0].id)
-  const mode = MODES.find(m => m.id === modeId)!
-
-  const [currentNote, setCurrentNote] = useState<QuizNote>(() => pickNote(mode.pool))
-  const [choices, setChoices]         = useState<string[]>(() => pickChoices(currentNote))
-  const [selected, setSelected]       = useState<string | null>(null)
-
-  const [score, setScore]   = useState(0)
-  const [total, setTotal]   = useState(0)
-  const [streak, setStreak] = useState(0)
-  const [best, setBest]     = useState(0)
-
-  const containerRef = useRef<HTMLDivElement>(null)
-  const advanceTimer = useRef<number | null>(null)
-  const lastNoteId   = useRef<string | undefined>(undefined)
-
-  // Render VexFlow note whenever currentNote changes
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-    try { renderSingleNote(el, currentNote.key, currentNote.clef) } catch { /* ignore */ }
-  }, [currentNote])
-
-  const switchMode = useCallback((newModeId: string) => {
-    if (advanceTimer.current) clearTimeout(advanceTimer.current)
-    const newMode = MODES.find(m => m.id === newModeId)!
-    const note = pickNote(newMode.pool)
-    setModeId(newModeId)
-    setCurrentNote(note)
-    setChoices(pickChoices(note))
-    setSelected(null)
-    setScore(0); setTotal(0); setStreak(0); setBest(0)
-    lastNoteId.current = undefined
-  }, [])
-
-  function advance(fromNote: QuizNote) {
-    const id = fromNote.key + fromNote.clef
-    lastNoteId.current = id
-    const next = pickNote(mode.pool, id)
-    setCurrentNote(next)
-    setChoices(pickChoices(next))
-    setSelected(null)
-  }
-
-  function handleAnswer(name: string) {
-    if (selected !== null) return
-    const correct = name === currentNote.name
-    setSelected(name)
-    setTotal(t => t + 1)
-    if (correct) {
-      setScore(s => s + 1)
-      setStreak(s => { const n = s + 1; setBest(b => Math.max(b, n)); return n })
-    } else {
-      setStreak(0)
-    }
-    if (advanceTimer.current) clearTimeout(advanceTimer.current)
-    if (correct) advanceTimer.current = window.setTimeout(() => advance(currentNote), 650)
-  }
-
-  useEffect(() => () => { if (advanceTimer.current) clearTimeout(advanceTimer.current) }, [])
-
-  const accuracy = total > 0 ? Math.round((score / total) * 100) : null
-
   return (
-    <div className="nq-root">
-
-      {/* Mode selector */}
-      <div className="nq-mode-row">
-        {MODES.map(m => (
-          <button key={m.id} type="button"
-            className={`nq-mode-btn${modeId === m.id ? ' active' : ''}`}
-            onClick={() => switchMode(m.id)}
-          >
-            {m.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Score strip */}
-      <div className="nq-score-row">
-        <div className="nq-stat">
-          <span className="nq-stat-value">{score}<span className="nq-stat-denom">/{total}</span></span>
-          <span className="nq-stat-label">correct</span>
-        </div>
-        {accuracy !== null && (
-          <div className="nq-stat">
-            <span className="nq-stat-value">{accuracy}%</span>
-            <span className="nq-stat-label">accuracy</span>
-          </div>
-        )}
-        <div className="nq-stat">
-          <span className="nq-stat-value">{streak >= 3 ? `🔥 ${streak}` : streak}</span>
-          <span className="nq-stat-label">streak {best > 0 ? `(best ${best})` : ''}</span>
-        </div>
-      </div>
-
-      {/* Staff with note */}
-      <div className="nq-staff-wrap">
-        <div
-          ref={containerRef}
-          className={`nq-staff-svg${selected !== null ? (selected === currentNote.name ? ' nq-staff-correct' : ' nq-staff-wrong') : ''}`}
-        />
-        <p className="nq-clef-label">
-          {currentNote.clef === 'treble' ? '𝄞 Treble clef' : '𝄢 Bass clef'}
-        </p>
-      </div>
-
-      {/* Prompt */}
-      <p className="nq-question">What note is this?</p>
-
-      {/* Answer buttons */}
-      <div className="nq-choices">
-        {choices.map(name => {
-          const isCorrect  = name === currentNote.name
-          const isSelected = name === selected
-          let cls = 'nq-choice'
-          if (selected !== null) {
-            if (isSelected && isCorrect)  cls += ' nq-correct'
-            else if (isSelected)          cls += ' nq-wrong'
-            else if (isCorrect)           cls += ' nq-reveal'
-          }
-          return (
-            <button key={name} type="button" className={cls}
-              onClick={() => handleAnswer(name)} disabled={selected !== null}
-            >
-              {cls.split(' ').includes('nq-reveal') ? (
-                <>
-                  <span className="nq-reveal-top">correct answer</span>
-                  <span className="nq-reveal-val">{name}</span>
-                </>
-              ) : name}
-            </button>
-          )
-        })}
-      </div>
-      {selected !== null && selected !== currentNote.name && (
-        <button
-          type="button"
-          className="nq-next-btn"
-          onClick={() => { if (advanceTimer.current) clearTimeout(advanceTimer.current); advance(currentNote) }}
-        >
-          Next →
-        </button>
+    <TheoryQuiz<QuizNote>
+      modes={MODES}
+      pickQuestion={(pool, excludeKey) => pickNote(pool, excludeKey)}
+      getExcludeKey={(q) => q.key + q.clef}
+      pickChoices={(q) => pickChoices(q)}
+      getAnswer={(q) => q.name}
+      renderQuestion={(q, _modeId, selected, answer) => (
+        <>
+          <NoteStaffDisplay q={q} selected={selected} answer={answer} />
+          <p className="nq-question">What note is this?</p>
+        </>
       )}
-
-      {/* Mnemonic hint */}
-      <p className="nq-hint">{mode.hint}</p>
-
-    </div>
+    />
   )
 }
 

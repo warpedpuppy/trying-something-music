@@ -1,9 +1,9 @@
 /**
  * Diatonic Harmony & Roman Numerals — theory topic page.
  */
-import { useCallback, useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
 import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
+import { TheoryQuiz, type QuizMode } from '../../components/TheoryQuiz'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -153,100 +153,36 @@ function dhChoices(mode: DHMode, q: DHQuestion): string[] {
   return [...others, answer].sort(() => Math.random() - 0.5)
 }
 
+const DH_MODES: QuizMode<DHQuestion>[] = [
+  { id: 'chord-to-roman', label: 'Chord → Roman', pool: KEYS.map(k => dhPick()), hint: 'I ii iii IV V vi vii°  ·  Uppercase = major, lowercase = minor' },
+  { id: 'roman-to-chord', label: 'Roman → Chord', pool: KEYS.map(k => dhPick()), hint: 'I ii iii IV V vi vii°  ·  Uppercase = major, lowercase = minor' },
+]
+
 function Quiz() {
-  const [mode, setMode]         = useState<DHMode>('chord-to-roman')
-  const [question, setQuestion] = useState<DHQuestion>(() => dhPick())
-  const [choices, setChoices]   = useState<string[]>(() => dhChoices('chord-to-roman', question))
-  const [selected, setSelected] = useState<string | null>(null)
-  const [score, setScore]       = useState(0)
-  const [total, setTotal]       = useState(0)
-  const [streak, setStreak]     = useState(0)
-  const [best, setBest]         = useState(0)
-  const timerRef = useRef<number | null>(null)
-  const modeRef  = useRef<DHMode>('chord-to-roman')
-  modeRef.current = mode
-
-  const switchMode = useCallback((m: DHMode) => {
-    if (timerRef.current) clearTimeout(timerRef.current)
-    modeRef.current = m
-    const q = dhPick()
-    setMode(m); setQuestion(q); setChoices(dhChoices(m, q))
-    setSelected(null); setScore(0); setTotal(0); setStreak(0); setBest(0)
-  }, [])
-
-  function advance(fromKey: string) {
-    const m = modeRef.current; const q = dhPick(fromKey)
-    setQuestion(q); setChoices(dhChoices(m, q)); setSelected(null)
-  }
-
-  function handleAnswer(choice: string) {
-    if (selected !== null) return
-    const answer = modeRef.current === 'chord-to-roman' ? question.chord.roman : question.chord.name
-    const correct = choice === answer
-    setSelected(choice); setTotal(t => t + 1)
-    if (correct) { setScore(s => s + 1); setStreak(s => { const n = s+1; setBest(b => Math.max(b,n)); return n }) }
-    else setStreak(0)
-    if (timerRef.current) clearTimeout(timerRef.current)
-    if (correct) timerRef.current = window.setTimeout(() => advance(question.key), 650)
-  }
-
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
-
-  const answer = mode === 'chord-to-roman' ? question.chord.roman : question.chord.name
-  const accuracy = total > 0 ? Math.round((score / total) * 100) : null
-
   return (
-    <div className="nq-root">
-      <div className="nq-mode-row">
-        <button type="button" className={`nq-mode-btn${mode==='chord-to-roman'?' active':''}`} onClick={() => switchMode('chord-to-roman')}>Chord → Roman</button>
-        <button type="button" className={`nq-mode-btn${mode==='roman-to-chord'?' active':''}`} onClick={() => switchMode('roman-to-chord')}>Roman → Chord</button>
-      </div>
-      <div className="nq-score-row">
-        <div className="nq-stat"><span className="nq-stat-value">{score}<span className="nq-stat-denom">/{total}</span></span><span className="nq-stat-label">correct</span></div>
-        {accuracy !== null && <div className="nq-stat"><span className="nq-stat-value">{accuracy}%</span><span className="nq-stat-label">accuracy</span></div>}
-        <div className="nq-stat"><span className="nq-stat-value">{streak >= 3 ? `🔥 ${streak}` : streak}</span><span className="nq-stat-label">streak {best > 0 ? `(best ${best})` : ''}</span></div>
-      </div>
-
-      <div className={`theory-q-card${selected !== null ? (selected===answer?' theory-q-correct':' theory-q-wrong') : ''}`}>
-        {mode === 'chord-to-roman' ? (
-          <>
-            <div className="theory-q-main" style={{ fontFamily: 'Georgia, serif' }}>{question.chord.name}</div>
-            <div className="theory-q-sub">What Roman numeral is this in <strong>{question.key} major</strong>?</div>
-          </>
-        ) : (
-          <>
-            <div className="theory-q-main" style={{ fontFamily: 'Georgia, serif' }}>{question.chord.roman}</div>
-            <div className="theory-q-sub">What chord is this in <strong>{question.key} major</strong>?</div>
-          </>
-        )}
-      </div>
-
-      <div className="nq-choices">
-        {choices.map(choice => {
-          const isCorrect = choice === answer; const isSelected = choice === selected
-          let cls = 'nq-choice'
-          if (selected !== null) { if (isSelected && isCorrect) cls += ' nq-correct'; else if (isSelected) cls += ' nq-wrong'; else if (isCorrect) cls += ' nq-reveal' }
-          return <button key={choice} type="button" className={cls} style={{ fontFamily: 'Georgia, serif' }} onClick={() => handleAnswer(choice)} disabled={selected !== null}>
-            {cls.split(' ').includes('nq-reveal') ? (
-              <>
-                <span className="nq-reveal-top">correct answer</span>
-                <span className="nq-reveal-val">{choice}</span>
-              </>
-            ) : choice}
-          </button>
-        })}
-      </div>
-      {selected !== null && selected !== answer && (
-        <button
-          type="button"
-          className="nq-next-btn"
-          onClick={() => { if (timerRef.current) clearTimeout(timerRef.current); advance(question.key) }}
-        >
-          Next →
-        </button>
+    <TheoryQuiz<DHQuestion>
+      modes={DH_MODES}
+      pickQuestion={(_pool, excludeKey) => dhPick(excludeKey)}
+      getExcludeKey={(q) => q.key}
+      pickChoices={(q, _pool, modeId) => dhChoices(modeId as DHMode, q)}
+      getAnswer={(q, modeId) => modeId === 'chord-to-roman' ? q.chord.roman : q.chord.name}
+      renderQuestion={(q, modeId, selected, answer) => (
+        <div className={`theory-q-card${selected !== null ? (selected === answer ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
+          {modeId === 'chord-to-roman' ? (
+            <>
+              <div className="theory-q-main" style={{ fontFamily: 'Georgia, serif' }}>{q.chord.name}</div>
+              <div className="theory-q-sub">What Roman numeral is this in <strong>{q.key} major</strong>?</div>
+            </>
+          ) : (
+            <>
+              <div className="theory-q-main" style={{ fontFamily: 'Georgia, serif' }}>{q.chord.roman}</div>
+              <div className="theory-q-sub">What chord is this in <strong>{q.key} major</strong>?</div>
+            </>
+          )}
+        </div>
       )}
-      <p className="nq-hint">I ii iii IV V vi vii°  ·  Uppercase = major, lowercase = minor</p>
-    </div>
+      choiceButtonStyle={{ fontFamily: 'Georgia, serif' }}
+    />
   )
 }
 

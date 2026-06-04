@@ -1,9 +1,9 @@
 /**
  * Chord Symbols & Lead Sheets — theory topic page.
  */
-import { useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
 import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
+import { TheoryQuiz, type QuizMode } from '../../components/TheoryQuiz'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -221,96 +221,48 @@ function LearnContent() {
 // QUIZ
 // ═══════════════════════════════════════════════════════════════════════════════
 
+function csGetAnswer(q: CSQuestion): string {
+  if (q.questionType === 'name-from-symbol') return q.chord.name
+  if (q.questionType === 'symbol-from-name') return q.chord.symbol || '(none)'
+  return q.chord.intervals
+}
+
+function csGetDisplay(q: CSQuestion): string {
+  if (q.questionType === 'name-from-symbol') return `C${q.chord.symbol}`
+  if (q.questionType === 'symbol-from-name') return q.chord.name
+  return `C${q.chord.symbol}`
+}
+
+function csGetPrompt(q: CSQuestion): string {
+  if (q.questionType === 'name-from-symbol') return `What type of chord does the suffix "${q.chord.symbol || '(none)'}" indicate?`
+  if (q.questionType === 'symbol-from-name') return `What suffix represents a ${q.chord.name.toLowerCase()}?`
+  return `What intervals make up a ${q.chord.name.toLowerCase()}?`
+}
+
+const CS_MODE: QuizMode<CSQuestion>[] = [
+  {
+    id: 'mixed',
+    label: 'Mixed',
+    pool: CHORD_TYPES.map(c => csPick()),
+    hint: 'No suffix = major · m = minor · 7 = dominant 7th · maj7 = major 7th · m7 = minor 7th',
+  },
+]
+
 function Quiz() {
-  const [question, setQuestion] = useState<CSQuestion>(() => csPick())
-  const [choices, setChoices] = useState<string[]>(() => csChoices(csPick()))
-  const [selected, setSelected] = useState<string | null>(null)
-  const [score, setScore] = useState(0)
-  const [total, setTotal] = useState(0)
-  const [streak, setStreak] = useState(0)
-  const [best, setBest] = useState(0)
-  const timerRef = useRef<number | null>(null)
-
-  function advance(excludeSymbol: string) {
-    const q = csPick(excludeSymbol)
-    setQuestion(q); setChoices(csChoices(q)); setSelected(null)
-  }
-
-  function handleAnswer(choice: string) {
-    if (selected !== null) return
-    let answer: string
-    if (question.questionType === 'name-from-symbol') answer = question.chord.name
-    else if (question.questionType === 'symbol-from-name') answer = question.chord.symbol || '(none)'
-    else answer = question.chord.intervals
-    const correct = choice === answer
-    setSelected(choice); setTotal(t => t + 1)
-    if (correct) { setScore(s => s + 1); setStreak(s => { const n = s + 1; setBest(b => Math.max(b, n)); return n }) }
-    else setStreak(0)
-    if (timerRef.current) clearTimeout(timerRef.current)
-    if (correct) timerRef.current = window.setTimeout(() => advance(question.chord.symbol), 650)
-  }
-
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
-
-  let prompt: string
-  let displayValue: string
-  let answer: string
-
-  if (question.questionType === 'name-from-symbol') {
-    prompt = `What type of chord does the suffix "${question.chord.symbol || '(none)'}" indicate?`
-    displayValue = `C${question.chord.symbol}`
-    answer = question.chord.name
-  } else if (question.questionType === 'symbol-from-name') {
-    prompt = `What suffix represents a ${question.chord.name.toLowerCase()}?`
-    displayValue = question.chord.name
-    answer = question.chord.symbol || '(none)'
-  } else {
-    prompt = `What intervals make up a ${question.chord.name.toLowerCase()}?`
-    displayValue = `C${question.chord.symbol}`
-    answer = question.chord.intervals
-  }
-
-  const accuracy = total > 0 ? Math.round((score / total) * 100) : null
-
   return (
-    <div className="nq-root">
-      <div className="nq-score-row">
-        <div className="nq-stat"><span className="nq-stat-value">{score}<span className="nq-stat-denom">/{total}</span></span><span className="nq-stat-label">correct</span></div>
-        {accuracy !== null && <div className="nq-stat"><span className="nq-stat-value">{accuracy}%</span><span className="nq-stat-label">accuracy</span></div>}
-        <div className="nq-stat"><span className="nq-stat-value">{streak >= 3 ? `🔥 ${streak}` : streak}</span><span className="nq-stat-label">streak {best > 0 ? `(best ${best})` : ''}</span></div>
-      </div>
-
-      <div className={`theory-q-card${selected !== null ? (selected === answer ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
-        <div className="theory-q-main" style={{ fontFamily: 'Georgia, serif' }}>{displayValue}</div>
-        <div className="theory-q-sub">{prompt}</div>
-      </div>
-
-      <div className="nq-choices">
-        {choices.map(choice => {
-          const isCorrect = choice === answer; const isSelected = choice === selected
-          let cls = 'nq-choice'
-          if (selected !== null) { if (isSelected && isCorrect) cls += ' nq-correct'; else if (isSelected) cls += ' nq-wrong'; else if (isCorrect) cls += ' nq-reveal' }
-          return <button key={choice} type="button" className={cls} onClick={() => handleAnswer(choice)} disabled={selected !== null}>
-            {cls.split(' ').includes('nq-reveal') ? (
-              <>
-                <span className="nq-reveal-top">correct answer</span>
-                <span className="nq-reveal-val">{choice}</span>
-              </>
-            ) : choice}
-          </button>
-        })}
-      </div>
-      {selected !== null && selected !== answer && (
-        <button
-          type="button"
-          className="nq-next-btn"
-          onClick={() => { if (timerRef.current) clearTimeout(timerRef.current); advance(question.chord.symbol) }}
-        >
-          Next →
-        </button>
+    <TheoryQuiz<CSQuestion>
+      modes={CS_MODE}
+      pickQuestion={(_pool, excludeKey) => csPick(excludeKey)}
+      getExcludeKey={(q) => q.chord.symbol}
+      pickChoices={csChoices}
+      getAnswer={csGetAnswer}
+      renderQuestion={(q, _modeId, selected, answer) => (
+        <div className={`theory-q-card${selected !== null ? (selected === answer ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
+          <div className="theory-q-main" style={{ fontFamily: 'Georgia, serif' }}>{csGetDisplay(q)}</div>
+          <div className="theory-q-sub">{csGetPrompt(q)}</div>
+        </div>
       )}
-      <p className="nq-hint">No suffix = major · m = minor · 7 = dominant 7th · maj7 = major 7th · m7 = minor 7th</p>
-    </div>
+    />
   )
 }
 

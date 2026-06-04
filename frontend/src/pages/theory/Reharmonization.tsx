@@ -1,9 +1,10 @@
 /**
  * Reharmonization — theory topic page.
  */
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
 import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
+import { TheoryQuiz, type QuizMode } from '../../components/TheoryQuiz'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -150,7 +151,7 @@ function pickQ(excludeQ?: string): ConceptQuestion {
   return pool[Math.floor(Math.random() * pool.length)]
 }
 
-type RHMode = 'techniques' | 'concepts'
+type RHMode = 'concepts' | 'techniques'
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // LEARN

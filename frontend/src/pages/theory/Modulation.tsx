@@ -1,9 +1,9 @@
 /**
  * Modulation — theory topic page.
  */
-import { useCallback, useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
 import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
+import { TheoryQuiz, type QuizMode } from '../../components/TheoryQuiz'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -76,17 +76,32 @@ const MOD_TYPE_QUESTIONS: ModTypeQuestion[] = [
   },
 ]
 
-function pickPivot(excludeFromKey?: string): PivotQuestion {
-  const pool = excludeFromKey ? PIVOT_QUESTIONS.filter(p => p.fromKey !== excludeFromKey) : PIVOT_QUESTIONS
-  return pool[Math.floor(Math.random() * pool.length)]
+// Each PivotQuestion becomes two single-step questions (one per key role).
+interface PivotStepQ {
+  kind: 'pivot'
+  fromKey: string
+  toKey: string
+  pivot: string
+  step: 'from' | 'to'
+  answer: string
 }
 
-function pickModType(excludeQ?: string): ModTypeQuestion {
-  const pool = excludeQ ? MOD_TYPE_QUESTIONS.filter(q => q.description !== excludeQ) : MOD_TYPE_QUESTIONS
-  return pool[Math.floor(Math.random() * pool.length)]
+interface ModTypeQ {
+  kind: 'mod-type'
+  modTypeQ: ModTypeQuestion
 }
 
-type ModMode = 'pivot-chords' | 'mod-types'
+type ModQ = PivotStepQ | ModTypeQ
+
+const PIVOT_POOL: PivotStepQ[] = PIVOT_QUESTIONS.flatMap(p => [
+  { kind: 'pivot', fromKey: p.fromKey, toKey: p.toKey, pivot: p.pivot, step: 'from', answer: p.romanInFrom },
+  { kind: 'pivot', fromKey: p.fromKey, toKey: p.toKey, pivot: p.pivot, step: 'to',   answer: p.romanInTo  },
+])
+
+const MOD_TYPE_POOL: ModTypeQ[] = MOD_TYPE_QUESTIONS.map(q => ({ kind: 'mod-type', modTypeQ: q }))
+
+const FROM_ROMANS = [...new Set(PIVOT_QUESTIONS.map(p => p.romanInFrom))]
+const TO_ROMANS   = [...new Set(PIVOT_QUESTIONS.map(p => p.romanInTo))]
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // LEARN
@@ -183,151 +198,59 @@ function LearnContent() {
 // QUIZ
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function Quiz() {
-  const [mode, setMode] = useState<ModMode>('pivot-chords')
-  const [pivotQ, setPivotQ] = useState<PivotQuestion>(() => pickPivot())
-  const [modTypeQ, setModTypeQ] = useState<ModTypeQuestion>(() => pickModType())
-  const [pivotChoices, setPivotChoices] = useState<string[]>(() => {
-    const pq = pickPivot()
-    return [pq.romanInFrom, pq.romanInTo,
-      PIVOT_QUESTIONS.find(p => p.romanInFrom !== pq.romanInFrom)?.romanInFrom ?? 'iii',
-      PIVOT_QUESTIONS.find(p => p.romanInTo !== pq.romanInTo)?.romanInTo ?? 'IV',
-    ].filter((v, i, a) => a.indexOf(v) === i).sort(() => Math.random() - 0.5)
-  })
-  const [selected, setSelected] = useState<string | null>(null)
-  const [score, setScore] = useState(0)
-  const [total, setTotal] = useState(0)
-  const [streak, setStreak] = useState(0)
-  const [best, setBest] = useState(0)
-  const [pivotStep, setPivotStep] = useState<'from' | 'to'>('from')
-  const timerRef = useRef<number | null>(null)
-  const modeRef = useRef<ModMode>('pivot-chords')
-  modeRef.current = mode
+const MOD_MODES: QuizMode<ModQ>[] = [
+  { id: 'pivot-chords', label: 'Pivot Chords',      pool: PIVOT_POOL,    hint: 'Pivot = same chord, two functions · Confirmed by V–I in new key' },
+  { id: 'mod-types',    label: 'Modulation Types',  pool: MOD_TYPE_POOL },
+]
 
-  function makePivotChoices(pq: PivotQuestion, step: 'from' | 'to'): string[] {
-    const answer = step === 'from' ? pq.romanInFrom : pq.romanInTo
-    const allRomans = [...new Set(PIVOT_QUESTIONS.map(p => step === 'from' ? p.romanInFrom : p.romanInTo))]
-    const others = allRomans.filter(r => r !== answer).sort(() => Math.random() - 0.5).slice(0, 3)
-    return [...others, answer].sort(() => Math.random() - 0.5)
+function modPick(pool: ModQ[], excludeKey?: string): ModQ {
+  const filtered = excludeKey ? pool.filter(q =>
+    q.kind === 'pivot' ? q.fromKey !== excludeKey : q.modTypeQ.description !== excludeKey
+  ) : pool
+  const p = filtered.length > 0 ? filtered : pool
+  return p[Math.floor(Math.random() * p.length)]
+}
+
+function modPickChoices(q: ModQ, _pool: ModQ[], _modeId: string): string[] {
+  if (q.kind === 'pivot') {
+    const allRomans = q.step === 'from' ? FROM_ROMANS : TO_ROMANS
+    const others = allRomans.filter(r => r !== q.answer).sort(() => Math.random() - 0.5).slice(0, 3)
+    return [...others, q.answer].sort(() => Math.random() - 0.5)
   }
+  return [...q.modTypeQ.choices].sort(() => Math.random() - 0.5)
+}
 
-  const switchMode = useCallback((m: ModMode) => {
-    if (timerRef.current) clearTimeout(timerRef.current)
-    modeRef.current = m
-    const pq = pickPivot(); const mq = pickModType()
-    setMode(m); setPivotQ(pq); setModTypeQ(mq)
-    setPivotChoices(makePivotChoices(pq, 'from'))
-    setPivotStep('from')
-    setSelected(null); setScore(0); setTotal(0); setStreak(0); setBest(0)
-  }, [])
-
-  function advance() {
-    const m = modeRef.current
-    if (m === 'pivot-chords') {
-      const pq = pickPivot(pivotQ.fromKey)
-      setPivotQ(pq); setPivotStep('from')
-      setPivotChoices(makePivotChoices(pq, 'from'))
-      setSelected(null)
-    } else {
-      const mq = pickModType(modTypeQ.description)
-      setModTypeQ(mq)
-      setSelected(null)
-    }
-  }
-
-  function handleAnswer(choice: string) {
-    if (selected !== null) return
-    let answer: string
-    if (mode === 'pivot-chords') {
-      answer = pivotStep === 'from' ? pivotQ.romanInFrom : pivotQ.romanInTo
-    } else {
-      answer = modTypeQ.answer
-    }
-    const correct = choice === answer
-    setSelected(choice); setTotal(t => t + 1)
-    if (correct) { setScore(s => s + 1); setStreak(s => { const n = s + 1; setBest(b => Math.max(b, n)); return n }) }
-    else setStreak(0)
-    if (timerRef.current) clearTimeout(timerRef.current)
-
-    if (mode === 'pivot-chords' && correct && pivotStep === 'from') {
-      // Move to part 2 of the same question
-      timerRef.current = window.setTimeout(() => {
-        setPivotStep('to')
-        setPivotChoices(makePivotChoices(pivotQ, 'to'))
-        setSelected(null)
-      }, 650)
-    } else if (correct) {
-      timerRef.current = window.setTimeout(advance, 650)
-    }
-  }
-
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
-
-  const accuracy = total > 0 ? Math.round((score / total) * 100) : null
-  const modTypeChoices = modTypeQ.choices
-
-  const pivotAnswer = pivotStep === 'from' ? pivotQ.romanInFrom : pivotQ.romanInTo
-  const currentChoices = mode === 'pivot-chords' ? pivotChoices : modTypeChoices
-  const answer = mode === 'pivot-chords' ? pivotAnswer : modTypeQ.answer
-
+function ModQuiz() {
   return (
-    <div className="nq-root">
-      <div className="nq-mode-row">
-        <button type="button" className={`nq-mode-btn${mode === 'pivot-chords' ? ' active' : ''}`} onClick={() => switchMode('pivot-chords')}>Pivot Chords</button>
-        <button type="button" className={`nq-mode-btn${mode === 'mod-types' ? ' active' : ''}`} onClick={() => switchMode('mod-types')}>Modulation Types</button>
-      </div>
-      <div className="nq-score-row">
-        <div className="nq-stat"><span className="nq-stat-value">{score}<span className="nq-stat-denom">/{total}</span></span><span className="nq-stat-label">correct</span></div>
-        {accuracy !== null && <div className="nq-stat"><span className="nq-stat-value">{accuracy}%</span><span className="nq-stat-label">accuracy</span></div>}
-        <div className="nq-stat"><span className="nq-stat-value">{streak >= 3 ? `🔥 ${streak}` : streak}</span><span className="nq-stat-label">streak {best > 0 ? `(best ${best})` : ''}</span></div>
-      </div>
-
-      <div className={`theory-q-card${selected !== null ? (selected === answer ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
-        {mode === 'pivot-chords' ? (
-          <>
-            <div className="theory-q-main" style={{ fontFamily: 'Georgia, serif' }}>{pivotQ.pivot}</div>
-            <div className="theory-q-sub">
-              {pivotStep === 'from'
-                ? <>This chord is the pivot between <strong>{pivotQ.fromKey}</strong> and <strong>{pivotQ.toKey}</strong>. What Roman numeral is it in <strong>{pivotQ.fromKey}</strong>?</>
-                : <>Now — what Roman numeral is <strong>{pivotQ.pivot}</strong> in <strong>{pivotQ.toKey}</strong>?</>}
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="theory-q-sub" style={{ fontSize: '0.95rem', textAlign: 'center', padding: '0 8px' }}>{modTypeQ.description}</div>
-            {selected !== null && (
-              <div className="theory-q-sub" style={{ marginTop: 10, fontSize: '0.85rem', color: '#555' }}>{modTypeQ.explanation}</div>
-            )}
-          </>
-        )}
-      </div>
-
-      <div className="nq-choices">
-        {currentChoices.map(choice => {
-          const isCorrect = choice === answer; const isSelected = choice === selected
-          let cls = 'nq-choice'
-          if (selected !== null) { if (isSelected && isCorrect) cls += ' nq-correct'; else if (isSelected) cls += ' nq-wrong'; else if (isCorrect) cls += ' nq-reveal' }
-          return <button key={choice} type="button" className={cls} style={{ fontFamily: 'Georgia, serif' }} onClick={() => handleAnswer(choice)} disabled={selected !== null}>
-            {cls.split(' ').includes('nq-reveal') ? (
-              <>
-                <span className="nq-reveal-top">correct answer</span>
-                <span className="nq-reveal-val">{choice}</span>
-              </>
-            ) : choice}
-          </button>
-        })}
-      </div>
-      {selected !== null && selected !== answer && (
-        <button
-          type="button"
-          className="nq-next-btn"
-          onClick={() => { if (timerRef.current) clearTimeout(timerRef.current); advance() }}
-        >
-          Next →
-        </button>
+    <TheoryQuiz<ModQ>
+      modes={MOD_MODES}
+      pickQuestion={modPick}
+      getExcludeKey={q => q.kind === 'pivot' ? q.fromKey : q.modTypeQ.description}
+      pickChoices={modPickChoices}
+      getAnswer={q => q.kind === 'pivot' ? q.answer : q.modTypeQ.answer}
+      renderQuestion={(q, _modeId, selected, answer) => (
+        <div className={`theory-q-card${selected !== null ? (selected === answer ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
+          {q.kind === 'pivot' ? (
+            <>
+              <div className="theory-q-main" style={{ fontFamily: 'Georgia, serif' }}>{q.pivot}</div>
+              <div className="theory-q-sub">
+                {q.step === 'from'
+                  ? <>This chord is the pivot between <strong>{q.fromKey}</strong> and <strong>{q.toKey}</strong>. What Roman numeral is it in <strong>{q.fromKey}</strong>?</>
+                  : <>This chord is the pivot between <strong>{q.fromKey}</strong> and <strong>{q.toKey}</strong>. What Roman numeral is it in <strong>{q.toKey}</strong>?</>}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="theory-q-sub" style={{ fontSize: '0.95rem', textAlign: 'center', padding: '0 8px' }}>{q.modTypeQ.description}</div>
+              {selected !== null && (
+                <div className="theory-q-sub" style={{ marginTop: 10, fontSize: '0.85rem', color: '#555' }}>{q.modTypeQ.explanation}</div>
+              )}
+            </>
+          )}
+        </div>
       )}
-      <p className="nq-hint">Pivot = same chord, two functions · Confirmed by V–I in new key</p>
-    </div>
+      choiceButtonStyle={{ fontFamily: 'Georgia, serif' }}
+    />
   )
 }
 
@@ -348,7 +271,7 @@ export function Modulation() {
           color="hsl(55, 75%, 38%)"
         />}
         learnContent={<LearnContent />}
-        gamesContent={<Quiz />}
+        gamesContent={<ModQuiz />}
         topicName="modulation"
         gamesLabel="Practice"
       />

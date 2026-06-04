@@ -7,9 +7,9 @@
  *            from root + quality
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
 import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
+import { TheoryQuiz, type QuizMode } from '../../components/TheoryQuiz'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -160,23 +160,19 @@ function ChordsLearnContent() {
 
 type ChordMode = 'notes-to-quality' | 'quality-to-third'
 
-function chordPickQuestion(exclude?: string): Triad {
-  // Avoid same root+quality combo
-  const pool = exclude
-    ? TRIADS.filter(t => `${t.root}${t.quality}` !== exclude)
-    : TRIADS
-  return pool[Math.floor(Math.random() * pool.length)]
+function chordPickQuestion(pool: Triad[], excludeKey?: string): Triad {
+  const candidates = excludeKey ? pool.filter(t => `${t.root}${t.quality}` !== excludeKey) : pool
+  return candidates[Math.floor(Math.random() * candidates.length)]
 }
 
-function chordPickChoices(mode: ChordMode, correct: Triad): string[] {
-  if (mode === 'notes-to-quality') {
-    const answer = correct.quality
-    const others = QUALITIES.filter(q => q !== answer)
+function chordPickChoices(q: Triad, _pool: Triad[], modeId: string): string[] {
+  if (modeId === 'notes-to-quality') {
+    const answer = q.quality
+    const others = QUALITIES.filter(qv => qv !== answer)
       .sort(() => Math.random() - 0.5).slice(0, 3)
     return [...others, answer].sort(() => Math.random() - 0.5)
   } else {
-    // quality-to-third: pick the correct third note; distractors are other thirds from pool
-    const answer = correct.notes[1]
+    const answer = q.notes[1]
     const others = TRIADS
       .filter(t => t.notes[1] !== answer)
       .map(t => t.notes[1])
@@ -187,150 +183,42 @@ function chordPickChoices(mode: ChordMode, correct: Triad): string[] {
   }
 }
 
+const CHORD_MODES: QuizMode<Triad>[] = [
+  { id: 'notes-to-quality', label: 'Notes → Quality', pool: TRIADS, hint: 'Major: M3+m3 · Minor: m3+M3 · Dim: m3+m3 · Aug: M3+M3' },
+  { id: 'quality-to-third', label: 'Quality → Third', pool: TRIADS, hint: 'Major: M3+m3 · Minor: m3+M3 · Dim: m3+m3 · Aug: M3+M3' },
+]
+
 function ChordsQuiz() {
-  const [mode, setMode]         = useState<ChordMode>('notes-to-quality')
-  const [question, setQuestion] = useState<Triad>(() => chordPickQuestion())
-  const [choices, setChoices]   = useState<string[]>(() => chordPickChoices('notes-to-quality', question))
-  const [selected, setSelected] = useState<string | null>(null)
-  const [score, setScore]       = useState(0)
-  const [total, setTotal]       = useState(0)
-  const [streak, setStreak]     = useState(0)
-  const [best, setBest]         = useState(0)
-  const timerRef  = useRef<number | null>(null)
-  const modeRef   = useRef<ChordMode>('notes-to-quality')
-  modeRef.current = mode
-
-  const switchMode = useCallback((m: ChordMode) => {
-    if (timerRef.current) clearTimeout(timerRef.current)
-    modeRef.current = m
-    const q = chordPickQuestion()
-    setMode(m)
-    setQuestion(q)
-    setChoices(chordPickChoices(m, q))
-    setSelected(null)
-    setScore(0); setTotal(0); setStreak(0); setBest(0)
-  }, [])
-
-  function advance(fromId: string) {
-    const m = modeRef.current
-    const q = chordPickQuestion(fromId)
-    setQuestion(q)
-    setChoices(chordPickChoices(m, q))
-    setSelected(null)
-  }
-
-  function handleAnswer(choice: string) {
-    if (selected !== null) return
-    const answer = mode === 'notes-to-quality' ? question.quality : question.notes[1]
-    const correct = choice === answer
-    setSelected(choice)
-    setTotal(t => t + 1)
-    if (correct) {
-      setScore(s => s + 1)
-      setStreak(s => { const n = s + 1; setBest(b => Math.max(b, n)); return n })
-    } else {
-      setStreak(0)
-    }
-    if (timerRef.current) clearTimeout(timerRef.current)
-    if (correct) timerRef.current = window.setTimeout(() => advance(`${question.root}${question.quality}`), 650)
-  }
-
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
-
-  const answer   = mode === 'notes-to-quality' ? question.quality : question.notes[1]
-  const accuracy = total > 0 ? Math.round((score / total) * 100) : null
-
   return (
-    <div className="nq-root">
-
-      <div className="nq-mode-row">
-        <button type="button" className={`nq-mode-btn${mode === 'notes-to-quality' ? ' active' : ''}`}
-          onClick={() => switchMode('notes-to-quality')}>Notes → Quality</button>
-        <button type="button" className={`nq-mode-btn${mode === 'quality-to-third' ? ' active' : ''}`}
-          onClick={() => switchMode('quality-to-third')}>Quality → Third</button>
-      </div>
-
-      <div className="nq-score-row">
-        <div className="nq-stat">
-          <span className="nq-stat-value">{score}<span className="nq-stat-denom">/{total}</span></span>
-          <span className="nq-stat-label">correct</span>
-        </div>
-        {accuracy !== null && (
-          <div className="nq-stat">
-            <span className="nq-stat-value">{accuracy}%</span>
-            <span className="nq-stat-label">accuracy</span>
-          </div>
-        )}
-        <div className="nq-stat">
-          <span className="nq-stat-value">{streak >= 3 ? `🔥 ${streak}` : streak}</span>
-          <span className="nq-stat-label">streak {best > 0 ? `(best ${best})` : ''}</span>
-        </div>
-      </div>
-
-      <div className={`theory-q-card${selected !== null ? (selected === answer ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
-        {mode === 'notes-to-quality' ? (
-          <>
-            {/* Three stacked notes */}
-            <div className="theory-q-chord">
-              {question.notes.map((note, i) => (
-                <div key={i} className="theory-q-note">
-                  <div className="theory-q-note-name">{note}</div>
-                  <div className="theory-q-note-role">
-                    {['Root', '3rd', '5th'][i]}
+    <TheoryQuiz<Triad>
+      modes={CHORD_MODES}
+      pickQuestion={chordPickQuestion}
+      getExcludeKey={(q) => `${q.root}${q.quality}`}
+      pickChoices={chordPickChoices}
+      getAnswer={(q, modeId) => modeId === 'notes-to-quality' ? q.quality : q.notes[1]}
+      renderQuestion={(q, modeId, selected, answer) => (
+        <div className={`theory-q-card${selected !== null ? (selected === answer ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
+          {modeId === 'notes-to-quality' ? (
+            <>
+              <div className="theory-q-chord">
+                {q.notes.map((note, i) => (
+                  <div key={i} className="theory-q-note">
+                    <div className="theory-q-note-name">{note}</div>
+                    <div className="theory-q-note-role">{['Root', '3rd', '5th'][i]}</div>
                   </div>
-                </div>
-              ))}
-            </div>
-            <div className="theory-q-sub" style={{ marginTop: 12 }}>What quality is this triad?</div>
-          </>
-        ) : (
-          <>
-            <div className="theory-q-main">{question.root} {question.quality}</div>
-            <div className="theory-q-sub">
-              Root: <strong>{question.notes[0]}</strong> — what is the third?
-            </div>
-          </>
-        )}
-      </div>
-
-      <div className="nq-choices">
-        {choices.map(choice => {
-          const isCorrect  = choice === answer
-          const isSelected = choice === selected
-          let cls = 'nq-choice'
-          if (selected !== null) {
-            if (isSelected && isCorrect)  cls += ' nq-correct'
-            else if (isSelected)          cls += ' nq-wrong'
-            else if (isCorrect)           cls += ' nq-reveal'
-          }
-          return (
-            <button key={choice} type="button" className={cls}
-              onClick={() => handleAnswer(choice)} disabled={selected !== null}>
-              {cls.split(' ').includes('nq-reveal') ? (
-                <>
-                  <span className="nq-reveal-top">correct answer</span>
-                  <span className="nq-reveal-val">{choice}</span>
-                </>
-              ) : choice}
-            </button>
-          )
-        })}
-      </div>
-      {selected !== null && selected !== answer && (
-        <button
-          type="button"
-          className="nq-next-btn"
-          onClick={() => { if (timerRef.current) clearTimeout(timerRef.current); advance(`${question.root}${question.quality}`) }}
-        >
-          Next →
-        </button>
+                ))}
+              </div>
+              <div className="theory-q-sub" style={{ marginTop: 12 }}>What quality is this triad?</div>
+            </>
+          ) : (
+            <>
+              <div className="theory-q-main">{q.root} {q.quality}</div>
+              <div className="theory-q-sub">Root: <strong>{q.notes[0]}</strong> — what is the third?</div>
+            </>
+          )}
+        </div>
       )}
-
-      <p className="nq-hint">
-        Major: M3+m3 · Minor: m3+M3 · Dim: m3+m3 · Aug: M3+M3
-      </p>
-
-    </div>
+    />
   )
 }
 

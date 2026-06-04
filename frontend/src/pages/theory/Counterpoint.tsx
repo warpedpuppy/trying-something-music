@@ -1,9 +1,9 @@
 /**
  * Counterpoint — theory topic page.
  */
-import { useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
 import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
+import { TheoryQuiz, type QuizMode } from '../../components/TheoryQuiz'
 import { usePageTitle } from '../../hooks/usePageTitle'
 import { BachPlayer } from '../../components/BachPlayer'
 
@@ -228,75 +228,36 @@ function LearnContent() {
 // QUIZ
 // ═══════════════════════════════════════════════════════════════════════════════
 
+const COUNTERPOINT_MODE: QuizMode<ConceptQuestion>[] = [
+  {
+    id: 'concepts',
+    label: 'Concepts',
+    pool: CONCEPT_QUESTIONS,
+    hint: 'No parallel 5ths/8ths · Contrary motion preferred · Dissonances must resolve · Consonances: 3rd, 5th, 6th, 8th',
+  },
+]
+
 function Quiz() {
-  const [question, setQuestion] = useState<ConceptQuestion>(() => pickQ())
-  const [selected, setSelected] = useState<string | null>(null)
-  const [score, setScore] = useState(0)
-  const [total, setTotal] = useState(0)
-  const [streak, setStreak] = useState(0)
-  const [best, setBest] = useState(0)
-  const timerRef = useRef<number | null>(null)
-
-  function advance(excludeQ: string) {
-    const q = pickQ(excludeQ)
-    setQuestion(q); setSelected(null)
-  }
-
-  function handleAnswer(choice: string) {
-    if (selected !== null) return
-    const correct = choice === question.answer
-    setSelected(choice); setTotal(t => t + 1)
-    if (correct) { setScore(s => s + 1); setStreak(s => { const n = s + 1; setBest(b => Math.max(b, n)); return n }) }
-    else setStreak(0)
-    if (timerRef.current) clearTimeout(timerRef.current)
-    if (correct) timerRef.current = window.setTimeout(() => advance(question.question), 650)
-  }
-
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
-
-  const accuracy = total > 0 ? Math.round((score / total) * 100) : null
-
   return (
-    <div className="nq-root">
-      <div className="nq-score-row">
-        <div className="nq-stat"><span className="nq-stat-value">{score}<span className="nq-stat-denom">/{total}</span></span><span className="nq-stat-label">correct</span></div>
-        {accuracy !== null && <div className="nq-stat"><span className="nq-stat-value">{accuracy}%</span><span className="nq-stat-label">accuracy</span></div>}
-        <div className="nq-stat"><span className="nq-stat-value">{streak >= 3 ? `🔥 ${streak}` : streak}</span><span className="nq-stat-label">streak {best > 0 ? `(best ${best})` : ''}</span></div>
-      </div>
-
-      <div className={`theory-q-card${selected !== null ? (selected === question.answer ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
-        <div className="theory-q-sub" style={{ fontSize: '0.95rem', textAlign: 'center', padding: '0 8px' }}>{question.question}</div>
-        {selected !== null && (
-          <div className="theory-q-sub" style={{ marginTop: 10, fontSize: '0.85rem', color: '#555' }}>{question.explanation}</div>
-        )}
-      </div>
-
-      <div className="nq-choices">
-        {question.choices.map(choice => {
-          const isCorrect = choice === question.answer; const isSelected = choice === selected
-          let cls = 'nq-choice'
-          if (selected !== null) { if (isSelected && isCorrect) cls += ' nq-correct'; else if (isSelected) cls += ' nq-wrong'; else if (isCorrect) cls += ' nq-reveal' }
-          return <button key={choice} type="button" className={cls} onClick={() => handleAnswer(choice)} disabled={selected !== null}>
-            {cls.split(' ').includes('nq-reveal') ? (
-              <>
-                <span className="nq-reveal-top">correct answer</span>
-                <span className="nq-reveal-val">{choice}</span>
-              </>
-            ) : choice}
-          </button>
-        })}
-      </div>
-      {selected !== null && selected !== question.answer && (
-        <button
-          type="button"
-          className="nq-next-btn"
-          onClick={() => { if (timerRef.current) clearTimeout(timerRef.current); advance(question.question) }}
-        >
-          Next →
-        </button>
+    <TheoryQuiz<ConceptQuestion>
+      modes={COUNTERPOINT_MODE}
+      pickQuestion={(pool, excludeKey) => {
+        const candidates = excludeKey ? pool.filter(q => q.question !== excludeKey) : pool
+        return candidates[Math.floor(Math.random() * candidates.length)]
+      }}
+      getExcludeKey={(q) => q.question}
+      pickChoices={(q) => [...q.choices].sort(() => Math.random() - 0.5)}
+      getAnswer={(q) => q.answer}
+      renderQuestion={(q, _modeId, selected, answer) => (
+        <div className={`theory-q-card${selected !== null ? (selected === answer ? ' theory-q-correct' : ' theory-q-wrong') : ''}`}>
+          <div className="theory-q-sub" style={{ fontSize: '0.95rem', textAlign: 'center', padding: '0 8px' }}>{q.question}</div>
+          {selected !== null && (
+            <div className="theory-q-sub" style={{ marginTop: 10, fontSize: '0.85rem', color: '#555' }}>{q.explanation}</div>
+          )}
+        </div>
       )}
-      <p className="nq-hint">No parallel 5ths/8ths · Contrary motion preferred · Dissonances must resolve · Consonances: 3rd, 5th, 6th, 8th</p>
-    </div>
+      choicesClassName="nq-choices--text"
+    />
   )
 }
 
