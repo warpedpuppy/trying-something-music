@@ -1,7 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect } from 'react'
 import { AuthProvider } from './auth/AuthContext'
-import { AdminRoute, ProtectedRoute } from './auth/ProtectedRoute'
+import { ProtectedRoute } from './auth/ProtectedRoute'
 import { NavBar } from './components/NavBar'
 import { RippleCanvas } from './components/RippleCanvas'
 import { clearRipples } from './lib/rippleEngine'
@@ -44,7 +44,6 @@ import { Outlet } from 'react-router-dom'
 import { useAuth } from './auth/AuthContext'
 import { recordTheoryVisit } from './lib/localDb'
 import { About } from './pages/About'
-import { Admin } from './pages/admin/Admin'
 import { UserProfile } from './pages/UserProfile'
 import { Dashboard } from './pages/Dashboard'
 import { ExerciseList } from './pages/ExerciseList'
@@ -161,9 +160,6 @@ function App() {
 
             {/* user profile */}
             <Route path="/profile" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
-
-            {/* admin */}
-            <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
 
             {/* legacy redirects */}
             <Route path="/dashboard" element={<Navigate to="/rhythm/dashboard" replace />} />

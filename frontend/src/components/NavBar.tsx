@@ -5,10 +5,6 @@ import { useAuth } from '../auth/AuthContext'
 import { setToken } from '../api/client'
 import { Logo } from './Logo'
 
-function isLocalhost(): boolean {
-  const { hostname } = window.location
-  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1'
-}
 
 // ── Welcome modal content ─────────────────────────────────────────────────────
 
@@ -243,11 +239,6 @@ export function NavBar() {
 
         <div className="navbar-user">
           <Link to="/profile" className="navbar-username">{user?.username ?? 'You'}</Link>
-          {user?.is_admin && isLocalhost() && (
-            <NavLink to="/admin" className={({ isActive }) => isActive ? 'active' : ''}>
-              Admin
-            </NavLink>
-          )}
           {!isDefaultUser && (
             <button type="button" className="link-button" onClick={handleLogout}>
               Log out
@@ -338,9 +329,6 @@ export function NavBar() {
             <Link to="/profile" className="navbar-username" onClick={() => setMenuOpen(false)}>
               {user?.username ?? 'You'}
             </Link>
-            {user?.is_admin && isLocalhost() && (
-              <NavLink to="/admin" className="mobile-nav-link" onClick={() => setMenuOpen(false)}>Admin</NavLink>
-            )}
             {!isDefaultUser && (
               <button type="button" className="link-button" onClick={handleLogout}>Log out</button>
             )}

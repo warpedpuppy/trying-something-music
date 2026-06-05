@@ -4,16 +4,12 @@
  */
 
 import type {
-  AdminUser,
-  AdminUserDetail,
   AttemptMode,
   AttemptResult,
   Exercise,
   ExerciseListItem,
-  ExercisePayload,
   NextExercise,
   ProgressSummary,
-  TestRunStatus,
   TokenResponse,
   User,
 } from './types'
@@ -32,12 +28,9 @@ import {
 import {
   allExercises,
   catchUpLevel,
-  createCustomExercise,
-  deleteCustomExercise,
   maxLevel,
   nextExercise,
   recordAttempt,
-  updateCustomExercise,
 } from '../lib/progression'
 import { expectedOnsets } from '../lib/rhythm'
 import { scoreTapsFree, scoreTapsStrict } from '../lib/scoring'
@@ -233,116 +226,4 @@ export const api = {
     }
   },
 
-  admin: {
-    listUsers: async (): Promise<AdminUser[]> => {
-      const user = currentUser()!
-      if (!user.isAdmin) throw new ApiError(403, 'Admin only')
-      return getUsers().map((u) => {
-        const attempts = getAttempts(u.id)
-        const progress = getProgress(u.id)
-        const passedIds = new Set(attempts.filter((a) => a.passed).map((a) => a.exerciseId))
-        return {
-          id: u.id,
-          username: u.username,
-          is_admin: u.isAdmin,
-          created_at: u.createdAt,
-          unlocked_level: progress.unlockedLevel,
-          total_attempts: attempts.length,
-          passed_exercises: passedIds.size,
-        }
-      })
-    },
-
-    getUser: async (id: number): Promise<AdminUserDetail> => {
-      const admin = currentUser()!
-      if (!admin.isAdmin) throw new ApiError(403, 'Admin only')
-      const u = findUserById(id)
-      if (!u) throw new ApiError(404, 'User not found')
-      const attempts = getAttempts(u.id)
-      const progress = getProgress(u.id)
-      const mastery = getMastery(u.id)
-      const passedIds = new Set(attempts.filter((a) => a.passed).map((a) => a.exerciseId))
-      const exercises = allExercises()
-      const allConcepts = [...new Set(exercises.map((e) => e.concept))]
-
-      return {
-        id: u.id,
-        username: u.username,
-        is_admin: u.isAdmin,
-        created_at: u.createdAt,
-        unlocked_level: progress.unlockedLevel,
-        total_attempts: attempts.length,
-        passed_exercises: passedIds.size,
-        concepts: allConcepts.map((concept) => {
-          const cm = mastery[concept] ?? { passes: 0, fails: 0 }
-          return { concept, passes: cm.passes, fails: cm.fails, mastered: cm.passes >= 2 }
-        }),
-        recent_attempts: attempts
-          .slice(-20)
-          .reverse()
-          .map((a) => {
-            const ex = exercises.find((e) => e.id === a.exerciseId)
-            return {
-              id: a.id,
-              exercise_id: a.exerciseId,
-              exercise_title: ex?.title ?? `Exercise ${a.exerciseId}`,
-              accuracy: a.accuracy,
-              passed: a.passed,
-              gave_up: a.gaveUp,
-              mode: a.mode,
-              created_at: a.createdAt,
-            }
-          }),
-      }
-    },
-
-    listExercises: async (): Promise<Exercise[]> => {
-      const user = currentUser()!
-      if (!user.isAdmin) throw new ApiError(403, 'Admin only')
-      return allExercises()
-    },
-
-    createExercise: async (payload: ExercisePayload): Promise<Exercise> => {
-      const user = currentUser()!
-      if (!user.isAdmin) throw new ApiError(403, 'Admin only')
-      return createCustomExercise({ ...payload, is_active: payload.is_active ?? true })
-    },
-
-    updateExercise: async (id: number, payload: ExercisePayload): Promise<Exercise> => {
-      const user = currentUser()!
-      if (!user.isAdmin) throw new ApiError(403, 'Admin only')
-      const updated = updateCustomExercise(id, { ...payload, is_active: payload.is_active ?? true })
-      if (!updated) throw new ApiError(404, 'Exercise not found or cannot edit seed exercises')
-      return updated
-    },
-
-    deleteExercise: async (id: number): Promise<void> => {
-      const user = currentUser()!
-      if (!user.isAdmin) throw new ApiError(403, 'Admin only')
-      deleteCustomExercise(id)
-    },
-
-    // Test runner is backend-only; return a no-op stub so the UI doesn't crash
-    runTests: async (_suite: 'backend' | 'frontend'): Promise<TestRunStatus> => ({
-      suite: null,
-      status: 'error',
-      started_at: null,
-      finished_at: null,
-      summary: null,
-      cases: [],
-      error: 'Test runner is not available in the local-storage build.',
-      raw_output: null,
-    }),
-
-    testStatus: async (): Promise<TestRunStatus> => ({
-      suite: null,
-      status: 'idle',
-      started_at: null,
-      finished_at: null,
-      summary: null,
-      cases: [],
-      error: null,
-      raw_output: null,
-    }),
-  },
 }

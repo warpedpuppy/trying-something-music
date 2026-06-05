@@ -13,25 +13,3 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   }
   return <>{children}</>
 }
-
-function isLocalhost(): boolean {
-  const { hostname } = window.location
-  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1'
-}
-
-export function AdminRoute({ children }: { children: ReactNode }) {
-  const { user, loading } = useAuth()
-  if (loading) {
-    return <p className="page-loading">Loading…</p>
-  }
-  if (!isLocalhost()) {
-    return <Navigate to="/" replace />
-  }
-  if (!user) {
-    return <Navigate to="/login" replace />
-  }
-  if (!user.is_admin) {
-    return <Navigate to="/rhythm/dashboard" replace />
-  }
-  return <>{children}</>
-}
