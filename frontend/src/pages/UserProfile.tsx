@@ -14,49 +14,7 @@ import {
 } from '../lib/localDb'
 import { BadgeItem } from '../components/BadgeItem'
 import { usePageTitle } from '../hooks/usePageTitle'
-
-// ── Theory level slug groupings ───────────────────────────────────────────────
-
-const THEORY_LEVELS = [
-  {
-    name: 'Beginner',
-    slugs: ['notes', 'keys', 'intervals', 'scales', 'chords', 'cadences', 'progressions'],
-  },
-  {
-    name: 'Intermediate',
-    slugs: ['circle-of-fifths', 'diatonic-harmony', 'voice-leading', 'secondary-dominants',
-            'modal-mixture', 'blues', 'chord-symbols'],
-  },
-  {
-    name: 'Advanced',
-    slugs: ['modulation', 'modes', 'extended-chords', 'tritone-sub',
-            'counterpoint', 'form', 'reharmonization'],
-  },
-] as const
-
-const THEORY_TOPIC_LABELS: Record<string, string> = {
-  'circle-of-fifths':    'Circle of Fifths',
-  'notes':               'Notes & the Staff',
-  'keys':                'Key Signatures',
-  'intervals':           'Intervals',
-  'scales':              'Scales',
-  'chords':              'Triads & Chords',
-  'cadences':            'Cadences',
-  'progressions':        'Chord Progressions',
-  'diatonic-harmony':    'Diatonic Harmony',
-  'voice-leading':       'Voice Leading',
-  'secondary-dominants': 'Secondary Dominants',
-  'modal-mixture':       'Modal Mixture',
-  'blues':               'The Blues',
-  'chord-symbols':       'Chord Symbols',
-  'modulation':          'Modulation',
-  'modes':               'Modes',
-  'extended-chords':     'Extended Chords',
-  'tritone-sub':         'Tritone Substitution',
-  'counterpoint':        'Counterpoint',
-  'form':                'Form & Structure',
-  'reharmonization':     'Reharmonization',
-}
+import { THEORY_LEVELS, THEORY_TOPIC_LABELS } from '../lib/theoryTopics'
 
 function formatDate(iso: string) {
   if (!iso) return ''

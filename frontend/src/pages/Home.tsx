@@ -7,7 +7,7 @@ export function Home() {
       {/* ── Play Along hero banner ─────────────────────────────────────────── */}
       <section className="pa-banner">
         {/* Staff animation fills the banner; CSS inverts it to white and masks to bottom */}
-        <VexflowScrollingStaff silent />
+        <VexflowScrollingStaff silent noRipples />
         {/* Gradient: solid indigo at top (text readable), fades to transparent at bottom */}
         <div className="pa-banner-fade" aria-hidden="true" />
         <div className="pa-banner-content">

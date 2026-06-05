@@ -58,13 +58,17 @@ function playClick() {
     hp.connect(gain)
     gain.connect(ctx.destination)
     src.start()
-    src.onended = () => void ctx.close()
+    // Primary close: when the buffer finishes playing (~40 ms).
+    // Fallback close: if onended never fires (tab backgrounded, audio error),
+    // the context is force-closed after 500 ms so it doesn't pile up.
+    const forceClose = setTimeout(() => void ctx.close(), 500)
+    src.onended = () => { clearTimeout(forceClose); void ctx.close() }
   } catch { /* audio unavailable — silently skip */ }
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function VexflowScrollingStaff({ silent = false }: { silent?: boolean }) {
+export function VexflowScrollingStaff({ silent = false, noRipples = false }: { silent?: boolean; noRipples?: boolean }) {
   const viewportRef  = useRef<HTMLDivElement>(null)
   const trackRef     = useRef<HTMLDivElement>(null)
   const rafRef       = useRef(0)
@@ -127,7 +131,7 @@ export function VexflowScrollingStaff({ silent = false }: { silent?: boolean }) 
             const rect = viewportRef.current?.getBoundingClientRect()
             if (rect) {
               if (!silent) playClick()
-              triggerRainbowBurst(rect.left + cursorX, rect.top + rect.height / 2)
+              if (!noRipples) triggerRainbowBurst(rect.left + cursorX, rect.top + rect.height / 2)
             }
           }
         }

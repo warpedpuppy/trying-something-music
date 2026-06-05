@@ -4,7 +4,7 @@ import { BadgeItem } from '../components/BadgeItem'
 import { BADGE_DEFS } from '../lib/badges'
 import { usePageTitle } from '../hooks/usePageTitle'
 
-type AboutTab = 'about' | 'badges'
+type AboutTab = 'about' | 'badges' | 'maker'
 
 export function About() {
   usePageTitle('About')
@@ -39,6 +39,15 @@ export function About() {
           onClick={() => setTab('badges')}
         >
           Badges
+        </button>
+        <button
+          role="tab"
+          type="button"
+          aria-selected={tab === 'maker'}
+          className={`tt-tab${tab === 'maker' ? ' active' : ''}`}
+          onClick={() => setTab('maker')}
+        >
+          Who made this
         </button>
       </div>
 
@@ -89,11 +98,8 @@ export function About() {
             you can create a named profile from your{' '}
             <a href="/profile">profile page</a> (click "You" in the top navigation).
             Each named profile stores its own data locally using your chosen username as
-            a label. <strong>There is no security threat in doing this</strong> — the
-            password you choose never leaves your browser. It is hashed client-side and
-            stored locally, purely to prevent one person from accidentally overwriting
-            another person's data on the same device. No password is transmitted to any
-            server, ever.
+            a label. There is no password — there is no data here important enough to
+            need one. Your name is just a label, stored entirely on your own device.
           </p>
         </section>
       )}
@@ -114,6 +120,38 @@ export function About() {
               </div>
             ))}
           </div>
+        </section>
+      )}
+
+      {/* Who made this tab */}
+      {tab === 'maker' && (
+        <section className="about-body">
+          <h2 style={{ marginTop: 0 }}>Who made this</h2>
+          <p>
+            This site was designed and built by <strong>Ted Walther</strong> — a developer,
+            designer, and lifelong music obsessive based in the United States.
+          </p>
+          <p>
+            Ted plays piano and classical guitar — neither particularly well, and he has made
+            a certain peace with that. Both remain, without question, among the greatest joys
+            of his life.
+          </p>
+          <p>
+            Ted holds a quiet belief: that the capacity to sit still and actually <em>hear</em>{' '}
+            music — to let the vibrations of individual notes in the air settle into you, to
+            follow a phrase without your mind pulling somewhere else — is one of the more
+            honest barometers of mental health available to us. Anxiety fills every silence.
+            A peaceful mind makes room. If you can be present enough to feel a single chord
+            land, something important is working. This site is a small attempt to tend that
+            capacity — in Ted, and maybe in whoever shows up here.
+          </p>
+          <p>
+            More of Edward's work lives at{' '}
+            <a href="https://warpedpuppy.com" target="_blank" rel="noopener noreferrer">
+              warpedpuppy.com
+            </a>
+            .
+          </p>
         </section>
       )}
     </div>
