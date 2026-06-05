@@ -8,7 +8,7 @@
 
 type TickKind = 'tap' | 'playback' | 'metronome' | 'metronome-accent'
 
-const CLICK_PEAK_GAIN: Record<TickKind, number> = { tap: 0.4, playback: 0.4, metronome: 0.2, 'metronome-accent': 0.22 }
+const CLICK_PEAK_GAIN: Record<TickKind, number> = { tap: 0.4, playback: 0.4, metronome: 0.17, 'metronome-accent': 0.22 }
 const CLICK_FREQUENCY: Record<TickKind, number> = { tap: 1000, playback: 1500, metronome: 620, 'metronome-accent': 620 }
 const CLICK_WAVE: Record<TickKind, OscillatorType> = {
   tap: 'square',
