@@ -65,15 +65,9 @@ export function About() {
         <section className="about-body">
           <h2>Why this exists</h2>
           <p>
-            A meaningful part of the social anxiety rising among people — the
-            restlessness, the difficulty sitting quietly with oneself — comes
-            from the gradual erosion of deep, patient attention. Social media
-            addiction makes it worse: platforms are deliberately engineered to
-            fragment focus, not build it. Music education asks for something
-            different. To learn music, you have to count. You have to listen.
-            You have to wait, and try again, and wait some more. Music teaches
-            focus. Music teaches calm. This site is a small attempt to make that
-            kind of learning a little more accessible — for anyone who wants it.
+            Learning music takes patience — you have to count, listen, wait, and
+            try again. That turns out to be good for you. This site is a small
+            tool to help with the basics.
           </p>
 
           <h2>Privacy — your data never leaves your device</h2>
@@ -149,28 +143,14 @@ export function About() {
         <section className="about-body">
           <h2 style={{ marginTop: 0 }}>Who made this</h2>
           <p>
-            This site was designed and built by <strong>Ted Walther</strong> — a
-            developer, designer, and lifelong music obsessive based in the
-            United States.
+            <strong>Ted Walther</strong> — developer, designer, piano and
+            classical guitar player (both a work in progress).
           </p>
           <p>
-            Ted plays piano and classical guitar (neither particularly well) and
-            he has made a certain peace with that. Both remain, without
-            question, among the greatest joys of his life.
+            Ted loves music. Ted loves coding. Hence this site.
           </p>
           <p>
-            Ted holds a quiet belief: that the capacity to sit still and
-            actually <em>hear</em> music — to let the vibrations of individual
-            notes in the air settle into you, to follow a phrase without your
-            mind pulling somewhere else — is one of the more honest barometers
-            of mental health available to us. Anxiety fills every silence. A
-            peaceful mind makes room. If you can be present enough to feel a
-            single chord land, something important is working. This site is a
-            small attempt to tend that capacity — in Ted, and maybe in whoever
-            shows up here.
-          </p>
-          <p>
-            More of Edward's work lives at{" "}
+            More at{" "}
             <a
               href="https://warpedpuppy.com"
               target="_blank"
