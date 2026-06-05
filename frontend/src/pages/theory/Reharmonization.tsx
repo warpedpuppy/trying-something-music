@@ -4,7 +4,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
 import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
-import { TheoryQuiz, type QuizMode } from '../../components/TheoryQuiz'
 import { usePageTitle } from '../../hooks/usePageTitle'
 
 // ── Data ──────────────────────────────────────────────────────────────────────

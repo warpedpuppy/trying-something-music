@@ -154,8 +154,8 @@ function dhChoices(mode: DHMode, q: DHQuestion): string[] {
 }
 
 const DH_MODES: QuizMode<DHQuestion>[] = [
-  { id: 'chord-to-roman', label: 'Chord → Roman', pool: KEYS.map(k => dhPick()), hint: 'I ii iii IV V vi vii°  ·  Uppercase = major, lowercase = minor' },
-  { id: 'roman-to-chord', label: 'Roman → Chord', pool: KEYS.map(k => dhPick()), hint: 'I ii iii IV V vi vii°  ·  Uppercase = major, lowercase = minor' },
+  { id: 'chord-to-roman', label: 'Chord → Roman', pool: KEYS.map(() => dhPick()), hint: 'I ii iii IV V vi vii°  ·  Uppercase = major, lowercase = minor' },
+  { id: 'roman-to-chord', label: 'Roman → Chord', pool: KEYS.map(() => dhPick()), hint: 'I ii iii IV V vi vii°  ·  Uppercase = major, lowercase = minor' },
 ]
 
 export function Quiz() {

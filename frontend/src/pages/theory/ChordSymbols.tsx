@@ -243,7 +243,7 @@ const CS_MODE: QuizMode<CSQuestion>[] = [
   {
     id: 'mixed',
     label: 'Mixed',
-    pool: CHORD_TYPES.map(c => csPick()),
+    pool: CHORD_TYPES.map(() => csPick()),
     hint: 'No suffix = major · m = minor · 7 = dominant 7th · maj7 = major 7th · m7 = minor 7th',
   },
 ]

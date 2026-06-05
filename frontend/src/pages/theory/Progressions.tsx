@@ -171,13 +171,6 @@ function ProgressionsLearnContent() {
 // QUIZ
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function progPickQuestion(excludeId?: string): ProgQuestion {
-  const pool = excludeId
-    ? ALL_QUESTIONS.filter(q => q.id !== excludeId)
-    : ALL_QUESTIONS
-  return pool[Math.floor(Math.random() * pool.length)]
-}
-
 function progPickChoices(correct: string): string[] {
   const others = ALL_CHORDS
     .filter(c => c !== correct)

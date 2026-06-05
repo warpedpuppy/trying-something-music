@@ -49,8 +49,6 @@ function bPick(excludeBar?: number): BluesQuestion {
   return { key, bar: barEntry.bar, answer: barEntry.chord }
 }
 
-type BluesMode = 'bar-to-roman' | 'bar-to-chord'
-
 const BLUES_MODES: QuizMode<BluesQuestion>[] = [
   {
     id: 'bar-to-roman',

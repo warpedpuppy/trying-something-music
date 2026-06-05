@@ -132,11 +132,6 @@ const CONCEPT_QUESTIONS: ConceptQuestion[] = [
   },
 ]
 
-function pickQ(excludeQ?: string): ConceptQuestion {
-  const pool = excludeQ ? CONCEPT_QUESTIONS.filter(q => q.question !== excludeQ) : CONCEPT_QUESTIONS
-  return pool[Math.floor(Math.random() * pool.length)]
-}
-
 // ═══════════════════════════════════════════════════════════════════════════════
 // LEARN
 // ═══════════════════════════════════════════════════════════════════════════════

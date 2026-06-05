@@ -38,13 +38,6 @@ const CADENCES: Cadence[] = [
 
 const TYPES: CadenceType[] = ['Authentic', 'Plagal', 'Half', 'Deceptive']
 
-const TYPE_COLOR: Record<CadenceType, string> = {
-  Authentic:  'var(--green)',
-  Plagal:     'var(--accent)',
-  Half:       'var(--amber)',
-  Deceptive:  '#9333ea',
-}
-
 // ═══════════════════════════════════════════════════════════════════════════════
 // LEARN CONTENT
 // ═══════════════════════════════════════════════════════════════════════════════

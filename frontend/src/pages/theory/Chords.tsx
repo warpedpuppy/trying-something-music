@@ -158,8 +158,6 @@ function ChordsLearnContent() {
 // QUIZ
 // ═══════════════════════════════════════════════════════════════════════════════
 
-type ChordMode = 'notes-to-quality' | 'quality-to-third'
-
 function chordPickQuestion(pool: Triad[], excludeKey?: string): Triad {
   const candidates = excludeKey ? pool.filter(t => `${t.root}${t.quality}` !== excludeKey) : pool
   return candidates[Math.floor(Math.random() * candidates.length)]
