@@ -239,7 +239,7 @@ function CircleOfFifthsLearnContent() {
 // INTERACTIVE EXPLORER
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function CircleOfFifthsInteractive() {
+export function CircleOfFifthsInteractive() {
   const [selected, setSelected] = useState<number | null>(null)
   const [hovered,  setHovered]  = useState<number | null>(null)
 

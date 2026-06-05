@@ -237,7 +237,7 @@ const COUNTERPOINT_MODE: QuizMode<ConceptQuestion>[] = [
   },
 ]
 
-function Quiz() {
+export function Quiz() {
   return (
     <TheoryQuiz<ConceptQuestion>
       modes={COUNTERPOINT_MODE}

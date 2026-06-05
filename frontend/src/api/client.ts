@@ -67,13 +67,6 @@ export class ApiError extends Error {
   }
 }
 
-async function hashPassword(password: string): Promise<string> {
-  const data = new TextEncoder().encode(password)
-  const buf = await crypto.subtle.digest('SHA-256', data)
-  return Array.from(new Uint8Array(buf))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
-}
 
 function localUserToUser(u: ReturnType<typeof findUserById>): User {
   if (!u) throw new ApiError(401, 'Not authenticated')
@@ -90,23 +83,23 @@ function currentUser(): ReturnType<typeof findUserById> {
 }
 
 export const api = {
-  register: async (username: string, password: string): Promise<TokenResponse> => {
+  // No passwords — named profiles are separated by username only.
+  // The data here is not sensitive enough to warrant passwords, and we have
+  // no email so we can't help anyone recover a forgotten one.
+  register: async (username: string): Promise<TokenResponse> => {
     if (findUserByUsername(username)) {
-      throw new ApiError(400, 'Username already taken')
+      throw new ApiError(400, 'A profile with that name already exists.')
     }
-    const hash = await hashPassword(password)
-    const isAdmin = getUsers().length === 0 // first user is admin
-    const user = createUser(username, hash, isAdmin)
+    const isAdmin = getUsers().filter((u) => !u.isDefault).length === 0
+    const user = createUser(username, '', isAdmin)
     setSession(user.id)
     const token = `${SESSION_TOKEN_PREFIX}${user.id}`
     return { access_token: token, token_type: 'bearer', user: localUserToUser(user) }
   },
 
-  login: async (username: string, password: string): Promise<TokenResponse> => {
+  login: async (username: string): Promise<TokenResponse> => {
     const user = findUserByUsername(username)
-    if (!user) throw new ApiError(401, 'Invalid credentials')
-    const hash = await hashPassword(password)
-    if (hash !== user.passwordHash) throw new ApiError(401, 'Invalid credentials')
+    if (!user || user.isDefault) throw new ApiError(401, 'No profile with that name exists.')
     setSession(user.id)
     const token = `${SESSION_TOKEN_PREFIX}${user.id}`
     return { access_token: token, token_type: 'bearer', user: localUserToUser(user) }

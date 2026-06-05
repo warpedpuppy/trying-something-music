@@ -1,7 +1,7 @@
 /**
  * Reharmonization — theory topic page.
  */
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
 import { TheoryOverviewCard } from '../../components/TheoryOverviewCard'
 import { TheoryQuiz, type QuizMode } from '../../components/TheoryQuiz'
@@ -257,7 +257,7 @@ function TechniqueCard({ t, active, onClick }: { t: ReharmTechnique; active: boo
   )
 }
 
-function Quiz() {
+export function Quiz() {
   const [mode, setMode] = useState<RHMode>('concepts')
   const [question, setQuestion] = useState<ConceptQuestion>(() => pickQ())
   const [selected, setSelected] = useState<string | null>(null)

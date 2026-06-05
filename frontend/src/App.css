@@ -806,6 +806,19 @@
   box-shadow: 0 1px 3px rgba(0,0,0,0.25);
 }
 
+/* Wrong / missed — rendered as a black ✕ with no circle background */
+.note-dot-wrong,
+.note-dot-missed {
+  width: 18px;
+  height: 18px;
+  border-radius: 0;
+  box-shadow: none;
+  color: #111;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 18px;
+}
+
 .note-dot-playing {
   width: 16px;
   height: 16px;
@@ -2190,26 +2203,108 @@ a.theory-card:hover {
 
 /* ---------------------------------------------------------------- home */
 
-.home-hero {
+/* ── Play Along hero banner ────────────────────────────────────────────────── */
+
+.pa-banner {
   position: relative;
-  height: 220px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: -8px -24px 24px;
+  height: 230px;
+  margin: 0 0 16px;
   overflow: hidden;
   border-radius: var(--radius-lg);
-  background: transparent;
-  border: none;
+  /* Deep indigo: evokes concert halls, piano keys, focused attention */
+  background: linear-gradient(160deg, #1e1b4b 0%, #312e81 55%, #4338ca 100%);
 }
 
-.home-hero-content {
-  position: relative;
+/* Staff animation — inverted to white, shown only at the banner's bottom third */
+.pa-banner .vss-viewport {
+  filter: invert(1);
+  opacity: 0.22;
+  -webkit-mask-image: linear-gradient(to top, black 0%, black 25%, transparent 65%);
+  mask-image:         linear-gradient(to top, black 0%, black 25%, transparent 65%);
+}
+
+/* Gradient overlay: keeps the top (text area) readable, melts into staff at bottom */
+.pa-banner-fade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: linear-gradient(
+    to bottom,
+    rgba(30,27,75,0.72) 0%,
+    rgba(30,27,75,0.38) 55%,
+    transparent 100%
+  );
+}
+
+.pa-banner-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 2;
   display: flex;
   flex-direction: column;
+  justify-content: center;
+  padding: 0 44px;
+  max-width: 560px;
+}
+
+.pa-banner-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #a5b4fc;
+  margin: 0 0 6px;
+}
+
+.pa-banner-title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 10px;
+  letter-spacing: -0.03em;
+}
+
+.pa-banner-desc {
+  font-size: 0.92rem;
+  color: #c7d2fe;
+  margin: 0 0 20px;
+  line-height: 1.55;
+  max-width: 380px;
+}
+
+.pa-banner-btn {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  padding: 9px 22px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.15);
+  border: 1.5px solid rgba(255,255,255,0.3);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 650;
+  text-decoration: none;
+  backdrop-filter: blur(4px);
+  transition: background 0.16s, border-color 0.16s, transform 0.16s;
+  width: fit-content;
+}
+.pa-banner-btn:hover {
+  background: rgba(255,255,255,0.25);
+  border-color: rgba(255,255,255,0.5);
+  transform: translateY(-2px);
+  text-decoration: none;
+  color: #fff;
+}
+
+@media (max-width: 600px) {
+  .pa-banner { height: 200px; }
+  .pa-banner-content { padding: 0 24px; }
+  .pa-banner-title { font-size: 1.6rem; }
+  .pa-banner-desc { display: none; }
 }
 
 .home-logo {
@@ -2338,6 +2433,142 @@ a.theory-card:hover {
 .section-pill-theory.section-pill-active {
   background: #7c3aed;
   box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+}
+
+/* Play Along pill — uses deep indigo matching the banner */
+.section-pill-playalong.section-pill-active {
+  background: #312e81;
+  box-shadow: 0 2px 8px rgba(49, 46, 129, 0.35);
+}
+
+/* ── Play Along sparkle animation ─────────────────────────────────────────── */
+
+.section-pill-playalong {
+  position: relative;
+  overflow: hidden;
+  animation: pa-pill-glow 3.2s ease-in-out infinite;
+}
+
+/* Shimmer sweep */
+.section-pill-playalong::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -80%;
+  width: 55%;
+  height: 200%;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgba(255,255,255,0.55) 50%,
+    transparent 65%
+  );
+  animation: pa-pill-shimmer 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* First star — top-right, small, via pseudo-element */
+.section-pill-playalong::after {
+  content: '✦';
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  font-size: 7px;
+  color: #fbbf24;
+  line-height: 1;
+  animation: pa-spark-a 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Span-based sparkles — three extra at distinct positions/sizes/timings */
+.pa-sparkle {
+  position: absolute;
+  pointer-events: none;
+  color: #fde68a;
+  line-height: 1;
+  user-select: none;
+}
+
+/* Top-right, largest — offset from the ::after star */
+.pa-sparkle-1 {
+  top: 1px;
+  right: 16px;
+  font-size: 11px;
+  color: #fbbf24;
+  animation: pa-spark-b 2.6s ease-in-out infinite;
+  animation-delay: 0.7s;
+}
+
+/* Top-right, tiny — tucked between the other two */
+.pa-sparkle-2 {
+  top: 5px;
+  right: 9px;
+  font-size: 6px;
+  color: #fef3c7;
+  animation: pa-spark-c 4.1s ease-in-out infinite;
+  animation-delay: 1.4s;
+}
+
+/* Bottom-left */
+.pa-sparkle-3 {
+  bottom: 3px;
+  left: 7px;
+  font-size: 9px;
+  color: #fbbf24;
+  animation: pa-spark-a 3.8s ease-in-out infinite;
+  animation-delay: 2.0s;
+}
+
+@keyframes pa-pill-shimmer {
+  0%        { left: -80%; }
+  30%, 100% { left: 140%; }
+}
+
+/* Rotate, scale up sharply, drift, fade */
+@keyframes pa-spark-a {
+  0%, 15%  { opacity: 0; transform: scale(0.3) rotate(-15deg); }
+  35%      { opacity: 1; transform: scale(1.35) rotate(18deg); }
+  55%      { opacity: 0.5; transform: scale(0.85) rotate(38deg); }
+  70%      { opacity: 0; transform: scale(0.5) rotate(55deg); }
+  100%     { opacity: 0; transform: scale(0.3) rotate(70deg); }
+}
+
+/* Starts bigger, pulses down, rotates the other way */
+@keyframes pa-spark-b {
+  0%, 20%  { opacity: 0; transform: scale(0.4) rotate(20deg); }
+  40%      { opacity: 1; transform: scale(1.5) rotate(-10deg); }
+  60%      { opacity: 0.6; transform: scale(1.0) rotate(-28deg); }
+  78%      { opacity: 0; transform: scale(0.5) rotate(-45deg); }
+  100%     { opacity: 0; transform: scale(0.4) rotate(-60deg); }
+}
+
+/* Smaller, quicker pop — jitters slightly */
+@keyframes pa-spark-c {
+  0%, 30%  { opacity: 0; transform: scale(0.2) rotate(5deg); }
+  48%      { opacity: 1; transform: scale(1.8) rotate(-20deg); }
+  62%      { opacity: 0.4; transform: scale(1.1) rotate(10deg); }
+  80%      { opacity: 0; transform: scale(0.3) rotate(30deg); }
+  100%     { opacity: 0; }
+}
+
+@keyframes pa-pill-glow {
+  0%, 100% { box-shadow: none; }
+  30%      { box-shadow: 0 0 0 2px rgba(99,102,241,0.25), 0 0 10px rgba(99,102,241,0.18); }
+  60%      { box-shadow: none; }
+}
+
+/* ── Kill all animations when the user is already on the Play Along page ── */
+.section-pill-playalong.section-pill-active {
+  animation: none;
+}
+.section-pill-playalong.section-pill-active::before,
+.section-pill-playalong.section-pill-active::after {
+  animation: none;
+  opacity: 0;
+}
+.section-pill-playalong.section-pill-active .pa-sparkle {
+  animation: none;
+  opacity: 0;
 }
 
 /* Sign up button — solid high-contrast white on rhythm-blue */
@@ -4388,6 +4619,72 @@ a.theory-card:hover {
   margin: 10px 0 0;
 }
 
+/* ── Theory Practice page ────────────────────────────────────────── */
+
+.theory-practice-empty {
+  max-width: 560px;
+  padding: 32px 0;
+}
+.theory-practice-empty h2 {
+  margin: 0 0 16px;
+}
+
+.practice-topic-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 20px 0 16px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 28px;
+}
+
+.practice-topic-chip {
+  padding: 6px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 20px;
+  background: var(--card);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--muted);
+  transition: border-color 0.14s, color 0.14s, background 0.14s;
+}
+.practice-topic-chip:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+.practice-topic-chip.active {
+  background: var(--bg);
+  font-weight: 700;
+}
+
+.practice-quiz-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.practice-level-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.practice-quiz-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+.practice-topic-link {
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.practice-topic-link:hover { color: var(--accent); }
+
 /* ── Responsive ─────────────────────────────────────────────────── */
 
 @media (max-width: 480px) {
@@ -5051,6 +5348,59 @@ a.theory-card:hover {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+/* Visited but not completed */
+.concept-pill.visited {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+/* Completed-section stat card */
+.stat-card--complete {
+  border-color: #6ee7b7;
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+}
+.stat-card--complete .stat-value { color: #059669; }
+.stat-card--complete .stat-label { color: #065f46; }
+.stat-complete-star {
+  font-size: 1rem;
+  margin-left: 4px;
+  color: #d97706;
+}
+
+/* Badge count on profile tabs */
+.profile-tab-earned {
+  margin-left: auto;
+  align-self: center;
+  font-size: 0.78rem;
+  color: var(--muted);
+  padding-right: 4px;
+}
+
+/* Completed badge-count (theory level all done) */
+.badge-count--complete {
+  background: #d1fae5;
+  color: #065f46;
+  border-radius: 20px;
+  padding: 1px 10px;
+}
+
+/* Warning section */
+.profile-section--warning {
+  border-left: 3px solid #fbbf24;
+  padding-left: 16px;
+  background: #fffbeb;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+.profile-section--warning h2 { border-bottom-color: #fde68a; }
+.profile-warning-temper {
+  color: #78350f;
+  font-size: 0.92rem;
+  margin: 0;
 }
 
 /* ── About page badge catalog ─────────────────────────────────────────────── */

@@ -204,7 +204,7 @@ function vlChoices(q: VLQuestion, _pool: VLQuestion[], modeId: string): string[]
   return q.ruleQ ? [...q.ruleQ.choices].sort(() => Math.random() - 0.5) : []
 }
 
-function VLQuiz() {
+export function VLQuiz() {
   return (
     <TheoryQuiz<VLQuestion>
       modes={VL_MODES}

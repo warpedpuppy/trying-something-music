@@ -240,7 +240,7 @@ const KS_MODES: QuizMode<KSQuestion>[] = [
   { id: 'both',  label: 'Both',  pool: KEY_QUIZ.map(() => ksPickQ('both')),  hint: 'Sharps: F C G D A E B  ·  Flats: B E A D G C F' },
 ]
 
-function KeySigsQuiz() {
+export function KeySigsQuiz() {
   return (
     <TheoryQuiz<KSQuestion>
       modes={KS_MODES}

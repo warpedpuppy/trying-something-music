@@ -14,16 +14,18 @@ export interface DotMarker {
 
 const DOT_COLORS: Record<DotMarker['kind'], string> = {
   on_time: '#2e9e5b',
-  early: '#e0a73c',
-  late: '#e0a73c',
-  wrong: '#d9534f',
-  missed: '#9aa0a6',
+  early:   '#e0a73c',
+  late:    '#e0a73c',
+  wrong:   'transparent',  // rendered as an X, no circle
+  missed:  'transparent',  // rendered as an X, no circle
   playing: '#3b6fe0',
 }
 
 const DOT_SYMBOLS: Partial<Record<DotMarker['kind'], string>> = {
-  early: '◂',
-  late: '▸',
+  early:  '◂',
+  late:   '▸',
+  wrong:  '✕',
+  missed: '✕',
 }
 
 interface RhythmStaffProps {
@@ -34,9 +36,9 @@ interface RhythmStaffProps {
   caption?: string
   /** Current playhead x position (px within the staff canvas). Null = hidden. */
   playheadX?: number | null
-  /** Called after each render with the SVG width, all note anchors, and the x of
-   *  the first event (note or rest) — i.e. the start-of-measure / downbeat x. */
-  onRendered?: (width: number, anchors: NoteAnchor[], firstEventX?: number) => void
+  /** Called after each render with the SVG width, all note anchors, the downbeat x,
+   *  and the stave's right-edge x (used by RhythmPlayback for playhead sweep end). */
+  onRendered?: (width: number, anchors: NoteAnchor[], firstEventX?: number, staveEndX?: number) => void
 }
 
 /** Engraved notation with optional colored feedback dots floating above the notes. */
@@ -66,7 +68,7 @@ export function RhythmStaff({
         maxWidth: availableWidth > 0 ? availableWidth : undefined,
       })
       setAnchors(result.anchors)
-      onRenderedRef.current?.(result.width, result.anchors, result.firstEventX)
+      onRenderedRef.current?.(result.width, result.anchors, result.firstEventX, result.staveEndX)
       setRenderError(null)
     } catch (err) {
       setRenderError(err instanceof Error ? err.message : 'Could not render notation')
@@ -109,7 +111,11 @@ export function RhythmStaff({
             <span
               key={`${dot.eventIndex}-${dot.kind}-${i}`}
               className={`note-dot note-dot-${dot.kind}`}
-              style={{ left: anchor.x - 7, top: anchor.y - 14, background: DOT_COLORS[dot.kind] }}
+              style={{
+                left: anchor.x - 7,
+                top:  anchor.y - (dot.kind === 'wrong' || dot.kind === 'missed' ? 18 : 14),
+                background: DOT_COLORS[dot.kind],
+              }}
               title={dot.label ?? dot.kind.replace('_', ' ')}
             >
               {DOT_SYMBOLS[dot.kind] ?? ''}

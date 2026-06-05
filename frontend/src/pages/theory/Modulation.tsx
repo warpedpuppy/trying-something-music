@@ -220,7 +220,7 @@ function modPickChoices(q: ModQ, _pool: ModQ[], _modeId: string): string[] {
   return [...q.modTypeQ.choices].sort(() => Math.random() - 0.5)
 }
 
-function ModQuiz() {
+export function ModQuiz() {
   return (
     <TheoryQuiz<ModQ>
       modes={MOD_MODES}

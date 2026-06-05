@@ -267,7 +267,7 @@ function NoteStaffDisplay({ q, selected, answer }: { q: QuizNote; selected: stri
 
 // ── Quiz component ────────────────────────────────────────────────────────────
 
-function NotesQuiz() {
+export function NotesQuiz() {
   return (
     <TheoryQuiz<QuizNote>
       modes={MODES}

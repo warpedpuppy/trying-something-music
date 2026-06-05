@@ -55,6 +55,8 @@ export function RhythmPlayback({
   const staffWidthRef = useRef<number>(200)
   // x of the first event (note OR rest) = start of the measure / downbeat.
   const staffFirstEventXRef = useRef<number | null>(null)
+  // x of the stave's right edge — where the playhead sweep ends.
+  const staffEndXRef = useRef<number>(190)
 
   const playheadRafRef = useRef<number | null>(null)
   const playheadHoldRef = useRef<number | null>(null)
@@ -213,7 +215,7 @@ export function RhythmPlayback({
           offsets,
           staffAnchorsRef.current,
           onsets,
-          staffWidthRef.current - 10,
+          staffEndXRef.current,
           measureDurationMs - lastOnsetMs,
           () => {
             setPhase('done')
@@ -268,10 +270,11 @@ export function RhythmPlayback({
           timeSigBottom={timeSigBottom}
           dots={dots}
           playheadX={playheadX}
-          onRendered={(width, anchors, firstEventX) => {
+          onRendered={(width, anchors, firstEventX, staveEndX) => {
             staffWidthRef.current = width
             staffAnchorsRef.current = anchors
             staffFirstEventXRef.current = firstEventX ?? null
+            staffEndXRef.current = staveEndX ?? (width - 10)
           }}
         />
       </div>

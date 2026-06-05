@@ -158,7 +158,7 @@ const DH_MODES: QuizMode<DHQuestion>[] = [
   { id: 'roman-to-chord', label: 'Roman → Chord', pool: KEYS.map(k => dhPick()), hint: 'I ii iii IV V vi vii°  ·  Uppercase = major, lowercase = minor' },
 ]
 
-function Quiz() {
+export function Quiz() {
   return (
     <TheoryQuiz<DHQuestion>
       modes={DH_MODES}

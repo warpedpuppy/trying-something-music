@@ -55,6 +55,7 @@ import { Login } from './pages/Login'
 import { PlayAlong } from './pages/PlayAlong'
 import { Register } from './pages/Register'
 import { TheoryHome, TheoryLevelPage } from './pages/theory/TheoryHome'
+import { TheoryPractice } from './pages/theory/TheoryPractice'
 import { CircleOfFifths } from './pages/theory/CircleOfFifths'
 import { NotesAndStaff } from './pages/theory/NotesAndStaff'
 import { KeySignatures } from './pages/theory/KeySignatures'
@@ -134,6 +135,7 @@ function App() {
               <Route path="beginner"          element={<TheoryLevelPage levelName="Beginner" />} />
               <Route path="intermediate"      element={<TheoryLevelPage levelName="Intermediate" />} />
               <Route path="advanced"          element={<TheoryLevelPage levelName="Advanced" />} />
+              <Route path="practice"          element={<TheoryPractice />} />
               <Route path="circle-of-fifths"  element={<CircleOfFifths />} />
               <Route path="notes"             element={<NotesAndStaff />} />
               <Route path="keys"              element={<KeySignatures />} />

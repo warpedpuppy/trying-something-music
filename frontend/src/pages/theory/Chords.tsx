@@ -188,7 +188,7 @@ const CHORD_MODES: QuizMode<Triad>[] = [
   { id: 'quality-to-third', label: 'Quality → Third', pool: TRIADS, hint: 'Major: M3+m3 · Minor: m3+M3 · Dim: m3+m3 · Aug: M3+M3' },
 ]
 
-function ChordsQuiz() {
+export function ChordsQuiz() {
   return (
     <TheoryQuiz<Triad>
       modes={CHORD_MODES}

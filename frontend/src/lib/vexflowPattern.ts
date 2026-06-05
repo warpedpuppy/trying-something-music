@@ -17,6 +17,9 @@ export interface RenderResult {
   /** Absolute x of the very first event (note OR rest) — the downbeat position.
    *  Used to place the Play Along downbeat arrow even when beat 1 is a rest. */
   firstEventX?: number
+  /** Absolute x of the stave's right edge (final barline). Used by RhythmPlayback
+   *  to sweep the playhead to the correct end position when centering is active. */
+  staveEndX: number
 }
 
 interface MeasureGroup {
@@ -91,13 +94,18 @@ export function renderPattern(
     const base = Math.max(140, measure.events.length * 64)
     return measureIndex === 0 ? base + 80 : base
   })
-  const naturalTotalWidth = naturalMeasureWidths.reduce((a, b) => a + b, 0) + 20
+  const staveContentWidth = naturalMeasureWidths.reduce((a, b) => a + b, 0)
+  const naturalTotalWidth = staveContentWidth + 20
 
   // Resolve the effective total width
   const effectiveTotalWidth = fixedTotalWidth
     ?? (maxWidth && naturalTotalWidth > maxWidth ? maxWidth : naturalTotalWidth)
 
   const redistribute = fixedTotalWidth != null || (maxWidth != null && naturalTotalWidth > maxWidth)
+
+  // Centre the stave when the natural width fits within maxWidth — expand the SVG
+  // to fill the container and shift the drawing start so the notation is centred.
+  const centre = !fixedTotalWidth && !seamless && maxWidth != null && naturalTotalWidth <= maxWidth
 
   const measureWidths = measures.map((_, measureIndex) => {
     if (redistribute) {
@@ -109,7 +117,7 @@ export function renderPattern(
     return naturalMeasureWidths[measureIndex]
   })
 
-  const totalWidth = effectiveTotalWidth
+  const totalWidth = centre ? maxWidth! : effectiveTotalWidth
   const height = STAVE_Y + STAVE_HEIGHT + 30
 
   const renderer = new Renderer(container, Renderer.Backends.SVG)
@@ -118,7 +126,12 @@ export function renderPattern(
 
   const allNotes: StaveNote[] = []
   const noteEventIndexes: number[] = []
-  let x = (fixedTotalWidth && seamless) ? 0 : 10
+  // When centring: shift the drawing start so stave content sits in the middle of the SVG.
+  // The resulting note.getAbsoluteX() values already include this offset, so dots and the
+  // playhead — both positioned relative to the same canvas — are automatically correct.
+  let x = (fixedTotalWidth && seamless) ? 0
+        : centre ? Math.round((maxWidth! - staveContentWidth) / 2)
+        : 10
   let firstStaveNote: StaveNote | null = null
 
   measures.forEach((measure, measureIndex) => {
@@ -205,5 +218,8 @@ export function renderPattern(
     ? (firstStaveNote as StaveNote).getAbsoluteX()
     : undefined
 
-  return { width: totalWidth, height, anchors, firstEventX }
+  // x has been advanced past every measure; that is the stave's right edge.
+  const staveEndX = x
+
+  return { width: totalWidth, height, anchors, firstEventX, staveEndX }
 }

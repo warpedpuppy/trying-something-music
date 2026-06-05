@@ -144,7 +144,7 @@ function LearnContent() {
 // QUIZ
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function SDQuiz() {
+export function SDQuiz() {
   return (
     <TheoryQuiz<SecDom>
       modes={SD_MODES}

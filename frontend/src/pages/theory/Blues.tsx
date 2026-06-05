@@ -156,7 +156,7 @@ function LearnContent() {
 // QUIZ
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function Quiz() {
+export function Quiz() {
   return (
     <TheoryQuiz<BluesQuestion>
       modes={BLUES_MODES}

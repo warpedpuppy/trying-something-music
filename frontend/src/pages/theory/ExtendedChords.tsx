@@ -242,7 +242,7 @@ const EC_MODE: QuizMode<ECQuestion>[] = [
   },
 ]
 
-function Quiz() {
+export function Quiz() {
   return (
     <TheoryQuiz<ECQuestion>
       modes={EC_MODE}

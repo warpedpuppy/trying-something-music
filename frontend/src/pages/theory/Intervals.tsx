@@ -253,7 +253,7 @@ function IntervalSingAlong({ question, onAdvance }: IntervalSingAlongProps) {
 
 // ── Main quiz component ───────────────────────────────────────────────────────
 
-function IntervalsQuiz() {
+export function IntervalsQuiz() {
   return (
     <TheoryQuiz<Interval>
       modes={IV_MODES}

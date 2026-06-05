@@ -195,7 +195,7 @@ const PROGRESSIONS_MODE: QuizMode<ProgQuestion>[] = [
   },
 ]
 
-function ProgressionsQuiz() {
+export function ProgressionsQuiz() {
   return (
     <TheoryQuiz<ProgQuestion>
       modes={PROGRESSIONS_MODE}

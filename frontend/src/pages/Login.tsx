@@ -10,8 +10,7 @@ export function Login() {
   const navigate = useNavigate()
   const location = useLocation()
   const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError]       = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   async function handleSubmit(event: FormEvent) {
@@ -19,9 +18,9 @@ export function Login() {
     setError(null)
     setSubmitting(true)
     try {
-      await login(username, password)
+      await login(username)
       const from = (location.state as { from?: string } | null)?.from
-      navigate(from ?? '/dashboard')
+      navigate(from ?? '/rhythm/dashboard')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
     } finally {
@@ -32,25 +31,15 @@ export function Login() {
   return (
     <div className="card auth-card">
       <h1>Log in</h1>
+      <p className="muted">No password needed — just type your profile name.</p>
       <form onSubmit={handleSubmit}>
         <div className="form-field">
-          <label htmlFor="username">Username</label>
+          <label htmlFor="username">Profile name</label>
           <input
             id="username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             autoComplete="username"
-            required
-          />
-        </div>
-        <div className="form-field">
-          <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
             required
           />
         </div>
@@ -60,7 +49,7 @@ export function Login() {
         </button>
       </form>
       <p className="muted">
-        New here? <Link to="/register">Create an account</Link>
+        New here? <Link to="/register">Create a profile</Link>
       </p>
     </div>
   )

@@ -5,26 +5,25 @@ import { useAuth } from '../auth/AuthContext'
 import { usePageTitle } from '../hooks/usePageTitle'
 
 export function Register() {
-  usePageTitle('Sign Up')
+  usePageTitle('Create a Profile')
   const { register } = useAuth()
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirm, setConfirm] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [confirm, setConfirm]   = useState('')
+  const [error, setError]       = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setError(null)
-    if (password !== confirm) {
-      setError('Passwords do not match.')
+    if (username !== confirm) {
+      setError('The names don\'t match — please type the same name twice.')
       return
     }
     setSubmitting(true)
     try {
-      await register(username, password)
-      navigate('/dashboard')
+      await register(username)
+      navigate('/rhythm/dashboard')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed')
     } finally {
@@ -34,49 +33,44 @@ export function Register() {
 
   return (
     <div className="card auth-card">
-      <h1>Create an account</h1>
+      <h1>Create a profile</h1>
+      <p className="muted">
+        No password needed. There's no data here important enough to require one,
+        and since we don't collect email addresses, there'd be no way to recover
+        a forgotten password anyway. Just pick a name.
+      </p>
       <form onSubmit={handleSubmit}>
         <div className="form-field">
-          <label htmlFor="username">Username</label>
+          <label htmlFor="username">Choose a name</label>
           <input
             id="username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             autoComplete="username"
-            minLength={3}
+            minLength={2}
             required
+            placeholder="e.g. Alex"
           />
         </div>
         <div className="form-field">
-          <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="new-password"
-            minLength={6}
-            required
-          />
-        </div>
-        <div className="form-field">
-          <label htmlFor="confirm">Confirm password</label>
+          <label htmlFor="confirm">Type it again to confirm</label>
           <input
             id="confirm"
-            type="password"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
-            autoComplete="new-password"
+            autoComplete="username"
+            minLength={2}
             required
+            placeholder="Same name again"
           />
         </div>
         {error && <p className="form-error" role="alert">{error}</p>}
         <button type="submit" className="button-primary" disabled={submitting}>
-          {submitting ? 'Creating account…' : 'Sign up'}
+          {submitting ? 'Creating…' : 'Create profile'}
         </button>
       </form>
       <p className="muted">
-        Already have an account? <Link to="/login">Log in</Link>
+        Already have a profile? <Link to="/login">Log in</Link>
       </p>
     </div>
   )

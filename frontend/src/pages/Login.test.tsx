@@ -24,26 +24,21 @@ function renderLogin() {
 }
 
 describe('Login', () => {
-  it('logs in and stores the token', async () => {
+  it('logs in with username only (no password)', async () => {
     const loginSpy = vi.spyOn(api, 'login').mockResolvedValue(TOKEN_RESPONSE)
     renderLogin()
-    await userEvent.type(screen.getByLabelText('Username'), 'student')
-    await userEvent.type(screen.getByLabelText('Password'), 'password1')
+    await userEvent.type(screen.getByLabelText('Profile name'), 'student')
     await userEvent.click(screen.getByRole('button', { name: 'Log in' }))
-    await waitFor(() => expect(loginSpy).toHaveBeenCalledWith('student', 'password1'))
-    await waitFor(() =>
-      expect(localStorage.getItem('rhythm-trainer-token')).toBe('token-123'),
-    )
+    await waitFor(() => expect(loginSpy).toHaveBeenCalledWith('student'))
   })
 
   it('shows the error message when login fails', async () => {
-    vi.spyOn(api, 'login').mockRejectedValue(new Error('Incorrect username or password.'))
+    vi.spyOn(api, 'login').mockRejectedValue(new Error('No profile with that name exists.'))
     renderLogin()
-    await userEvent.type(screen.getByLabelText('Username'), 'student')
-    await userEvent.type(screen.getByLabelText('Password'), 'nope99')
+    await userEvent.type(screen.getByLabelText('Profile name'), 'nobody')
     await userEvent.click(screen.getByRole('button', { name: 'Log in' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Incorrect username or password.',
+      'No profile with that name exists.',
     )
   })
 })

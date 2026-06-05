@@ -217,7 +217,7 @@ const FORM_MODE: QuizMode<FormQuestion>[] = [
   },
 ]
 
-function Quiz() {
+export function Quiz() {
   return (
     <TheoryQuiz<FormQuestion>
       modes={FORM_MODE}

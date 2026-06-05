@@ -318,8 +318,9 @@ export function ExercisePlayer() {
         <div className="result-legend">
           <span><span className="legend-swatch" style={{ background: '#2e9e5b' }} /> on time</span>
           <span><span className="legend-swatch" style={{ background: '#e0a73c' }} /> early / late</span>
-          <span><span className="legend-swatch" style={{ background: '#d9534f' }} /> wrong</span>
-          <span><span className="legend-swatch" style={{ background: '#9aa0a6' }} /> missed</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ fontWeight: 900, fontSize: '13px', lineHeight: 1 }}>✕</span> wrong / missed
+          </span>
         </div>
       )}
 

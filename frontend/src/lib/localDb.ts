@@ -8,6 +8,7 @@ export interface LocalUser {
   username: string
   passwordHash: string
   isAdmin: boolean
+  isDefault?: boolean // true for the auto-created "You" user
   createdAt: string
 }
 
@@ -120,6 +121,23 @@ export function findUserByUsername(username: string): LocalUser | null {
 
 export function findUserById(id: number): LocalUser | null {
   return getUsers().find((u) => u.id === id) ?? null
+}
+
+export function getOrCreateDefaultUser(): LocalUser {
+  const existing = getUsers().find((u) => u.isDefault)
+  if (existing) return existing
+  const users = getUsers()
+  const user: LocalUser = {
+    id: nextId('users'),
+    username: 'You',
+    passwordHash: '',
+    isAdmin: false,
+    isDefault: true,
+    createdAt: new Date().toISOString(),
+  }
+  users.push(user)
+  saveUsers(users)
+  return user
 }
 
 // Session

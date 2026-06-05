@@ -168,7 +168,7 @@ const MM_MODES: QuizMode<MMQuestion>[] = [
   { id: 'chord-to-roman', label: 'Chord → Roman', pool: KEYS.map(() => mmPick()), hint: 'Borrowed from parallel minor · ♭VII = most common in rock · iv = most emotive' },
 ]
 
-function Quiz() {
+export function Quiz() {
   return (
     <TheoryQuiz<MMQuestion>
       modes={MM_MODES}

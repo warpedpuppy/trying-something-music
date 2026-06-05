@@ -75,11 +75,10 @@ function RhythmWelcome({ onClose }: { onClose: () => void }) {
             </li>
             <li>
               <strong>Just want to feel the rhythm?</strong> Head straight to{' '}
-              <Link to="/rhythm/play-along" onClick={onClose}>Play Along</Link> — no account needed.
+              <Link to="/rhythm/play-along" onClick={onClose}>Play Along</Link>.
             </li>
             <li>
-              <strong>Have an account?</strong> Your{' '}
-              <Link to="/rhythm/dashboard" onClick={onClose}>Dashboard</Link> shows exactly
+              Your <Link to="/rhythm/dashboard" onClick={onClose}>Dashboard</Link> shows exactly
               which exercise to try next.
             </li>
           </ul>
@@ -144,6 +143,11 @@ function TheoryWelcome({ onClose }: { onClose: () => void }) {
             <li>
               Use the <strong>Dashboard</strong> tab to see what's available and browse by level.
             </li>
+            <li>
+              Once you've completed a topic's Learn section, its exercises appear in the{' '}
+              <Link to="/theory/practice" onClick={onClose}>Practice</Link> tab —
+              return there any time to keep your skills sharp.
+            </li>
           </ul>
         </div>
       </div>
@@ -160,15 +164,16 @@ function TheoryWelcome({ onClose }: { onClose: () => void }) {
 // ── NavBar ────────────────────────────────────────────────────────────────────
 
 export function NavBar() {
-  const { user, logout } = useAuth()
+  const { user, isDefaultUser, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const [showWelcome, setShowWelcome] = useState(false)
   const [mobileSection, setMobileSection] = useState<'rhythm' | 'theory' | null>(null)
 
-  const inRhythm = location.pathname.startsWith('/rhythm')
-  const inTheory = location.pathname.startsWith('/theory')
+  const inPlayAlong = location.pathname === '/rhythm/play-along'
+  const inRhythm    = location.pathname.startsWith('/rhythm') && !inPlayAlong
+  const inTheory    = location.pathname.startsWith('/theory')
 
   // Close welcome modal on navigation; do NOT auto-close the mobile menu on navigation
   // so the user can switch sections without it snapping shut.
@@ -212,7 +217,7 @@ export function NavBar() {
 
         <nav className="navbar-sections" aria-label="Sections">
           <Link
-            to={user ? '/rhythm/dashboard' : '/rhythm/learn'}
+            to="/rhythm/dashboard"
             className={`section-pill${inRhythm ? ' section-pill-active section-pill-rhythm' : ''}`}
           >
             Rhythm
@@ -223,27 +228,30 @@ export function NavBar() {
           >
             Theory
           </Link>
+          <Link
+            to="/rhythm/play-along"
+            className={`section-pill section-pill-playalong${inPlayAlong ? ' section-pill-active' : ''}`}
+          >
+            Play Along
+            {/* Extra sparkle spans — positioned by CSS, hidden when pill is active */}
+            <span className="pa-sparkle pa-sparkle-1" aria-hidden="true">✦</span>
+            <span className="pa-sparkle pa-sparkle-2" aria-hidden="true">✧</span>
+            <span className="pa-sparkle pa-sparkle-3" aria-hidden="true">✦</span>
+          </Link>
           <Link to="/about" className="section-pill">About</Link>
         </nav>
 
         <div className="navbar-user">
-          {user ? (
-            <>
-              <Link to="/profile" className="navbar-username">{user.username}</Link>
-              {user.is_admin && isLocalhost() && (
-                <NavLink to="/admin" className={({ isActive }) => isActive ? 'active' : ''}>
-                  Admin
-                </NavLink>
-              )}
-              <button type="button" className="link-button" onClick={handleLogout}>
-                Log out
-              </button>
-            </>
-          ) : (
-            <>
-              <NavLink to="/login" className="navbar-login-link">Log in</NavLink>
-              <NavLink to="/register" className="btn-signup">Sign up</NavLink>
-            </>
+          <Link to="/profile" className="navbar-username">{user?.username ?? 'You'}</Link>
+          {user?.is_admin && isLocalhost() && (
+            <NavLink to="/admin" className={({ isActive }) => isActive ? 'active' : ''}>
+              Admin
+            </NavLink>
+          )}
+          {!isDefaultUser && (
+            <button type="button" className="link-button" onClick={handleLogout}>
+              Log out
+            </button>
           )}
         </div>
 
@@ -281,10 +289,9 @@ export function NavBar() {
               <span className="mobile-nav-chevron">▼</span>
             </button>
             <div className={`mobile-nav-sub${mobileSection === 'rhythm' ? ' open' : ''}`}>
-              {user && <NavLink to="/rhythm/dashboard" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Dashboard</NavLink>}
-              {user && <NavLink to="/rhythm/exercises" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Exercises</NavLink>}
+              <NavLink to="/rhythm/dashboard" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Dashboard</NavLink>
+              <NavLink to="/rhythm/exercises" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Exercises</NavLink>
               <NavLink to="/rhythm/learn" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Learn</NavLink>
-              <NavLink to="/rhythm/play-along" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Play Along</NavLink>
               <button
                 type="button"
                 className="mobile-nav-link sub subnav-welcome-btn"
@@ -308,6 +315,7 @@ export function NavBar() {
               <NavLink to="/theory/beginner" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Beginner</NavLink>
               <NavLink to="/theory/intermediate" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Intermediate</NavLink>
               <NavLink to="/theory/advanced" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Advanced</NavLink>
+              <NavLink to="/theory/practice" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Practice</NavLink>
               <button
                 type="button"
                 className="mobile-nav-link sub subnav-welcome-btn"
@@ -317,22 +325,24 @@ export function NavBar() {
               </button>
             </div>
 
+            <NavLink
+              to="/rhythm/play-along"
+              onClick={() => setMenuOpen(false)}
+              className={({ isActive }) => `mobile-nav-link${isActive ? ' active' : ''}`}
+            >
+              Play Along
+            </NavLink>
             <Link to="/about" className="mobile-nav-link" onClick={() => setMenuOpen(false)}>About</Link>
           </nav>
           <div className="mobile-nav-user">
-            {user ? (
-              <>
-                <Link to="/profile" className="navbar-username">{user.username}</Link>
-                {user.is_admin && isLocalhost() && (
-                  <NavLink to="/admin" className="mobile-nav-link">Admin</NavLink>
-                )}
-                <button type="button" className="link-button" onClick={handleLogout}>Log out</button>
-              </>
-            ) : (
-              <>
-                <NavLink to="/login" className="navbar-login-link">Log in</NavLink>
-                <NavLink to="/register" className="btn-signup">Sign up</NavLink>
-              </>
+            <Link to="/profile" className="navbar-username" onClick={() => setMenuOpen(false)}>
+              {user?.username ?? 'You'}
+            </Link>
+            {user?.is_admin && isLocalhost() && (
+              <NavLink to="/admin" className="mobile-nav-link" onClick={() => setMenuOpen(false)}>Admin</NavLink>
+            )}
+            {!isDefaultUser && (
+              <button type="button" className="link-button" onClick={handleLogout}>Log out</button>
             )}
           </div>
         </div>
@@ -344,21 +354,14 @@ export function NavBar() {
           <div className="subnav-inner">
             {inRhythm && (
               <>
-                {user && (
-                  <NavLink to="/rhythm/dashboard" className={({ isActive }) => isActive ? 'subnav-link active' : 'subnav-link'}>
-                    Dashboard
-                  </NavLink>
-                )}
-                {user && (
-                  <NavLink to="/rhythm/exercises" className={({ isActive }) => isActive ? 'subnav-link active' : 'subnav-link'}>
-                    Exercises
-                  </NavLink>
-                )}
+                <NavLink to="/rhythm/dashboard" className={({ isActive }) => isActive ? 'subnav-link active' : 'subnav-link'}>
+                  Dashboard
+                </NavLink>
+                <NavLink to="/rhythm/exercises" className={({ isActive }) => isActive ? 'subnav-link active' : 'subnav-link'}>
+                  Exercises
+                </NavLink>
                 <NavLink to="/rhythm/learn" className={({ isActive }) => isActive ? 'subnav-link active' : 'subnav-link'}>
                   Learn
-                </NavLink>
-                <NavLink to="/rhythm/play-along" className={({ isActive }) => isActive ? 'subnav-link active' : 'subnav-link'}>
-                  Play Along
                 </NavLink>
                 <button
                   type="button"
@@ -382,6 +385,9 @@ export function NavBar() {
                 </NavLink>
                 <NavLink to="/theory/advanced" className={({ isActive }) => isActive ? 'subnav-link active' : 'subnav-link'}>
                   Advanced
+                </NavLink>
+                <NavLink to="/theory/practice" className={({ isActive }) => isActive ? 'subnav-link active' : 'subnav-link'}>
+                  Practice
                 </NavLink>
                 <button
                   type="button"

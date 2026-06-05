@@ -57,24 +57,43 @@ export function About() {
             more accessible — for anyone who wants it.
           </p>
 
-          <h2>Privacy</h2>
+          <h2>Privacy — your data never leaves your device</h2>
           <p>
-            Everything you do here is stored in your browser's local storage. Nothing is
-            sent to a remote server. There are no tracking pixels, no analytics, no ads, no
-            accounts shared with third parties. Your practice data belongs to you, on your
-            device, period. If you clear your browser's local storage, your data is gone —
-            that's the trade-off for keeping it simple and private.
+            No account is required to use this site. The moment you arrive, you are
+            automatically identified as <strong>"You"</strong> and your progress begins
+            saving to your browser's local storage. That's it. Nothing more happens.
           </p>
           <p>
-            Nothing nefarious is going on. This is just a music learning tool built by
-            someone who cares about focus, patience, and the joy of rhythm.
+            <strong>No remote server ever learns anything about you from this site.</strong>{' '}
+            Your rhythm level, your exercise attempts, your theory visits, your badges —
+            every byte of that data is written directly to your own device and read back
+            from your own device. There are no tracking pixels, no analytics scripts, no
+            advertising networks, no accounts shared with third parties, no cookies sent
+            to a server. The site does not make network requests to any backend. If you
+            open your browser's developer tools and watch the network tab while you
+            practice, you will see exactly zero requests carrying your data anywhere.
+          </p>
+          <p>
+            The only trade-off to this approach is that if you clear your browser's local
+            storage, your data is gone — there is no cloud backup because there is no
+            cloud. That's the intentional price of keeping everything completely private.
+          </p>
+          <p>
+            Nothing nefarious is going on. This is a music learning tool built by someone
+            who believes your practice habits are your own business.
           </p>
 
-          <h2>Multiple users</h2>
+          <h2>Multiple users on the same browser</h2>
           <p>
-            Each account you create is stored separately. More than one person can use the
-            same browser — just sign up with a different username and your progress won't
-            mix with anyone else's.
+            If you share a browser with others and want to keep your progress separate,
+            you can create a named profile from your{' '}
+            <a href="/profile">profile page</a> (click "You" in the top navigation).
+            Each named profile stores its own data locally using your chosen username as
+            a label. <strong>There is no security threat in doing this</strong> — the
+            password you choose never leaves your browser. It is hashed client-side and
+            stored locally, purely to prevent one person from accidentally overwriting
+            another person's data on the same device. No password is transmitted to any
+            server, ever.
           </p>
         </section>
       )}

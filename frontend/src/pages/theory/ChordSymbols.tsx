@@ -248,7 +248,7 @@ const CS_MODE: QuizMode<CSQuestion>[] = [
   },
 ]
 
-function Quiz() {
+export function Quiz() {
   return (
     <TheoryQuiz<CSQuestion>
       modes={CS_MODE}

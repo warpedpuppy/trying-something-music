@@ -201,7 +201,7 @@ function tsGetAnswer(q: TSQ, _modeId: string): string {
   return q.conceptQ.answer
 }
 
-function TSQuiz() {
+export function TSQuiz() {
   return (
     <TheoryQuiz<TSQ>
       modes={TS_MODES}

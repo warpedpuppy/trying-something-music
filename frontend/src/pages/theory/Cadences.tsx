@@ -156,7 +156,7 @@ const CADENCES_MODE: QuizMode<Cadence>[] = [
   },
 ]
 
-function CadencesQuiz() {
+export function CadencesQuiz() {
   return (
     <TheoryQuiz<Cadence>
       modes={CADENCES_MODE}

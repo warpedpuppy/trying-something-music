@@ -176,7 +176,7 @@ const SCALE_MODES: QuizMode<ScaleQuestion>[] = [
   { id: 'note-to-degree', label: 'Note → Degree', pool: SCALE_QUESTION_POOL, hint: 'Pattern: W – W – H – W – W – W – H' },
 ]
 
-function ScalesQuiz() {
+export function ScalesQuiz() {
   return (
     <TheoryQuiz<ScaleQuestion>
       modes={SCALE_MODES}
