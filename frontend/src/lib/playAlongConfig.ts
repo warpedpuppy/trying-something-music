@@ -27,7 +27,7 @@ export interface PlayAlongConfig {
 
 export const DEFAULT_CONFIG: PlayAlongConfig = {
   startBpm: 60,
-  bpmCap: 80,
+  bpmCap: 120,
   bpmIncreaseAfterMeasures: 10,
   bpmIncreaseAmount: 1,
   consecutiveMissesReset: 10,
