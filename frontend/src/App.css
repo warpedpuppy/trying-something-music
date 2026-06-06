@@ -1590,7 +1590,8 @@ a.theory-card:hover {
 }
 
 .theory-card-completed {
-  border-color: rgba(5, 150, 105, 0.35);
+  border-color: rgba(5, 150, 105, 0.55);
+  background: linear-gradient(135deg, var(--card) 85%, rgba(5, 150, 105, 0.06) 100%);
 }
 
 .theory-card-done {
@@ -4311,6 +4312,28 @@ a.theory-card:hover {
   padding: 24px 0 0;
 }
 
+.tt-level-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 16px;
+  transition: background 0.14s, color 0.14s;
+  text-decoration: none;
+}
+
+.tt-level-back:hover {
+  background: var(--accent-faint);
+  color: var(--accent);
+  text-decoration: none;
+}
+
 .tt-back-btn {
   display: inline-flex;
   align-items: center;
@@ -4735,6 +4758,13 @@ a.theory-card:hover {
   line-height: 1.5;
 }
 
+.theory-q-prompt {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin-top: 14px;
+}
+
 .theory-q-verdict {
   font-size: 0.9rem;
   font-weight: 600;
@@ -4841,6 +4871,19 @@ a.theory-card:hover {
 }
 
 /* ================================================================ Scales page extras  (.scales-*) */
+
+.piano-diagram-wrap {
+  margin: 20px 0 8px;
+  overflow-x: auto;
+}
+
+.piano-diagram-legend {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 6px 0 0;
+  text-align: center;
+  line-height: 1.5;
+}
 
 .scales-pattern {
   display: flex;

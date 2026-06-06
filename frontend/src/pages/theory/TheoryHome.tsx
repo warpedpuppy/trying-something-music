@@ -31,6 +31,13 @@ export const LEVELS: Level[] = [
         available: true,
       },
       {
+        title: 'Scales: Major & Minor',
+        description: 'The two patterns — W–W–H and W–H–W — that define the sound of every major and minor key in Western music.',
+        icon: '〰',
+        href: '/theory/scales',
+        available: true,
+      },
+      {
         title: 'Key Signatures',
         description: 'Sharps and flats at the clef. How to identify them instantly and know which key you\'re in.',
         icon: '♯',
@@ -42,13 +49,6 @@ export const LEVELS: Level[] = [
         description: 'Measure the distance between two pitches. The building block of all melody and harmony.',
         icon: '↕',
         href: '/theory/intervals',
-        available: true,
-      },
-      {
-        title: 'Scales & the Major Scale',
-        description: 'The major scale is the foundation of Western harmony. Learn its pattern, its sound, and why it works.',
-        icon: '〰',
-        href: '/theory/scales',
         available: true,
       },
       {

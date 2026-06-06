@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { Renderer, Stave } from 'vexflow'
 import { TheoryTopicLayout } from '../../components/TheoryTopicLayout'
 import { TheoryQuiz, type QuizMode } from '../../components/TheoryQuiz'
@@ -32,12 +33,14 @@ const KEY_SIGS: KeySig[] = [
   { key: 'E',  sf:  4, sfLabel: '4♯', accidentals: SHARP_ORDER.slice(0, 4) },
   { key: 'B',  sf:  5, sfLabel: '5♯', accidentals: SHARP_ORDER.slice(0, 5) },
   { key: 'F♯', sf:  6, sfLabel: '6♯', accidentals: SHARP_ORDER.slice(0, 6) },
+  { key: 'C♯', sf:  7, sfLabel: '7♯', accidentals: SHARP_ORDER.slice(0, 7) },
   { key: 'F',  sf: -1, sfLabel: '1♭', accidentals: FLAT_ORDER.slice(0, 1) },
   { key: 'B♭', sf: -2, sfLabel: '2♭', accidentals: FLAT_ORDER.slice(0, 2) },
   { key: 'E♭', sf: -3, sfLabel: '3♭', accidentals: FLAT_ORDER.slice(0, 3) },
   { key: 'A♭', sf: -4, sfLabel: '4♭', accidentals: FLAT_ORDER.slice(0, 4) },
   { key: 'D♭', sf: -5, sfLabel: '5♭', accidentals: FLAT_ORDER.slice(0, 5) },
   { key: 'G♭', sf: -6, sfLabel: '6♭', accidentals: FLAT_ORDER.slice(0, 6) },
+  { key: 'C♭', sf: -7, sfLabel: '7♭', accidentals: FLAT_ORDER.slice(0, 7) },
 ]
 
 // ── Quiz data ─────────────────────────────────────────────────────────────────
@@ -57,12 +60,14 @@ const KEY_QUIZ: KeyQuizEntry[] = [
   { vfKey: 'E',  sf:  4, major: 'E',  minor: 'C♯' },
   { vfKey: 'B',  sf:  5, major: 'B',  minor: 'G♯' },
   { vfKey: 'F#', sf:  6, major: 'F♯', minor: 'D♯' },
+  { vfKey: 'C#', sf:  7, major: 'C♯', minor: 'A♯' },
   { vfKey: 'F',  sf: -1, major: 'F',  minor: 'D'  },
   { vfKey: 'Bb', sf: -2, major: 'B♭', minor: 'G'  },
   { vfKey: 'Eb', sf: -3, major: 'E♭', minor: 'C'  },
   { vfKey: 'Ab', sf: -4, major: 'A♭', minor: 'F'  },
   { vfKey: 'Db', sf: -5, major: 'D♭', minor: 'B♭' },
   { vfKey: 'Gb', sf: -6, major: 'G♭', minor: 'E♭' },
+  { vfKey: 'Cb', sf: -7, major: 'C♭', minor: 'A♭' },
 ]
 
 // ── Quiz helpers ──────────────────────────────────────────────────────────────
@@ -128,23 +133,37 @@ function KeySigsLearnContent() {
       <section className="tt-learn-section">
         <h2>What is a key signature?</h2>
         <p>
-          A <strong>key signature</strong> appears at the start of every staff line, right
-          after the clef. It lists the notes that are permanently sharp or flat throughout the
-          piece, so the composer doesn't need to write accidentals (the ♯, ♭, and ♮ signs
-          that raise, lower, or restore individual notes) on every single note.
+          You already know that the major scale has a specific pattern of whole and half steps.
+          That same pattern can start on any note — G major, D major, B♭ major — but to keep
+          the pattern intact, some notes have to be raised or lowered with sharps or flats.
+          A <strong>key signature</strong> is the notation shorthand for that: instead of
+          marking every affected note individually throughout the piece, the sharps or flats
+          are written once at the start of every staff line, right after the clef, and apply
+          automatically for the whole piece.
         </p>
         <p>
           Two sharps (F♯ and C♯) at the start of every line means every F and C in the
-          music is sharp — unless a natural sign cancels it. Two sharps signals the key
-          of D major.
+          music is sharp — unless a natural sign (♮) cancels it. Two sharps signals the key
+          of D major (or its relative minor, B minor). The key signature tells you, at a
+          glance, which major or minor key the music is written in and which notes belong to it.
         </p>
       </section>
 
       <section className="tt-learn-section">
         <h2>Sharp keys <span className="tt-clef-glyph">♯</span></h2>
         <p>
-          Moving <strong>clockwise</strong> around the circle of fifths adds one sharp per
-          step. Sharps are always added in the same fixed order:
+          Moving <strong>clockwise</strong> around the <strong>circle of fifths</strong> adds
+          one sharp per step. The circle of fifths arranges all 12 keys in a loop, each a{' '}
+          <strong>perfect fifth</strong> apart — an interval of 7 semitones, like C up to G
+          or G up to D (covered fully in{' '}
+          <Link to="/theory/intervals">Intervals</Link>). That structure is what makes the
+          key signatures stack up so neatly. The circle gets its own deep-dive in the
+          Intermediate level; to jump ahead,{' '}
+          <Link to="/theory/circle-of-fifths">see Circle of Fifths →</Link>{' '}
+          If any of this felt abstract, don't worry — just keep reading. All the pieces will fall into place.
+        </p>
+        <p>
+          Sharps are always added in the same fixed order:
           <strong> F  C  G  D  A  E  B</strong>.
           Mnemonic: <em>"Father Charles Goes Down And Ends Battle."</em>
         </p>
