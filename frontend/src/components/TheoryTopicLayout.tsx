@@ -12,9 +12,10 @@
 
 import type { ReactNode } from 'react'
 import { useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { getTheoryCompletions, markTheoryComplete } from '../lib/localDb'
+import { THEORY_LEVELS } from '../lib/theoryTopics'
 
 export type TheoryTab = 'overview' | 'learn' | 'games'
 
@@ -55,6 +56,10 @@ export function TheoryTopicLayout({
     user ? getTheoryCompletions(user.id).includes(slug) : false
   )
 
+  const levelRecord = THEORY_LEVELS.find(l => l.slugs.includes(slug))
+  const backHref = levelRecord ? `/theory/${levelRecord.name.toLowerCase()}` : '/theory'
+  const backLabel = levelRecord ? levelRecord.name : 'Theory'
+
   function handleMarkComplete() {
     if (!user || !slug) return
     markTheoryComplete(user.id, slug)
@@ -83,6 +88,11 @@ export function TheoryTopicLayout({
 
   return (
     <div className="tt-layout">
+
+      {/* ── Back to level ─────────────────────────────────────────────── */}
+      <Link to={backHref} className="tt-level-back">
+        ← {backLabel}
+      </Link>
 
       {/* ── Tab bar ───────────────────────────────────────────────────── */}
       <div className="tt-tabs" role="tablist" aria-label="Topic sections">
