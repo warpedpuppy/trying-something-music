@@ -86,7 +86,7 @@ export function scoreTapsFree(expectedBeats: number[], tapsMs: number[]): ScoreR
     }
   })
 
-  const accuracy = Math.round((noteResults.filter((n) => n.verdict === 'on_time').length / noteResults.length) * 10000) / 10000
+  const accuracy = Math.round((noteResults.filter((n) => n.verdict === 'on_time' || n.verdict === 'early' || n.verdict === 'late').length / noteResults.length) * 10000) / 10000
   return { noteResults, accuracy, passed: accuracy >= PASS_THRESHOLD, inferredMsPerBeat: msPerBeat }
 }
 
@@ -113,6 +113,6 @@ export function scoreTapsStrict(expectedBeats: number[], tapsMs: number[], msPer
     }
   })
 
-  const accuracy = Math.round((noteResults.filter((n) => n.verdict === 'on_time').length / noteResults.length) * 10000) / 10000
+  const accuracy = Math.round((noteResults.filter((n) => n.verdict === 'on_time' || n.verdict === 'early' || n.verdict === 'late').length / noteResults.length) * 10000) / 10000
   return { noteResults, accuracy, passed: accuracy >= PASS_THRESHOLD, inferredMsPerBeat: msPerBeat }
 }
