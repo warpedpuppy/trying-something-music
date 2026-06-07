@@ -1063,9 +1063,16 @@ const NotationBlock = memo(function NotationBlock({
 
         {strayXs && strayXs.length > 0 && (
           <div className="pa-dots-layer" aria-hidden="true">
-            {strayXs.map((x, i) => (
-              <div key={`s${i}`} className="pa-stray-x" style={{ left: x }}>×</div>
-            ))}
+            {strayXs.map((x, i) => {
+              // strayTapX returns a raw time-fraction × SLOT_PX position (0 = measure start).
+              // VexFlow renders the first note at downbeatNoteX > 0, so we remap the
+              // range [0, SLOT_PX] → [downbeatNoteX, SLOT_PX] so Xs are never left of
+              // the first note.
+              const left = downbeatNoteX !== null
+                ? downbeatNoteX + (x / SLOT_PX) * (SLOT_PX - downbeatNoteX)
+                : x
+              return <div key={`s${i}`} className="pa-stray-x" style={{ left }}>×</div>
+            })}
           </div>
         )}
       </div>
