@@ -11,8 +11,7 @@ import { useTapCapture } from '../hooks/useTapCapture'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { tickEngine } from '../lib/audio'
 import { expectedOnsets, tapsToPattern } from '../lib/rhythm'
-
-const HIT_WINDOW_MS = 175  // same window as Play Along
+import { scoreTapsFree, scoreTapsStrict } from '../lib/scoring'
 
 type Phase = 'idle' | 'count-in' | 'capturing' | 'submitting' | 'result'
 
@@ -217,16 +216,21 @@ export function ExercisePlayer() {
 
   const dots: DotMarker[] = []
   if (phase === 'capturing' && tapCapture.taps.length > 0) {
-    // Real-time scoring using the exercise's fixed BPM — same 175ms window as Play Along.
-    // First tap anchors the downbeat; each subsequent tap is immediately green or X
-    // depending on whether it landed within HIT_WINDOW_MS of its expected beat time.
-    const msBeat = 60000 / exercise.tempo_bpm
-    const t0 = tapCapture.taps[0]
-    for (let i = 0; i < tapCapture.taps.length && i < onsets.length; i++) {
-      const expectedMs = (onsets[i].beat - onsets[0].beat) * msBeat
-      const actualMs   = tapCapture.taps[i] - t0
-      const hit = i === 0 || Math.abs(actualMs - expectedMs) <= HIT_WINDOW_MS
-      dots.push({ eventIndex: onsets[i].eventIndex, kind: hit ? 'on_time' : 'wrong' })
+    // Real-time scoring using the same algorithm as the final result (scoreTapsFree /
+    // scoreTapsStrict) so dots shown during capture always agree with the final verdict.
+    // Xs appear for genuinely uneven tapping; consistent-tempo tapping (even at a
+    // different BPM than the exercise target) shows all green — same as the final result.
+    const expectedBeats = onsets.map(o => o.beat)
+    const tapsForScoring = mode === 'strict'
+      ? tapCapture.taps.map(t => t - downbeatEpochRef.current)
+      : tapCapture.taps
+    const liveScore = mode === 'strict' && exercise
+      ? scoreTapsStrict(expectedBeats, tapsForScoring, 60000 / exercise.tempo_bpm)
+      : scoreTapsFree(expectedBeats, tapsForScoring)
+    for (const note of liveScore.noteResults) {
+      if (note.verdict === 'missed') continue
+      const onset = onsets[note.index]
+      if (onset) dots.push({ eventIndex: onset.eventIndex, kind: note.verdict })
     }
   } else if (phase === 'result' && result && !result.gave_up) {
     for (const note of result.note_results) {
