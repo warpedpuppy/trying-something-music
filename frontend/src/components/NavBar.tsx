@@ -213,6 +213,16 @@ export function NavBar() {
 
         <nav className="navbar-sections" aria-label="Sections">
           <Link
+            to="/rhythm/play-along"
+            className={`section-pill section-pill-playalong${inPlayAlong ? ' section-pill-active' : ''}`}
+          >
+            Play Along
+            {/* Extra sparkle spans — positioned by CSS, hidden when pill is active */}
+            <span className="pa-sparkle pa-sparkle-1" aria-hidden="true">✦</span>
+            <span className="pa-sparkle pa-sparkle-2" aria-hidden="true">✧</span>
+            <span className="pa-sparkle pa-sparkle-3" aria-hidden="true">✦</span>
+          </Link>
+          <Link
             to="/rhythm/dashboard"
             className={`section-pill${inRhythm ? ' section-pill-active section-pill-rhythm' : ''}`}
           >
@@ -223,16 +233,6 @@ export function NavBar() {
             className={`section-pill${inTheory ? ' section-pill-active section-pill-theory' : ''}`}
           >
             Theory
-          </Link>
-          <Link
-            to="/rhythm/play-along"
-            className={`section-pill section-pill-playalong${inPlayAlong ? ' section-pill-active' : ''}`}
-          >
-            Play Along
-            {/* Extra sparkle spans — positioned by CSS, hidden when pill is active */}
-            <span className="pa-sparkle pa-sparkle-1" aria-hidden="true">✦</span>
-            <span className="pa-sparkle pa-sparkle-2" aria-hidden="true">✧</span>
-            <span className="pa-sparkle pa-sparkle-3" aria-hidden="true">✦</span>
           </Link>
           <Link to="/about" className="section-pill">About</Link>
         </nav>
@@ -270,6 +270,14 @@ export function NavBar() {
       {menuOpen && (
         <div className="navbar-mobile-menu">
           <nav className="mobile-nav-links">
+            <NavLink
+              to="/rhythm/play-along"
+              onClick={() => setMenuOpen(false)}
+              className={({ isActive }) => `mobile-nav-link${isActive ? ' active' : ''}`}
+            >
+              Play Along
+            </NavLink>
+
             {/* Rhythm accordion — tapping the heading expands/collapses; sub-links navigate */}
             <button
               type="button"
@@ -316,13 +324,6 @@ export function NavBar() {
               </button>
             </div>
 
-            <NavLink
-              to="/rhythm/play-along"
-              onClick={() => setMenuOpen(false)}
-              className={({ isActive }) => `mobile-nav-link${isActive ? ' active' : ''}`}
-            >
-              Play Along
-            </NavLink>
             <Link to="/about" className="mobile-nav-link" onClick={() => setMenuOpen(false)}>About</Link>
           </nav>
           <div className="mobile-nav-user">
