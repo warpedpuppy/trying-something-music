@@ -59,7 +59,15 @@ export function ExercisePlayer() {
 
   const tapCapture = useTapCapture({
     expectedTaps: exercise?.tap_count ?? Infinity,
-    onTap: () => tickEngine.tick('tap'),
+    onTap: (tapIndex) => {
+      tickEngine.tick('tap')
+      // First tap anchors the downbeat: epoch = now - firstBeat * msPerBeat
+      // so scoreTapsStrict sees tap 0 landing exactly on its expected beat.
+      if (tapIndex === 0 && exercise && onsets.length > 0) {
+        const msPerBeat = 60000 / exercise.tempo_bpm
+        downbeatEpochRef.current = performance.now() - onsets[0].beat * msPerBeat
+      }
+    },
     onComplete: (tapsMs) => {
       tickEngine.stopMetronome()
       setLastTaps(tapsMs)
@@ -86,7 +94,8 @@ export function ExercisePlayer() {
         if (index < countInBeats) setCountInBeat(index + 1)
 
         if (index === countInBeats - 1) {
-          downbeatEpochRef.current = wallTimeMs + beatMs
+          // Epoch is NOT set here — it's set on the user's first tap instead,
+          // so they can jump in on any beat 1 they choose after the count-in.
           clearCaptureOpenTimer()
           captureOpenTimerRef.current = window.setTimeout(() => tapCapture.start(), beatMs / 2)
         }
@@ -186,7 +195,9 @@ export function ExercisePlayer() {
 
   const tapSublabel =
     phase === 'capturing' && exercise
-      ? `${tapCapture.taps.length} / ${exercise.tap_count}`
+      ? tapCapture.taps.length === 0
+        ? 'tap on beat 1'
+        : `${tapCapture.taps.length} / ${exercise.tap_count}`
       : undefined
 
   const tapDisabled = phase === 'count-in' || phase === 'submitting'
@@ -283,10 +294,14 @@ export function ExercisePlayer() {
         )}
         <span className="player-info-text">
           {phase === 'count-in' && (
-            <span>Count-in at {exercise.tempo_bpm} BPM — tap on beat 1</span>
+            <span>Count-in at {exercise.tempo_bpm} BPM — start tapping on any beat 1</span>
           )}
           {phase === 'capturing' && (
-            <span>Stay locked to the metronome</span>
+            <span>
+              {tapCapture.taps.length === 0
+                ? 'Tap on beat 1 when you\'re ready'
+                : 'Stay locked to the metronome'}
+            </span>
           )}
           {phase === 'submitting' && <span className="muted">Checking your rhythm…</span>}
           {phase === 'result' && result && (
