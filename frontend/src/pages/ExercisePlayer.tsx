@@ -27,6 +27,7 @@ export function ExercisePlayer() {
   const [staffWidth, setStaffWidth] = useState<number | undefined>()
   const [showPlayed, setShowPlayed] = useState(false)
   const [showGiveUpModal, setShowGiveUpModal] = useState(false)
+  const [downbeatNonce, setDownbeatNonce] = useState<number | null>(null)
   const downbeatEpochRef = useRef(0)
   const captureOpenTimerRef = useRef<number | null>(null)
 
@@ -75,9 +76,11 @@ export function ExercisePlayer() {
     setResult(null)
     setError(null)
     setPhase('idle')
+    setMode('free')
     setShowPlayed(false)
     setShowGiveUpModal(false)
     setCountInBeat(null)
+    setDownbeatNonce(null)
     resetCapture()
     api
       .getExercise(Number(id))
@@ -90,6 +93,19 @@ export function ExercisePlayer() {
     }
   }, [id, resetCapture, clearCaptureOpenTimer])
 
+  // Auto-start in free mode as soon as exercise data arrives — no START button needed.
+  useEffect(() => {
+    if (!exercise) return
+    // Warm up the AudioContext now (triggered by the user's navigation gesture) so
+    // the DSP pipeline is ready before the first tap, eliminating first-beat latency.
+    tickEngine.warmUp()
+    setDownbeatNonce(1)
+    setPhase('capturing')
+    tapCapture.start()
+  // tapCapture.start is a stable useCallback([]) ref — intentionally omitted from deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exercise])
+
   function handleStart() {
     if (!exercise) return
     setResult(null)
@@ -97,6 +113,7 @@ export function ExercisePlayer() {
     setCountInBeat(null)
 
     if (mode === 'free') {
+      setDownbeatNonce(1)
       setPhase('capturing')
       tapCapture.start()
       return
@@ -106,6 +123,7 @@ export function ExercisePlayer() {
       ? exercise.time_sig_top * 2
       : exercise.time_sig_top
     const beatMs = 60000 / exercise.tempo_bpm
+    setDownbeatNonce(0)  // show arrow during count-in, no pulse yet
     setPhase('count-in')
 
     tickEngine.startMetronome(
@@ -123,6 +141,11 @@ export function ExercisePlayer() {
           setCountInBeat(null)
           setPhase('capturing')
         }
+
+        // Pulse the downbeat arrow on each measure-1 beat of the pattern
+        if (index >= countInBeats && (index - countInBeats) % exercise.time_sig_top === 0) {
+          setDownbeatNonce(n => (n ?? 0) + 1)
+        }
       },
     )
   }
@@ -138,15 +161,13 @@ export function ExercisePlayer() {
     void submitAttempt([], true, mode)
   }
 
+  // AGAIN button: clean up and restart immediately (skip START screen)
   function handleTryAgain() {
     clearCaptureOpenTimer()
     tickEngine.cancelAll()
-    setResult(null)
-    setShowPlayed(false)
-    setShowGiveUpModal(false)
-    setCountInBeat(null)
     tapCapture.reset()
-    setPhase('idle')
+    setShowGiveUpModal(false)
+    handleStart()
   }
 
   async function handleNext() {
@@ -165,7 +186,6 @@ export function ExercisePlayer() {
   }
 
   const tapLabel =
-    phase === 'idle' ? 'START' :
     phase === 'count-in' ? (countInBeat !== null ? String(countInBeat) : '…') :
     phase === 'capturing' ? 'TAP' :
     phase === 'result' ? 'AGAIN' :
@@ -179,8 +199,7 @@ export function ExercisePlayer() {
   const tapDisabled = phase === 'count-in' || phase === 'submitting'
 
   function handleTapButton() {
-    if (phase === 'idle') handleStart()
-    else if (phase === 'capturing') tapCapture.tap()
+    if (phase === 'capturing') tapCapture.tap()
     else if (phase === 'result') handleTryAgain()
   }
 
@@ -195,7 +214,14 @@ export function ExercisePlayer() {
   if (!exercise) return <p className="page-loading">Loading exercise…</p>
 
   const dots: DotMarker[] = []
-  if (phase === 'result' && result && !result.gave_up) {
+  if (phase === 'capturing') {
+    // Optimistic real-time feedback: each tap maps to the next onset in order.
+    // Tap 0 → onset 0 (turns the downbeat arrow green via RhythmStaff's .hit logic);
+    // taps 1..N → green dots at those note positions.
+    for (let i = 0; i < tapCapture.taps.length && i < onsets.length; i++) {
+      dots.push({ eventIndex: onsets[i].eventIndex, kind: 'on_time' })
+    }
+  } else if (phase === 'result' && result && !result.gave_up) {
     for (const note of result.note_results) {
       const onset = onsets[note.index]
       if (onset) {
@@ -233,7 +259,6 @@ export function ExercisePlayer() {
               timeSigTop={exercise.time_sig_top}
               timeSigBottom={exercise.time_sig_bottom}
               bpm={exercise.tempo_bpm}
-              onClose={() => setShowGiveUpModal(false)}
             />
           </div>
         </div>
@@ -303,6 +328,7 @@ export function ExercisePlayer() {
         timeSigTop={exercise.time_sig_top}
         timeSigBottom={exercise.time_sig_bottom}
         dots={dots}
+        downbeatNonce={downbeatNonce ?? undefined}
         onRendered={(width) => setStaffWidth(width)}
       />
 
@@ -326,7 +352,7 @@ export function ExercisePlayer() {
 
       <div className="player-controls">
         {(phase === 'capturing' || phase === 'count-in') && (
-          <button type="button" className="button-secondary" onClick={handleTryAgain}>Cancel</button>
+          <button type="button" className="button-secondary" onClick={handleTryAgain}>Restart</button>
         )}
         {phase === 'result' && (
           <>
@@ -340,14 +366,17 @@ export function ExercisePlayer() {
             )}
           </>
         )}
-        {(phase === 'idle' || phase === 'capturing' || phase === 'result') && (
+        {(phase === 'capturing' || phase === 'result') && (
           <button type="button" className="button-danger" onClick={handleGiveUp}>
             I give up — play it for me
           </button>
         )}
       </div>
 
-      {(phase === 'idle' || phase === 'result') && (
+      {/* DIFFICULTY MODE TOGGLE — hidden, pending decision on whether to remove permanently.
+          See note at top of README.md. The `mode` state and `handleStart` strict-mode
+          logic are fully intact; just uncomment this block to restore the UI.
+      {phase === 'result' && (
         <fieldset className="mode-toggle">
           <legend>Difficulty</legend>
           <label className={mode === 'free' ? 'selected' : ''}>
@@ -360,6 +389,7 @@ export function ExercisePlayer() {
           </label>
         </fieldset>
       )}
+      */}
 
       {phase === 'result' && result && !result.gave_up && !result.passed && lastTaps.length > 1 && (
         <div className="played-back">

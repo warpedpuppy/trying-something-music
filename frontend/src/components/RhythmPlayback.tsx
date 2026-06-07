@@ -29,8 +29,6 @@ export interface RhythmPlaybackProps {
   bpm: number
   /** Optional callback fired once after the very first playback ends. */
   onFirstPlayComplete?: () => void
-  /** If provided, a dismiss button is rendered. */
-  onClose?: () => void
 }
 
 export function RhythmPlayback({
@@ -39,7 +37,6 @@ export function RhythmPlayback({
   timeSigBottom,
   bpm,
   onFirstPlayComplete,
-  onClose,
 }: RhythmPlaybackProps) {
   const [phase, setPhase] = useState<PlaybackPhase>('count-in')
   const [countInBeat, setCountInBeat] = useState<number | null>(null)
@@ -285,7 +282,7 @@ export function RhythmPlayback({
             ? <span className="rp-count-placeholder">counting will appear here</span>
             : countingBeats.map((beat, i) => (
                 <span key={i} style={{ color: beat.hasNote ? '#f97316' : 'var(--muted)' }}>
-                  {i > 0 ? ' ' : ''}{beat.label}
+                  {i > 0 ? (beat.label === 'trip' || beat.label === 'let' ? '-' : ' ') : ''}{beat.label}
                 </span>
               ))
           }
@@ -311,11 +308,6 @@ export function RhythmPlayback({
               Watch with counting
             </button>
           </>
-        )}
-        {onClose && (
-          <button type="button" className="button-secondary small" onClick={onClose}>
-            Close
-          </button>
         )}
       </div>
     </div>

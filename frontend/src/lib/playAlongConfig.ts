@@ -23,14 +23,17 @@ export interface PlayAlongConfig {
   consecutiveMissesReset: number
   /** Time signatures that can appear and when they unlock. */
   timeSigs: TimeSigUnlock[]
+  /** Triplet fills are suppressed until this many successful measures have been played. */
+  tripletAfterMeasures: number
 }
 
 export const DEFAULT_CONFIG: PlayAlongConfig = {
-  startBpm: 60,
-  bpmCap: 120,
+  startBpm: 77,
+  bpmCap: 208,
   bpmIncreaseAfterMeasures: 10,
   bpmIncreaseAmount: 1,
   consecutiveMissesReset: 10,
+  tripletAfterMeasures: 50,
   timeSigs: [
     { top: 4, bottom: 4, afterMeasures: 0 },
     { top: 3, bottom: 4, afterMeasures: 10 },

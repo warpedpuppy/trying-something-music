@@ -191,7 +191,6 @@ export function SamplePlayer({ exercise }: { exercise: SampleExercise }) {
               timeSigTop={exercise.time_sig_top}
               timeSigBottom={exercise.time_sig_bottom}
               bpm={exercise.tempo_bpm}
-              onClose={() => setShowGiveUpModal(false)}
             />
           </div>
         </div>

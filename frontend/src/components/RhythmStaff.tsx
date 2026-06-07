@@ -36,6 +36,12 @@ interface RhythmStaffProps {
   caption?: string
   /** Current playhead x position (px within the staff canvas). Null = hidden. */
   playheadX?: number | null
+  /**
+   * Pass any non-null value to show the orange downbeat arrow above note 1.
+   * Increment the value to replay the grow/shrink pulse animation (like Play Along).
+   * Leave undefined to hide the arrow entirely.
+   */
+  downbeatNonce?: number
   /** Called after each render with the SVG width, all note anchors, the downbeat x,
    *  and the stave's right-edge x (used by RhythmPlayback for playhead sweep end). */
   onRendered?: (width: number, anchors: NoteAnchor[], firstEventX?: number, staveEndX?: number) => void
@@ -49,6 +55,7 @@ export function RhythmStaff({
   dots = [],
   caption,
   playheadX,
+  downbeatNonce,
   onRendered,
 }: RhythmStaffProps) {
   const figureRef    = useRef<HTMLElement>(null)
@@ -56,7 +63,8 @@ export function RhythmStaff({
   const onRenderedRef = useRef(onRendered)
   onRenderedRef.current = onRendered   // keep ref fresh without triggering re-renders
 
-  const [anchors, setAnchors]       = useState<NoteAnchor[]>([])
+  const [anchors, setAnchors]         = useState<NoteAnchor[]>([])
+  const [firstEventX, setFirstEventX] = useState<number | null>(null)
   const [renderError, setRenderError] = useState<string | null>(null)
 
   // Render (or re-render) the staff, clamping to the figure's available width.
@@ -68,6 +76,7 @@ export function RhythmStaff({
         maxWidth: availableWidth > 0 ? availableWidth : undefined,
       })
       setAnchors(result.anchors)
+      setFirstEventX(result.firstEventX ?? null)
       onRenderedRef.current?.(result.width, result.anchors, result.firstEventX, result.staveEndX)
       setRenderError(null)
     } catch (err) {
@@ -104,7 +113,17 @@ export function RhythmStaff({
         {playheadX != null && (
           <div className="staff-playhead" style={{ left: playheadX }} />
         )}
+        {downbeatNonce != null && firstEventX != null && (
+          <div
+            key={downbeatNonce}
+            className={`pa-beat1-arrow${dots.some(d => d.eventIndex === 0 && d.kind === 'on_time') ? ' hit' : ''}${downbeatNonce > 0 ? ' pulsing' : ''}`}
+            aria-hidden="true"
+            style={{ left: firstEventX }}
+          >▼</div>
+        )}
         {dots.map((dot, i) => {
+          // on_time for the downbeat is shown via the arrow turning green — skip the dot
+          if (downbeatNonce != null && dot.eventIndex === 0 && dot.kind === 'on_time') return null
           const anchor = anchors.find((a) => a.eventIndex === dot.eventIndex)
           if (!anchor) return null
           return (
