@@ -7,6 +7,7 @@ export const DURATION_BEATS: Record<Duration, number> = {
   q: 1,
   '8': 0.5,
   '16': 0.25,
+  '8t': 1 / 3,
 }
 
 export function eventBeats(event: PatternEvent): number {
@@ -63,6 +64,7 @@ export function tapsToPattern(tapsMs: number[], msPerBeat: number): Pattern {
   }
   const SNAP_CHOICES: Array<{ beats: number; duration: Duration; dots?: number }> = [
     { beats: 0.25, duration: '16' },
+    { beats: 1 / 3, duration: '8t' },
     { beats: 0.375, duration: '16', dots: 1 },
     { beats: 0.5, duration: '8' },
     { beats: 0.75, duration: '8', dots: 1 },
@@ -95,8 +97,16 @@ export function describeTimeSignature(top: number, bottom: number): string {
  * Convert a beat position (0–3.75, within a measure) to the traditional
  * spoken count used when counting rhythm aloud.
  */
-export function getBeatLabel(beat: number): string {
+export function getBeatLabel(beat: number, tripletGrid = false): string {
   const NAMES = ['one', 'two', 'three', 'four']
+  if (tripletGrid) {
+    const third = Math.round(beat * 3)
+    const whichBeat = Math.floor(third / 3)
+    const subdivision = third % 3
+    if (subdivision === 0) return NAMES[whichBeat] ?? ''
+    if (subdivision === 1) return 'trip'
+    return 'let'
+  }
   const sixteenth = Math.round(beat * 4)
   const whichBeat = Math.floor(sixteenth / 4)
   const subdivision = sixteenth % 4
@@ -131,6 +141,7 @@ export function buildCountingBeats(
   // a half-beat onset even though no '8' duration event exists).
   const has16th = pattern.events.some(e => e.duration === '16')
   const has8th  = pattern.events.some(e => e.duration === '8')
+  const has8t   = pattern.events.some(e => e.duration === '8t')
 
   const onsets = expectedOnsets(pattern)
   const onsetBeats = onsets.map(o => o.beat)
@@ -143,24 +154,72 @@ export function buildCountingBeats(
     b => Math.abs(b * 2 - Math.round(b * 2)) < 0.001 &&
          Math.abs(b - Math.round(b)) > 0.01
   )
-  const grid = (has16th || dottedNeeds16th) ? 0.25
-             : (has8th  || dottedNeeds8th)  ? 0.5
-             : 1.0
-
-  const notePositions = new Set(onsets.map(o => Math.round(o.beat * 10000)))
-
-  const beats: CountingBeat[] = []
-  let pos = 0
-  while (pos < total - 0.001) {
-    const label = getBeatLabel(pos % timeSigTop)
-    if (label) {
-      beats.push({
-        label,
-        hasNote: notePositions.has(Math.round(pos * 10000)),
-        offsetMs: pos * msPerBeat,
-      })
-    }
-    pos = Math.round((pos + grid) * 10000) / 10000
+  // Collect positions keyed by pos * 12000 (covers 1/3, 1/4, 1/2, 2/3, 3/4 exactly)
+  const byKey = new Map<number, { pos: number; label: string }>()
+  const add = (pos: number, label: string) => {
+    const key = Math.round(pos * 12000)
+    if (label && !byKey.has(key)) byKey.set(key, { pos, label })
   }
-  return beats
+
+  if (has8t) {
+    // Which integer beats contain a triplet group (has a note at +1/3 or +2/3)
+    const tripletBeatFloors = new Set<number>()
+    for (const b of onsetBeats) {
+      const floorVal = Math.floor(b + 1e-9)
+      const sub = b - floorVal
+      if (Math.abs(sub - 1 / 3) < 0.01 || Math.abs(sub - 2 / 3) < 0.01) {
+        tripletBeatFloors.add(floorVal)
+      }
+    }
+
+    // Integer beats (always)
+    for (let b = 0; b < total - 0.001; b++) {
+      add(b, getBeatLabel(b % timeSigTop))
+    }
+
+    // Triplet sub-positions only where actual triplet notes land
+    for (const b of onsetBeats) {
+      const floorVal = Math.floor(b + 1e-9)
+      const sub = b - floorVal
+      if (Math.abs(sub - 1 / 3) < 0.01)      add(b, 'trip')
+      else if (Math.abs(sub - 2 / 3) < 0.01) add(b, 'let')
+    }
+
+    // Regular subdivisions ("and", "ee", "a") for beats that don't have triplets.
+    // Beats that DO have triplets skip this so "and" never appears inside a triplet group.
+    const regularGrid = (has16th || dottedNeeds16th) ? 0.25
+                      : (has8th  || dottedNeeds8th)  ? 0.5
+                      : 1.0
+    if (regularGrid < 1.0) {
+      let pos = 0
+      while (pos < total - 0.001) {
+        const floorVal = Math.floor(pos + 1e-9)
+        const sub = pos - floorVal
+        if (Math.abs(sub) > 0.001 && !tripletBeatFloors.has(floorVal)) {
+          add(pos, getBeatLabel(pos % timeSigTop))
+        }
+        pos = Math.round((pos + regularGrid) * 12000) / 12000
+      }
+    }
+  } else {
+    // Non-triplet patterns: use a uniform subdivision grid (original logic).
+    const grid = (has16th || dottedNeeds16th) ? 0.25
+               : (has8th  || dottedNeeds8th)  ? 0.5
+               : 1.0
+    let pos = 0
+    while (pos < total - 0.001) {
+      add(pos, getBeatLabel(pos % timeSigTop))
+      pos = Math.round((pos + grid) * 12000) / 12000
+    }
+  }
+
+  const noteSet = new Set(onsetBeats.map(b => Math.round(b * 12000)))
+
+  return [...byKey.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([key, { pos, label }]) => ({
+      label,
+      hasNote: noteSet.has(key),
+      offsetMs: pos * msPerBeat,
+    }))
 }

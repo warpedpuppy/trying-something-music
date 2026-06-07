@@ -2945,6 +2945,174 @@ a.theory-card:hover {
   margin-top: -12px;
 }
 
+/* ── Play Along settings accordion ──────────────────────────────────────── */
+
+.pa-settings-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: color 0.15s;
+}
+.pa-settings-toggle:hover {
+  color: var(--ink);
+}
+
+.pa-settings-caret {
+  display: inline-block;
+  font-size: 1.1rem;
+  line-height: 1;
+  transition: transform 0.2s ease;
+  transform: rotate(0deg);
+}
+.pa-settings-caret.open {
+  transform: rotate(90deg);
+}
+
+.pa-settings-panel {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 16px 0 4px;
+  border-top: 1px solid var(--border, #e5e7eb);
+}
+
+.pa-settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pa-settings-heading {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 0;
+}
+
+.pa-settings-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.9rem;
+  color: var(--ink);
+  cursor: default;
+}
+.pa-settings-row span {
+  flex: 1;
+}
+.pa-settings-row input[type="number"] {
+  width: 72px;
+  padding: 4px 8px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  text-align: right;
+  background: var(--surface, #fff);
+  color: var(--ink);
+}
+
+.pa-settings-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+.pa-settings-table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 4px 8px 6px 0;
+  font-size: 0.8rem;
+}
+.pa-settings-table td {
+  padding: 4px 8px 4px 0;
+}
+.pa-settings-table input[type="number"] {
+  width: 60px;
+  padding: 4px 6px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 6px;
+  font-size: 0.88rem;
+  text-align: right;
+  background: var(--surface, #fff);
+  color: var(--ink);
+}
+
+.pa-settings-remove {
+  background: none;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 4px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 2px 7px;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s;
+}
+.pa-settings-remove:hover:not(:disabled) {
+  background: #fee2e2;
+  color: #dc2626;
+  border-color: #fca5a5;
+}
+.pa-settings-remove:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.pa-settings-add {
+  background: none;
+  border: 1px dashed var(--border, #e5e7eb);
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 5px 12px;
+  transition: border-color 0.15s, color 0.15s;
+  align-self: flex-start;
+}
+.pa-settings-add:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.pa-settings-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pa-settings-footnote {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.pa-settings-reset {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-decoration: underline;
+  padding: 0;
+  transition: color 0.15s;
+}
+.pa-settings-reset:hover {
+  color: var(--ink);
+}
+
 .pa-tap-tempo-btn {
   padding: 10px 24px;
   border: 2px solid var(--accent);

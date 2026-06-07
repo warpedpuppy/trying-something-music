@@ -52,7 +52,7 @@ export function ComingSoon() {
             to syncopated sixteenth patterns.
           </p>
           <ul className="cs-feature-list">
-            <li>Eight levels from whole notes to complex 16th-note syncopation</li>
+            <li>Nine levels from whole notes to triplets, sixteenths, and complex syncopation</li>
             <li>Free-tempo and metronome-lock modes — two distinct skills</li>
             <li>Scoring adapts to your internal pulse, not just the click track</li>
             <li>Visual counting syllables (1 e + a) show you inside every beat</li>

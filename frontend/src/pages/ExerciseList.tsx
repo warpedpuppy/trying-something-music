@@ -11,17 +11,18 @@ const LEVEL_NAMES: Record<number, string> = {
   2: 'Whole notes & time signatures',
   3: 'Rests',
   4: 'Eighth notes',
-  5: 'Dotted notes',
-  6: 'Ties',
-  7: 'Sixteenths & syncopation',
-  8: 'Advanced syncopation & compound rhythm',
+  5: 'Triplets',
+  6: 'Dotted notes',
+  7: 'Ties',
+  8: 'Sixteenths & syncopation',
+  9: 'Advanced syncopation & compound rhythm',
 }
 
 const SKIP_OPTIONS = [
   { level: 3, label: 'Intermediate', sublabel: 'Level 3 — Rests' },
-  { level: 5, label: 'Advanced',     sublabel: 'Level 5 — Dotted notes' },
-  { level: 7, label: 'Expert',       sublabel: 'Level 7 — Sixteenths' },
-  { level: 8, label: 'Advanced',     sublabel: 'Level 8 — Advanced syncopation' },
+  { level: 6, label: 'Advanced',     sublabel: 'Level 6 — Dotted notes' },
+  { level: 8, label: 'Expert',       sublabel: 'Level 8 — Sixteenths' },
+  { level: 9, label: 'Advanced',     sublabel: 'Level 9 — Advanced syncopation' },
 ]
 
 export function ExerciseList() {

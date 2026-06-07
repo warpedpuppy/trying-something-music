@@ -1,5 +1,7 @@
 # Sheet Music Rhythm
 
+> **TODO — pending decision:** The exercise player has a "Difficulty" mode toggle (Free tempo vs. With the metronome) that is currently hidden. The full UI, state, and logic are intact in `frontend/src/pages/ExercisePlayer.tsx` — search for `DIFFICULTY MODE TOGGLE` to find the commented-out block. Decide whether to restore it or remove it for good before the next release.
+
 A browser-based rhythm-training app. Users tap along to sheet music notation, earn progressive level unlocks, and practice with a free-play metronome mode. **No server required — all data lives in the browser's `localStorage`.**
 
 ---

@@ -1,4 +1,4 @@
-import { Barline, Beam, Dot, Formatter, Renderer, Stave, StaveNote, StaveTie, Voice } from 'vexflow'
+import { Barline, Beam, Dot, Formatter, Renderer, Stave, StaveNote, StaveTie, Tuplet, Voice } from 'vexflow'
 import type { Pattern, PatternEvent } from '../api/types'
 import { eventBeats } from './rhythm'
 
@@ -45,7 +45,9 @@ function splitIntoMeasures(pattern: Pattern, beatsPerMeasure: number): MeasureGr
 }
 
 function toStaveNote(event: PatternEvent): StaveNote {
-  const duration = event.type === 'rest' ? `${event.duration}r` : event.duration
+  // Triplet eighth notes render as regular eighths; the Tuplet bracket is added separately.
+  const baseDuration = event.duration === '8t' ? '8' : event.duration
+  const duration = event.type === 'rest' ? `${baseDuration}r` : baseDuration
   const note = new StaveNote({
     keys: ['b/4'],
     duration,
@@ -154,13 +156,35 @@ export function renderPattern(
     stave.setContext(context).draw()
 
     const notes = measure.events.map(({ event }) => toStaveNote(event))
-    const beams = Beam.generateBeams(notes.filter((note) => !note.isRest()))
+
+    // Group consecutive '8t' events into Tuplet brackets (must be done before formatting).
+    // Also manually beam each triplet group — generateBeams uses VexFlow tick counts
+    // which are wrong for triplets (8t rendered as 8), so it beams them incorrectly.
+    const tuplets: Tuplet[] = []
+    const tripletBeams: Beam[] = []
+    const tripletNoteSet = new Set<number>()
+    let ti = 0
+    while (ti < measure.events.length) {
+      if (measure.events[ti].event.duration === '8t') {
+        const group = notes.slice(ti, ti + 3)
+        tuplets.push(new Tuplet(group, { notesOccupied: 2 }))
+        tripletBeams.push(new Beam(group))
+        for (let k = 0; k < 3; k++) tripletNoteSet.add(ti + k)
+        ti += 3
+      } else {
+        ti++
+      }
+    }
+
+    const autoBeams = Beam.generateBeams(notes.filter((n, i) => !tripletNoteSet.has(i) && !n.isRest()))
+    const beams = [...autoBeams, ...tripletBeams]
     const voice = new Voice({ numBeats: timeSigTop, beatValue: timeSigBottom })
     voice.setMode(Voice.Mode.SOFT)
     voice.addTickables(notes)
     new Formatter().joinVoices([voice]).formatToStave([voice], stave)
     voice.draw(context, stave)
     beams.forEach((beam) => beam.setContext(context).draw())
+    tuplets.forEach((tuplet) => tuplet.setContext(context).draw())
 
     if (measureIndex === 0 && notes.length > 0) firstStaveNote = notes[0]
 

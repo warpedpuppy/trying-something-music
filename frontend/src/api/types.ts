@@ -1,4 +1,4 @@
-export type Duration = 'w' | 'h' | 'q' | '8' | '16'
+export type Duration = 'w' | 'h' | 'q' | '8' | '16' | '8t'
 export type Verdict = 'on_time' | 'early' | 'late' | 'wrong' | 'missed'
 
 export interface PatternEvent {

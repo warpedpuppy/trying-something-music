@@ -50,6 +50,25 @@ export class TickEngine {
     }
   }
 
+  /**
+   * Pre-initialize the audio pipeline so the first real tap fires without delay.
+   * Call this on the first user interaction, before any notes need to be played.
+   * Schedules a zero-gain (silent) click to force the browser to allocate its
+   * internal DSP objects — subsequent real clicks have no setup overhead.
+   */
+  warmUp(): void {
+    try {
+      const context = this.ensureContext()
+      const osc = context.createOscillator()
+      const g   = context.createGain()
+      g.gain.setValueAtTime(0, context.currentTime)   // completely silent
+      osc.connect(g)
+      g.connect(this.masterGain!)
+      osc.start(context.currentTime)
+      osc.stop(context.currentTime + 0.001)
+    } catch { /* best-effort — never throw from warm-up */ }
+  }
+
   /** Play a short click right now. */
   tick(kind: TickKind = 'tap'): void {
     const context = this.ensureContext()
@@ -184,3 +203,14 @@ export class TickEngine {
 }
 
 export const tickEngine = new TickEngine()
+
+// Warm up the AudioContext on the very first pointer interaction anywhere in the app.
+// Using capture phase (fires before any button handler) inside a real user gesture
+// ensures the context starts in 'running' state — critical on iOS/Safari where a
+// context created outside a gesture always starts suspended, and the async resume()
+// may not complete before the first tick() call.
+document.addEventListener(
+  'pointerdown',
+  () => tickEngine.warmUp(),
+  { capture: true, once: true, passive: true },
+)

@@ -65,6 +65,7 @@ const ONE_BEAT: { minLevel: number; fill: Fill }[] = [
   { minLevel: 1, fill: [n('q')] },          // duplicate → higher weight
   { minLevel: 1, fill: [r('q')] },
   { minLevel: 2, fill: [n('8'), n('8')] },
+  { minLevel: 3, fill: [n('8t'), n('8t'), n('8t')] }, // eighth-note triplet (3 × ⅓ = 1 beat)
   { minLevel: 2, fill: [n('8'), r('8')] },
   { minLevel: 2, fill: [r('8'), n('8')] },
   { minLevel: 4, fill: [r('8'), n('8')] },   // extra weight on syncopated start
@@ -98,7 +99,7 @@ const FOUR_BEAT: { minLevel: number; fill: Fill }[] = [
 
 // ── Fill a measure ────────────────────────────────────────────────────────────
 
-function fillMeasure(beats: number, level: number, rng: () => number): PatternEvent[] {
+function fillMeasure(beats: number, level: number, rng: () => number, allowTriplets = true): PatternEvent[] {
   const events: PatternEvent[] = []
   let remaining = beats
 
@@ -118,7 +119,9 @@ function fillMeasure(beats: number, level: number, rng: () => number): PatternEv
     }
     // Always include 1-beat fills as long as ≥1 beat remains
     for (const { minLevel, fill } of ONE_BEAT) {
-      if (level >= minLevel) eligible.push(fill)
+      if (level >= minLevel) {
+        if (allowTriplets || !fill.some(e => e.duration === '8t')) eligible.push(fill)
+      }
     }
 
     // Should never be empty (at least [n('q')] is always available)
@@ -127,6 +130,8 @@ function fillMeasure(beats: number, level: number, rng: () => number): PatternEv
     const fill = eligible[Math.floor(rng() * eligible.length)]
     events.push(...fill.map(e => ({ ...e }))) // shallow-copy each event for safety
     remaining -= fillBeats(fill)
+    // Round to 1/12-beat precision to prevent floating-point drift from 1/3-beat triplets.
+    remaining = Math.round(remaining * 12) / 12
   }
 
   return events
@@ -146,6 +151,7 @@ function durationBeats(dur: PatternEvent['duration']): number {
     case 'q':  return 1
     case '8':  return 0.5
     case '16': return 0.25
+    case '8t': return 1 / 3
     default:   return 1
   }
 }
@@ -208,12 +214,12 @@ function fillsBar(events: PatternEvent[], beats: number): boolean {
   return Math.abs(total - beats) < 0.01
 }
 
-function safeGenerate(beats: number, level: number, rng: () => number): PatternEvent[] {
+function safeGenerate(beats: number, level: number, rng: () => number, allowTriplets = true): PatternEvent[] {
   const minNotes = minNotesForLevel(level)
   // Retry until we get a measure that both fills the bar and meets the note floor.
   for (let attempt = 0; attempt < 40; attempt++) {
     try {
-      const events = fillMeasure(beats, level, rng)
+      const events = fillMeasure(beats, level, rng, allowTriplets)
       if (fillsBar(events, beats) && countNotes(events) >= minNotes) return events
     } catch {
       // try again
@@ -272,7 +278,7 @@ export interface GeneratedMeasure {
 const LEVEL_LABELS: Record<number, string[]> = {
   1: ['Steady', 'Grounded', 'Walking', 'Simple'],
   2: ['Stepping', 'Moving', 'Striding', 'Running'],
-  3: ['Swing feel', 'Long-short', 'Lilting', 'Dotted'],
+  3: ['Swing feel', 'Triplet', 'Lilting', 'Long-short'],
   4: ['Offbeat', 'Syncopated', 'Backbeat', 'Leaning'],
   5: ['Gallop', 'Sixteenths', 'Complex', 'Intricate'],
 }
@@ -281,7 +287,7 @@ const LEVEL_LABELS: Record<number, string[]> = {
  * Generate `count` measures procedurally.
  * Deterministic: same `baseSeed` always yields the same sequence.
  */
-export function generateReel(count: number, baseSeed = 1337): GeneratedMeasure[] {
+export function generateReel(count: number, baseSeed = 1337, allowTriplets = true, minLevel = 1): GeneratedMeasure[] {
   const measures: GeneratedMeasure[] = []
   let prevSigKey = ''
 
@@ -292,11 +298,13 @@ export function generateReel(count: number, baseSeed = 1337): GeneratedMeasure[]
     //   5–11 → level 3 (adds dotted figures, whole notes — more interesting)
     //  12–19 → level 4 (adds syncopation, offbeats)
     //  20–23 → level 5 (sixteenth groups, gallop/reverse-gallop)
-    const level = i < 2  ? 1
-                : i < 5  ? 2
-                : i < 12 ? 3
-                : i < 20 ? 4
-                : 5
+    // minLevel lifts the floor so triplet-unlocked reels start at level 3+.
+    const baseLevel = i < 2  ? 1
+                    : i < 5  ? 2
+                    : i < 12 ? 3
+                    : i < 20 ? 4
+                    : 5
+    const level = Math.max(baseLevel, minLevel)
 
     // Separate RNG streams for time-sig choice vs. note choices (avoids correlation)
     const timeSigRng = mulberry32(baseSeed + i * 7 + 3)
@@ -305,7 +313,7 @@ export function generateReel(count: number, baseSeed = 1337): GeneratedMeasure[]
     const timeSig = pickTimeSig(level, timeSigRng())
     const { top, bottom, beats, label: sigLabel } = timeSig
 
-    let events = safeGenerate(beats, level, noteRng)
+    let events = safeGenerate(beats, level, noteRng, allowTriplets)
     // The first measure must begin and end with a note — the player needs a
     // clear note to tap as their entry point into the game.
     if (i === 0) {

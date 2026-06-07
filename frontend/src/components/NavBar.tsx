@@ -45,7 +45,7 @@ function RhythmWelcome({ onClose }: { onClose: () => void }) {
         <div className="welcome-section">
           <h3>Progression & levels</h3>
           <ul className="welcome-list">
-            <li>Exercises are organised into levels 1–8, from whole notes to 16th-note patterns.</li>
+            <li>Exercises are organised into levels 1–9, from whole notes to advanced syncopation.</li>
             <li>Pass enough exercises at a level to unlock the next one.</li>
             <li>Struggle with a concept? Practice mode queues up extra reps of that specific rhythm type.</li>
             <li>Earn badges for milestones — first pass, perfect streak, mastering a concept, and more.</li>

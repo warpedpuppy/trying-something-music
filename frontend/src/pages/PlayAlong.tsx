@@ -11,7 +11,6 @@ import {
   CURSOR_FRAC,
   msPerMeasure,
   msPerBeat,
-  reelTranslateX,
   measureAtCursor,
   totalMeasuresPassed,
   onsetDueMs,
@@ -20,9 +19,12 @@ import {
   resumedStartTime,
 } from '../lib/playAlongTiming'
 import {
+  DEFAULT_CONFIG,
   loadPlayAlongConfig,
+  savePlayAlongConfig,
   reelLevel,
   type PlayAlongConfig,
+  type TimeSigUnlock,
 } from '../lib/playAlongConfig'
 import { getSession, updatePlayAlongBest } from '../lib/localDb'
 
@@ -32,8 +34,11 @@ const REEL_UNIQUE = 24
 const HIT_WINDOW_MS = 175
 const REVIEW_SLOT_PX = 320
 
-function buildReel(level: number, seed = Math.floor(Math.random() * 99999)): GeneratedMeasure[] {
-  return generateReel(REEL_UNIQUE, seed + level * 100)
+function buildReel(level: number, seed = Math.floor(Math.random() * 99999), allowTriplets = true): GeneratedMeasure[] {
+  // When triplets are allowed, lift the reel floor to level 3 so triplets appear
+  // from the very first measure of the rebuilt reel — not after a 5-measure warm-up.
+  const minLevel = allowTriplets ? 3 : 1
+  return generateReel(REEL_UNIQUE, seed + level * 100, allowTriplets, minLevel)
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -56,7 +61,7 @@ export function PlayAlong() {
   usePageTitle('Play Along')
 
   // Config loaded from localStorage (admin-editable)
-  const [cfg] = useState<PlayAlongConfig>(loadPlayAlongConfig)
+  const [cfg, setCfg] = useState<PlayAlongConfig>(loadPlayAlongConfig)
 
   const [phase, setPhase]                   = useState<Phase>('welcome')
   const [bpm, setBpm]                       = useState(cfg.startBpm)
@@ -112,7 +117,7 @@ export function PlayAlong() {
 
   // Pending onsets ref (tracking upcoming notes)
   const pendingRef = useRef<PendingOnset[]>([])
-  const reelRef    = useRef<GeneratedMeasure[]>(buildReel(reelLevel(cfg, 0)))
+  const reelRef    = useRef<GeneratedMeasure[]>(buildReel(reelLevel(cfg, 0), undefined, 0 >= cfg.tripletAfterMeasures))
 
   // Tap timing
   const tapTimesRef     = useRef<number[]>([])
@@ -120,6 +125,10 @@ export function PlayAlong() {
 
   // Loop indices that had at least one miss during this round (for game-over review)
   const mistakenLoopIndicesRef = useRef(new Set<number>())
+
+  // Reel scroll: accumulated pixel offset (avoids position jump when BPM changes)
+  const reelPxRef       = useRef(0)
+  const lastFrameTimeRef = useRef(0)
 
   // ── Build pending onsets for a given absolute measure index ───────────────
 
@@ -157,19 +166,28 @@ export function PlayAlong() {
 
     let rafId: number
     const frame = () => {
+      const now = performance.now()
       // Frozen while review modal or user pause is active
       if (pausedRef.current || userPausedRef.current) {
+        lastFrameTimeRef.current = 0  // reset so dt doesn't span the pause on resume
         rafId = requestAnimationFrame(frame)
         return
       }
-      const elapsed  = performance.now() - startTimeRef.current
+      const elapsed  = now - startTimeRef.current
       const mspM     = msPerMeasure(bpmRef.current)
-      const loopMs   = REEL_UNIQUE * mspM
       const vpWidth  = reelViewportRef.current?.offsetWidth ?? window.innerWidth
+
+      // Accumulate reel scroll pixels frame-by-frame so a BPM change only affects
+      // future speed and never causes a position jump.
+      if (lastFrameTimeRef.current > 0) {
+        reelPxRef.current += (now - lastFrameTimeRef.current) * (SLOT_PX / mspM)
+      }
+      lastFrameTimeRef.current = now
 
       // Scroll
       if (reelTrackRef.current) {
-        const tx = reelTranslateX(elapsed, vpWidth, mspM, loopMs)
+        const totalLoopPx = REEL_UNIQUE * SLOT_PX
+        const tx = vpWidth * CURSOR_FRAC - (reelPxRef.current % totalLoopPx)
         reelTrackRef.current.style.transform = `translateX(${tx}px)`
       }
 
@@ -217,9 +235,13 @@ export function PlayAlong() {
         const hadMiss = missMap[compLoopIdx]?.length > 0
         if (!hadMiss) {
           successfulMeasuresRef.current++
-          const newLevel = reelLevel(cfg, successfulMeasuresRef.current)
-          if (newLevel > reelLevel(cfg, successfulMeasuresRef.current - 1)) {
-            reelRef.current = buildReel(newLevel, 1337)
+          const prev = successfulMeasuresRef.current - 1
+          const curr = successfulMeasuresRef.current
+          const newLevel = reelLevel(cfg, curr)
+          const levelChanged = newLevel > reelLevel(cfg, prev)
+          const tripletsJustUnlocked = curr >= cfg.tripletAfterMeasures && prev < cfg.tripletAfterMeasures
+          if (levelChanged || tripletsJustUnlocked) {
+            reelRef.current = buildReel(newLevel, 1337, curr >= cfg.tripletAfterMeasures)
             setHitMap({})
             setMissMap({})
             setStrayMap({})
@@ -272,7 +294,7 @@ export function PlayAlong() {
     setBpm(initialBpm)
     consecutiveMissesRef.current  = 0
     successfulMeasuresRef.current = 0
-    reelRef.current = buildReel(reelLevel(cfg, 0))
+    reelRef.current = buildReel(reelLevel(cfg, 0), undefined, 0 >= cfg.tripletAfterMeasures)
     setHitMap({})
     setMissMap({})
     setStrayMap({})
@@ -297,6 +319,8 @@ export function PlayAlong() {
   function startPlaying() {
     initPending()
     startTimeRef.current = performance.now()
+    reelPxRef.current = 0
+    lastFrameTimeRef.current = 0
 
     const firstOnset = pendingRef.current[0]
     if (firstOnset) {
@@ -483,7 +507,7 @@ export function PlayAlong() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (phase === 'welcome') {
-    return <WelcomeScreen onStart={(bpm) => startStatic(bpm)} cfg={cfg} />
+    return <WelcomeScreen onStart={(bpm) => startStatic(bpm)} cfg={cfg} onCfgChange={setCfg} />
   }
 
   // Review modal shared by playing and game-over phases
@@ -503,7 +527,6 @@ export function PlayAlong() {
           timeSigTop={reviewMeasure.timeSigTop}
           timeSigBottom={reviewMeasure.timeSigBottom}
           bpm={bpm}
-          onClose={closeReviewModal}
         />
       </div>
     </div>
@@ -618,38 +641,94 @@ export function PlayAlong() {
 
 // ── Welcome screen ─────────────────────────────────────────────────────────────
 
-export function WelcomeScreen({ onStart, cfg }: { onStart: (bpm: number) => void; cfg: PlayAlongConfig }) {
-  const BPM_MIN = 40
-  const BPM_MAX = cfg.bpmCap
+export function WelcomeScreen({
+  onStart,
+  cfg,
+  onCfgChange,
+}: {
+  onStart: (bpm: number) => void
+  cfg: PlayAlongConfig
+  onCfgChange: (cfg: PlayAlongConfig) => void
+}) {
+  const [localCfg, setLocalCfg] = useState<PlayAlongConfig>(() => ({ ...cfg }))
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
-  const [startBpm, setStartBpm] = useState(cfg.startBpm)
+  const BPM_MIN = 40
+  const BPM_MAX = localCfg.bpmCap
 
   const speedLabel =
-    startBpm < 55 ? 'Slow' :
-    startBpm < 72 ? 'Moderate' :
-    startBpm < 90 ? 'Fast' :
+    localCfg.startBpm < 66  ? 'Slow' :
+    localCfg.startBpm < 108 ? 'Moderate' :
+    localCfg.startBpm < 168 ? 'Fast' :
     'Very fast'
 
-  const altSigs = cfg.timeSigs
+  const altSigs = localCfg.timeSigs
     .filter(ts => !(ts.top === 4 && ts.bottom === 4))
     .sort((a, b) => a.afterMeasures - b.afterMeasures)
-  const altUnlockAt = altSigs[0]?.afterMeasures ?? cfg.bpmIncreaseAfterMeasures
+  const altUnlockAt = altSigs[0]?.afterMeasures ?? localCfg.bpmIncreaseAfterMeasures
+
+  function update(patch: Partial<PlayAlongConfig>) {
+    setLocalCfg(prev => {
+      const next = { ...prev, ...patch }
+      savePlayAlongConfig(next)
+      onCfgChange(next)
+      return next
+    })
+  }
+
+  function updateTimeSig(index: number, patch: Partial<TimeSigUnlock>) {
+    setLocalCfg(prev => {
+      const timeSigs = prev.timeSigs.map((ts, i) => i === index ? { ...ts, ...patch } : ts)
+      const next = { ...prev, timeSigs }
+      savePlayAlongConfig(next)
+      onCfgChange(next)
+      return next
+    })
+  }
+
+  function addTimeSig() {
+    setLocalCfg(prev => {
+      const next = { ...prev, timeSigs: [...prev.timeSigs, { top: 5, bottom: 4, afterMeasures: 20 }] }
+      savePlayAlongConfig(next)
+      onCfgChange(next)
+      return next
+    })
+  }
+
+  function removeTimeSig(index: number) {
+    setLocalCfg(prev => {
+      const next = { ...prev, timeSigs: prev.timeSigs.filter((_, i) => i !== index) }
+      savePlayAlongConfig(next)
+      onCfgChange(next)
+      return next
+    })
+  }
+
+  function resetDefaults() {
+    const fresh = { ...DEFAULT_CONFIG }
+    setLocalCfg(fresh)
+    savePlayAlongConfig(fresh)
+    onCfgChange(fresh)
+  }
 
   return (
     <div className="pa-stage pa-welcome">
       <h1 className="pa-welcome-title">Play Along</h1>
       <p className="pa-welcome-body">
         Sheet music appears on screen. Hit <strong>START</strong> and tap along —
-        notes you hit turn green, misses turn orange.
-        {cfg.consecutiveMissesReset} misses in a row ends the game.
+        notes you hit turn green, misses turn orange.{' '}
+        {localCfg.consecutiveMissesReset} misses in a row ends the game.
       </p>
       <ul className="pa-welcome-bullets">
         <li>Watch the orange arrow — it marks each downbeat and pulses to keep your place</li>
         <li>Tap each note in time as the music scrolls by</li>
         <li>
-          Tempo rises by {cfg.bpmIncreaseAmount} every {cfg.bpmIncreaseAfterMeasures} clean
-          measures, up to {cfg.bpmCap} BPM
+          Tempo rises by {localCfg.bpmIncreaseAmount} every {localCfg.bpmIncreaseAfterMeasures} clean
+          measures, up to {localCfg.bpmCap} BPM
         </li>
+        {localCfg.tripletAfterMeasures > 0 && (
+          <li>Triplets unlock after {localCfg.tripletAfterMeasures} clean measures</li>
+        )}
         {altSigs.length > 0 && (
           <li>
             After {altUnlockAt} clean measures,{' '}
@@ -659,10 +738,9 @@ export function WelcomeScreen({ onStart, cfg }: { onStart: (bpm: number) => void
         <li>Tap any measure to hear it played back</li>
       </ul>
 
-      {/* Starting BPM picker */}
       <p className="pa-setup-heading">Starting tempo</p>
       <div className="pa-bpm-display">
-        <span className="pa-bpm-number">{startBpm}</span>
+        <span className="pa-bpm-number">{localCfg.startBpm}</span>
         <span className="pa-bpm-unit">BPM</span>
       </div>
       <p className="pa-speed-label">{speedLabel}</p>
@@ -672,8 +750,8 @@ export function WelcomeScreen({ onStart, cfg }: { onStart: (bpm: number) => void
         min={BPM_MIN}
         max={BPM_MAX}
         step={1}
-        value={startBpm}
-        onChange={e => setStartBpm(Number(e.target.value))}
+        value={localCfg.startBpm}
+        onChange={e => update({ startBpm: Number(e.target.value) })}
         aria-label="Starting BPM"
       />
       <div className="pa-slider-labels">
@@ -681,9 +759,118 @@ export function WelcomeScreen({ onStart, cfg }: { onStart: (bpm: number) => void
         <span>{BPM_MAX}</span>
       </div>
 
-      <button type="button" className="btn-primary pa-cta" onClick={() => onStart(startBpm)}>
+      <button type="button" className="btn-primary pa-cta" onClick={() => onStart(localCfg.startBpm)}>
         Let's go
       </button>
+
+      {/* Settings accordion */}
+      <button
+        type="button"
+        className="pa-settings-toggle"
+        onClick={() => setSettingsOpen(o => !o)}
+        aria-expanded={settingsOpen}
+      >
+        <span className={`pa-settings-caret${settingsOpen ? ' open' : ''}`}>›</span>
+        {' '}Settings
+      </button>
+
+      {settingsOpen && (
+        <div className="pa-settings-panel">
+
+          <section className="pa-settings-section">
+            <h3 className="pa-settings-heading">Tempo</h3>
+            <label className="pa-settings-row">
+              <span>BPM* ceiling</span>
+              <input type="number" min={localCfg.startBpm} max={400} step={1}
+                value={localCfg.bpmCap}
+                onChange={e => update({ bpmCap: Number(e.target.value) })}
+              />
+            </label>
+            <label className="pa-settings-row">
+              <span>Increase BPM after every N clean measures</span>
+              <input type="number" min={1} max={500} step={1}
+                value={localCfg.bpmIncreaseAfterMeasures}
+                onChange={e => update({ bpmIncreaseAfterMeasures: Number(e.target.value) })}
+              />
+            </label>
+            <label className="pa-settings-row">
+              <span>BPM increase per step</span>
+              <input type="number" min={1} max={20} step={1}
+                value={localCfg.bpmIncreaseAmount}
+                onChange={e => update({ bpmIncreaseAmount: Number(e.target.value) })}
+              />
+            </label>
+          </section>
+
+          <section className="pa-settings-section">
+            <h3 className="pa-settings-heading">Difficulty</h3>
+            <label className="pa-settings-row">
+              <span>Consecutive misses before reset</span>
+              <input type="number" min={1} max={50} step={1}
+                value={localCfg.consecutiveMissesReset}
+                onChange={e => update({ consecutiveMissesReset: Number(e.target.value) })}
+              />
+            </label>
+            <label className="pa-settings-row">
+              <span>Triplets unlock after N measures</span>
+              <input type="number" min={0} max={500} step={1}
+                value={localCfg.tripletAfterMeasures}
+                onChange={e => update({ tripletAfterMeasures: Number(e.target.value) })}
+              />
+            </label>
+          </section>
+
+          <section className="pa-settings-section">
+            <h3 className="pa-settings-heading">Time signatures</h3>
+            <table className="pa-settings-table">
+              <thead>
+                <tr>
+                  <th>Top</th>
+                  <th>Bottom</th>
+                  <th>Unlock after</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {localCfg.timeSigs.map((ts, i) => (
+                  <tr key={i}>
+                    <td><input type="number" min={2} max={12} step={1}
+                      value={ts.top}
+                      onChange={e => updateTimeSig(i, { top: Number(e.target.value) })}
+                    /></td>
+                    <td><input type="number" min={2} max={16} step={1}
+                      value={ts.bottom}
+                      onChange={e => updateTimeSig(i, { bottom: Number(e.target.value) })}
+                    /></td>
+                    <td><input type="number" min={0} max={9999} step={1}
+                      value={ts.afterMeasures}
+                      onChange={e => updateTimeSig(i, { afterMeasures: Number(e.target.value) })}
+                    /></td>
+                    <td>
+                      <button type="button" className="pa-settings-remove"
+                        onClick={() => removeTimeSig(i)}
+                        aria-label={`Remove ${ts.top}/${ts.bottom}`}
+                        disabled={localCfg.timeSigs.length <= 1}
+                      >×</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <button type="button" className="pa-settings-add" onClick={addTimeSig}>
+              + Add time signature
+            </button>
+          </section>
+
+          <div className="pa-settings-footer">
+            <p className="pa-settings-footnote">* BPM = beats per minute, the measure of tempo</p>
+            <button type="button" className="pa-settings-reset" onClick={resetDefaults}>
+              Reset to defaults
+            </button>
+          </div>
+
+        </div>
+      )}
     </div>
   )
 }

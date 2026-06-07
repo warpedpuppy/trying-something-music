@@ -109,108 +109,137 @@ const seeds: ExerciseSeed[] = [
     pattern: { events: [n('8'), n('8'), n('q'), r('8'), n('8'), n('q')] },
   },
 
-  // Level 5 — dotted notes
+  // Level 5 — triplets
+  {
+    id: 33, title: 'Meet the triplet',
+    description: "Three notes in one beat — count 'one, trip-let' to feel the roll.",
+    level: 5, concept: 'triplets', learn_section: 'triplets',
+    time_sig_top: 4, time_sig_bottom: 4, num_measures: 1, tempo_bpm: 72, is_active: true,
+    pattern: { events: [n('q'), n('q'), n('8t'), n('8t'), n('8t'), n('q')] },
+  },
+  {
+    id: 34, title: 'Four beats of triplets',
+    description: "A full measure of eighth-note triplets. Count 'one-trip-let, two-trip-let, three-trip-let, four-trip-let'.",
+    level: 5, concept: 'triplets', learn_section: 'triplets',
+    time_sig_top: 4, time_sig_bottom: 4, num_measures: 1, tempo_bpm: 69, is_active: true,
+    pattern: { events: [
+      n('8t'), n('8t'), n('8t'), n('8t'), n('8t'), n('8t'),
+      n('8t'), n('8t'), n('8t'), n('8t'), n('8t'), n('8t'),
+    ]},
+  },
+  {
+    id: 35, title: 'Triplets and quarters',
+    description: 'Switch between triplets and quarter notes — feel the shift from three-to-a-beat back to straight time.',
+    level: 5, concept: 'triplets', learn_section: 'triplets',
+    time_sig_top: 4, time_sig_bottom: 4, num_measures: 2, tempo_bpm: 72, is_active: true,
+    pattern: { events: [
+      n('8t'), n('8t'), n('8t'), n('q'), n('8t'), n('8t'), n('8t'), n('q'),
+      n('q'), n('8t'), n('8t'), n('8t'), n('8t'), n('8t'), n('8t'), n('q'),
+    ]},
+  },
+
+  // Level 6 — dotted notes
   {
     id: 13, title: 'The dotted half',
     description: "A dot adds half the note's value: a dotted half lasts three full beats.",
-    level: 5, concept: 'dotted-notes', learn_section: 'dotted-notes',
+    level: 6, concept: 'dotted-notes', learn_section: 'dotted-notes',
     time_sig_top: 3, time_sig_bottom: 4, num_measures: 2, tempo_bpm: 84, is_active: true,
     pattern: { events: [n('h', 1), n('q'), n('q'), n('q')] },
   },
   {
     id: 14, title: 'Dotted quarter plus eighth',
     description: 'The classic long-short pair: a dotted quarter (1½ beats) followed by an eighth.',
-    level: 5, concept: 'dotted-notes', learn_section: 'dotted-notes',
+    level: 6, concept: 'dotted-notes', learn_section: 'dotted-notes',
     time_sig_top: 4, time_sig_bottom: 4, num_measures: 1, tempo_bpm: 76, is_active: true,
     pattern: { events: [n('q', 1), n('8'), n('q'), n('q')] },
   },
   {
     id: 15, title: 'Long-short, long-short',
     description: 'Two dotted-quarter-plus-eighth pairs in a row, then even quarters to finish.',
-    level: 5, concept: 'dotted-notes', learn_section: 'dotted-notes',
+    level: 6, concept: 'dotted-notes', learn_section: 'dotted-notes',
     time_sig_top: 4, time_sig_bottom: 4, num_measures: 2, tempo_bpm: 76, is_active: true,
     pattern: { events: [n('q', 1), n('8'), n('q', 1), n('8'), n('q'), n('q'), n('h')] },
   },
 
-  // Level 6 — ties
+  // Level 7 — ties
   {
     id: 16, title: 'Across the barline',
     description: 'The tie joins the last note of measure one to the first note of measure two — tap once, hold through both.',
-    level: 6, concept: 'ties', learn_section: 'ties',
+    level: 7, concept: 'ties', learn_section: 'ties',
     time_sig_top: 4, time_sig_bottom: 4, num_measures: 2, tempo_bpm: 80, is_active: true,
     pattern: { events: [n('q'), n('q'), n('q'), n('q', 0, true), n('q'), n('q'), n('q'), n('q')] },
   },
   {
     id: 17, title: 'Tied eighths',
     description: 'Two eighths tied together sound like a single quarter note — only the first one is tapped.',
-    level: 6, concept: 'ties', learn_section: 'ties',
+    level: 7, concept: 'ties', learn_section: 'ties',
     time_sig_top: 4, time_sig_bottom: 4, num_measures: 1, tempo_bpm: 76, is_active: true,
     pattern: { events: [n('q'), n('8'), n('8', 0, true), n('8'), n('8'), n('q')] },
   },
   {
     id: 18, title: 'Holding on',
     description: 'A half note tied to another half rings for four full beats.',
-    level: 6, concept: 'ties', learn_section: 'ties',
+    level: 7, concept: 'ties', learn_section: 'ties',
     time_sig_top: 4, time_sig_bottom: 4, num_measures: 2, tempo_bpm: 80, is_active: true,
     pattern: { events: [n('q'), n('q'), n('h', 0, true), n('h'), n('q'), n('q')] },
   },
 
-  // Level 7 — sixteenths & syncopation
+  // Level 8 — sixteenths & syncopation
   {
     id: 19, title: 'Sixteenth runs',
     description: 'Four sixteenths fit inside one beat. Keep them light and even.',
-    level: 7, concept: 'sixteenths', learn_section: 'sixteenths',
+    level: 8, concept: 'sixteenths', learn_section: 'sixteenths',
     time_sig_top: 4, time_sig_bottom: 4, num_measures: 1, tempo_bpm: 69, is_active: true,
     pattern: { events: [n('16'), n('16'), n('16'), n('16'), n('q'), n('8'), n('8'), n('q')] },
   },
   {
     id: 20, title: 'Sixteenth combinations',
     description: "Eighth-and-two-sixteenths, then two-sixteenths-and-an-eighth. Say it: 'rhy-thm-of the-mu-sic'.",
-    level: 7, concept: 'sixteenths', learn_section: 'sixteenths',
+    level: 8, concept: 'sixteenths', learn_section: 'sixteenths',
     time_sig_top: 4, time_sig_bottom: 4, num_measures: 1, tempo_bpm: 69, is_active: true,
     pattern: { events: [n('8'), n('16'), n('16'), n('q'), n('16'), n('16'), n('8'), n('q')] },
   },
   {
     id: 21, title: 'Off the beat',
     description: 'Syncopation puts the long notes between the beats. Lean into the off-beats.',
-    level: 7, concept: 'syncopation', learn_section: 'syncopation',
+    level: 8, concept: 'syncopation', learn_section: 'syncopation',
     time_sig_top: 4, time_sig_bottom: 4, num_measures: 1, tempo_bpm: 76, is_active: true,
     pattern: { events: [n('8'), n('q'), n('q'), n('q'), n('8')] },
   },
   {
     id: 22, title: 'The Charleston',
     description: 'The most famous syncopated figure: a dotted quarter, then a note tied over the third beat.',
-    level: 7, concept: 'syncopation', learn_section: 'syncopation',
+    level: 8, concept: 'syncopation', learn_section: 'syncopation',
     time_sig_top: 4, time_sig_bottom: 4, num_measures: 2, tempo_bpm: 80, is_active: true,
     pattern: { events: [n('q', 1), n('8', 0, true), n('h'), n('q', 1), n('8'), n('q'), r('q')] },
   },
 
-  // Level 8 — advanced syncopation & compound rhythm
+  // Level 9 — advanced syncopation & compound rhythm
   {
     id: 23, title: 'Offbeat groove',
     description: "Every note lands on the 'and' — the beats are silent. Feel the pull against the metronome.",
-    level: 8, concept: 'syncopation', learn_section: 'syncopation',
+    level: 9, concept: 'syncopation', learn_section: 'syncopation',
     time_sig_top: 4, time_sig_bottom: 4, num_measures: 1, tempo_bpm: 76, is_active: true,
     pattern: { events: [r('8'), n('8'), r('8'), n('8'), r('8'), n('8'), r('8'), n('8')] },
   },
   {
     id: 24, title: 'The anticipation',
     description: "The dotted quarter 'anticipates' the next measure by arriving a half-beat early. Hold through the barline.",
-    level: 8, concept: 'syncopation', learn_section: 'syncopation',
+    level: 9, concept: 'syncopation', learn_section: 'syncopation',
     time_sig_top: 4, time_sig_bottom: 4, num_measures: 2, tempo_bpm: 76, is_active: true,
     pattern: { events: [n('q'), n('q'), n('q', 1), n('8', 0, true), n('h'), n('q'), n('q')] },
   },
   {
     id: 25, title: 'Long-short groove',
     description: 'Alternating dotted-quarter-and-eighth pairs across both measures — a loping, forward-leaning feel.',
-    level: 8, concept: 'dotted-notes', learn_section: 'dotted-notes',
+    level: 9, concept: 'dotted-notes', learn_section: 'dotted-notes',
     time_sig_top: 4, time_sig_bottom: 4, num_measures: 2, tempo_bpm: 80, is_active: true,
     pattern: { events: [n('q', 1), n('8'), n('q', 1), n('8'), n('q', 1), n('8'), n('q'), n('q')] },
   },
   {
     id: 26, title: 'The gallop',
     description: "Dotted-eighth plus sixteenth — a 3:1 long-short drive. Say 'gal-lop' for each pair.",
-    level: 8, concept: 'sixteenths', learn_section: 'sixteenths',
+    level: 9, concept: 'sixteenths', learn_section: 'sixteenths',
     time_sig_top: 4, time_sig_bottom: 4, num_measures: 2, tempo_bpm: 72, is_active: true,
     pattern: { events: [
       n('8', 1), n('16'), n('8', 1), n('16'),
@@ -222,14 +251,14 @@ const seeds: ExerciseSeed[] = [
   {
     id: 27, title: 'The reverse gallop',
     description: 'Sixteenth first, then dotted-eighth — the short-long flip of the gallop. Harder to feel than it looks.',
-    level: 8, concept: 'sixteenths', learn_section: 'sixteenths',
+    level: 9, concept: 'sixteenths', learn_section: 'sixteenths',
     time_sig_top: 4, time_sig_bottom: 4, num_measures: 1, tempo_bpm: 72, is_active: true,
     pattern: { events: [n('16'), n('8', 1), n('16'), n('8', 1), n('16'), n('8', 1), n('16'), n('8', 1)] },
   },
   {
     id: 28, title: 'Habanera',
     description: 'The classic tango-derived figure: dotted-eighth, sixteenth, eighth, eighth — repeated twice per measure.',
-    level: 8, concept: 'dotted-notes', learn_section: 'dotted-notes',
+    level: 9, concept: 'dotted-notes', learn_section: 'dotted-notes',
     time_sig_top: 4, time_sig_bottom: 4, num_measures: 2, tempo_bpm: 76, is_active: true,
     pattern: { events: [
       n('8', 1), n('16'), n('8'), n('8'),
@@ -241,28 +270,28 @@ const seeds: ExerciseSeed[] = [
   {
     id: 29, title: 'Funk pocket',
     description: "Rests on the weak beats create the 'pocket' feel. Don't tap beats 2 and 4 — that's where the groove lives.",
-    level: 8, concept: 'syncopation', learn_section: 'syncopation',
+    level: 9, concept: 'syncopation', learn_section: 'syncopation',
     time_sig_top: 4, time_sig_bottom: 4, num_measures: 2, tempo_bpm: 80, is_active: true,
     pattern: { events: [n('8'), n('8'), r('8'), n('8'), n('8'), r('q'), n('8'), n('8'), n('8'), r('8'), n('8'), n('h')] },
   },
   {
     id: 30, title: 'Son clave',
     description: 'The 3-2 son clave: three notes on the first bar, two on the second. The backbone of Afro-Cuban music.',
-    level: 8, concept: 'syncopation', learn_section: 'syncopation',
+    level: 9, concept: 'syncopation', learn_section: 'syncopation',
     time_sig_top: 4, time_sig_bottom: 4, num_measures: 2, tempo_bpm: 84, is_active: true,
     pattern: { events: [n('q'), r('8'), n('8'), r('q'), n('q'), r('8'), n('8'), r('8'), n('8'), n('h')] },
   },
   {
     id: 31, title: 'Waltz syncopation',
     description: 'Offbeat accents in 3/4 — landing between the beats instead of on them disrupts the expected waltz lilt.',
-    level: 8, concept: 'syncopation', learn_section: 'syncopation',
+    level: 9, concept: 'syncopation', learn_section: 'syncopation',
     time_sig_top: 3, time_sig_bottom: 4, num_measures: 3, tempo_bpm: 84, is_active: true,
     pattern: { events: [r('8'), n('q'), n('8'), r('8'), n('8'), n('q', 1), r('8'), n('q'), r('8'), n('8'), n('q'), n('q')] },
   },
   {
     id: 32, title: 'Sixteenth-note puzzle',
     description: "Groups of sixteenths mixed with eighths and quarters. Count in sixteenths: 1-e-and-a.",
-    level: 8, concept: 'sixteenths', learn_section: 'sixteenths',
+    level: 9, concept: 'sixteenths', learn_section: 'sixteenths',
     time_sig_top: 4, time_sig_bottom: 4, num_measures: 2, tempo_bpm: 69, is_active: true,
     pattern: { events: [
       n('8'), n('16'), n('16'), n('8'), n('16'), n('16'), n('q'), n('q'),
