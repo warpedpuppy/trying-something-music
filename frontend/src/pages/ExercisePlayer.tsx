@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api/client'
-import type { AttemptMode, AttemptResult, Exercise } from '../api/types'
+import type { AttemptResult, Exercise } from '../api/types'
 import { Metronome } from '../components/Metronome'
 import { RhythmPlayback } from '../components/RhythmPlayback'
 import { RhythmStaff } from '../components/RhythmStaff'
@@ -11,7 +11,7 @@ import { useTapCapture } from '../hooks/useTapCapture'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { tickEngine } from '../lib/audio'
 import { expectedOnsets, tapsToPattern } from '../lib/rhythm'
-import { scoreTapsFree, scoreTapsStrict } from '../lib/scoring'
+import { scoreTapsStrict } from '../lib/scoring'
 
 type Phase = 'idle' | 'count-in' | 'capturing' | 'submitting' | 'result'
 
@@ -21,7 +21,6 @@ export function ExercisePlayer() {
   const [exercise, setExercise] = useState<Exercise | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [phase, setPhase] = useState<Phase>('idle')
-  const [mode, setMode] = useState<AttemptMode>('free')
   const [countInBeat, setCountInBeat] = useState<number | null>(null)
   const [result, setResult] = useState<AttemptResult | null>(null)
   const [lastTaps, setLastTaps] = useState<number[]>([])
@@ -43,11 +42,11 @@ export function ExercisePlayer() {
   }, [])
 
   const submitAttempt = useCallback(
-    async (tapsMs: number[], gaveUp: boolean, attemptMode: AttemptMode) => {
+    async (tapsMs: number[], gaveUp: boolean) => {
       if (!exercise) return
       setPhase('submitting')
       try {
-        const attempt = await api.submitAttempt(exercise.id, tapsMs, gaveUp, attemptMode)
+        const attempt = await api.submitAttempt(exercise.id, tapsMs, gaveUp, 'strict')
         setResult(attempt)
         setPhase('result')
       } catch (err) {
@@ -64,20 +63,56 @@ export function ExercisePlayer() {
     onComplete: (tapsMs) => {
       tickEngine.stopMetronome()
       setLastTaps(tapsMs)
-      const reported =
-        mode === 'strict' ? tapsMs.map((tap) => tap - downbeatEpochRef.current) : tapsMs
-      void submitAttempt(reported, false, mode)
+      // Taps are stored relative to the downbeat epoch for fixed-BPM scoring
+      const reported = tapsMs.map((tap) => tap - downbeatEpochRef.current)
+      void submitAttempt(reported, false)
     },
   })
   const { reset: resetCapture } = tapCapture
 
+  // Shared count-in logic used by both auto-start and AGAIN
+  const startCountIn = useCallback((ex: Exercise) => {
+    const countInBeats = ex.time_sig_top < 4
+      ? ex.time_sig_top * 2
+      : ex.time_sig_top
+    const beatMs = 60000 / ex.tempo_bpm
+    setDownbeatNonce(0)
+    setPhase('count-in')
+    setCountInBeat(null)
+
+    tickEngine.startMetronome(
+      ex.tempo_bpm,
+      (index, wallTimeMs) => {
+        if (index < countInBeats) setCountInBeat(index + 1)
+
+        if (index === countInBeats - 1) {
+          downbeatEpochRef.current = wallTimeMs + beatMs
+          clearCaptureOpenTimer()
+          captureOpenTimerRef.current = window.setTimeout(() => tapCapture.start(), beatMs / 2)
+        }
+
+        if (index === countInBeats) {
+          setCountInBeat(null)
+          setPhase('capturing')
+        }
+
+        // Pulse the downbeat arrow on each measure-1 beat of the pattern
+        if (index >= countInBeats && (index - countInBeats) % ex.time_sig_top === 0) {
+          setDownbeatNonce(n => (n ?? 0) + 1)
+        }
+      },
+    )
+  // tapCapture.start is a stable ref — intentionally omitted
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clearCaptureOpenTimer])
+
+  // Load exercise data
   useEffect(() => {
     let cancelled = false
     setExercise(null)
     setResult(null)
     setError(null)
     setPhase('idle')
-    setMode('free')
     setShowPlayed(false)
     setShowGiveUpModal(false)
     setCountInBeat(null)
@@ -94,61 +129,19 @@ export function ExercisePlayer() {
     }
   }, [id, resetCapture, clearCaptureOpenTimer])
 
-  // Auto-start in free mode as soon as exercise data arrives — no START button needed.
+  // Auto-start count-in as soon as exercise data arrives
   useEffect(() => {
     if (!exercise) return
-    // Warm up the AudioContext now (triggered by the user's navigation gesture) so
-    // the DSP pipeline is ready before the first tap, eliminating first-beat latency.
+    // Warm up AudioContext now (user's navigation gesture) so DSP is ready before first tap
     tickEngine.warmUp()
-    setDownbeatNonce(1)
-    setPhase('capturing')
-    tapCapture.start()
-  // tapCapture.start is a stable useCallback([]) ref — intentionally omitted from deps
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [exercise])
+    startCountIn(exercise)
+  }, [exercise, startCountIn])
 
   function handleStart() {
     if (!exercise) return
     setResult(null)
     setShowPlayed(false)
-    setCountInBeat(null)
-
-    if (mode === 'free') {
-      setDownbeatNonce(1)
-      setPhase('capturing')
-      tapCapture.start()
-      return
-    }
-
-    const countInBeats = exercise.time_sig_top < 4
-      ? exercise.time_sig_top * 2
-      : exercise.time_sig_top
-    const beatMs = 60000 / exercise.tempo_bpm
-    setDownbeatNonce(0)  // show arrow during count-in, no pulse yet
-    setPhase('count-in')
-
-    tickEngine.startMetronome(
-      exercise.tempo_bpm,
-      (index, wallTimeMs) => {
-        if (index < countInBeats) setCountInBeat(index + 1)
-
-        if (index === countInBeats - 1) {
-          downbeatEpochRef.current = wallTimeMs + beatMs
-          clearCaptureOpenTimer()
-          captureOpenTimerRef.current = window.setTimeout(() => tapCapture.start(), beatMs / 2)
-        }
-
-        if (index === countInBeats) {
-          setCountInBeat(null)
-          setPhase('capturing')
-        }
-
-        // Pulse the downbeat arrow on each measure-1 beat of the pattern
-        if (index >= countInBeats && (index - countInBeats) % exercise.time_sig_top === 0) {
-          setDownbeatNonce(n => (n ?? 0) + 1)
-        }
-      },
-    )
+    startCountIn(exercise)
   }
 
   function handleGiveUp() {
@@ -158,11 +151,10 @@ export function ExercisePlayer() {
     tapCapture.reset()
     setCountInBeat(null)
     setShowGiveUpModal(true)
-    // Submit immediately — localStorage API is synchronous so there's no perceptible delay.
-    void submitAttempt([], true, mode)
+    void submitAttempt([], true)
   }
 
-  // AGAIN button: clean up and restart immediately (skip START screen)
+  // AGAIN button: clean up and restart with a fresh count-in
   function handleTryAgain() {
     clearCaptureOpenTimer()
     tickEngine.cancelAll()
@@ -214,19 +206,13 @@ export function ExercisePlayer() {
   }
   if (!exercise) return <p className="page-loading">Loading exercise…</p>
 
+  // Real-time dots: use the same fixed-BPM algorithm as the final scoring so
+  // what you see during capture always matches the end result.
   const dots: DotMarker[] = []
   if (phase === 'capturing' && tapCapture.taps.length > 0) {
-    // Real-time scoring using the same algorithm as the final result (scoreTapsFree /
-    // scoreTapsStrict) so dots shown during capture always agree with the final verdict.
-    // Xs appear for genuinely uneven tapping; consistent-tempo tapping (even at a
-    // different BPM than the exercise target) shows all green — same as the final result.
     const expectedBeats = onsets.map(o => o.beat)
-    const tapsForScoring = mode === 'strict'
-      ? tapCapture.taps.map(t => t - downbeatEpochRef.current)
-      : tapCapture.taps
-    const liveScore = mode === 'strict' && exercise
-      ? scoreTapsStrict(expectedBeats, tapsForScoring, 60000 / exercise.tempo_bpm)
-      : scoreTapsFree(expectedBeats, tapsForScoring)
+    const tapsForScoring = tapCapture.taps.map(t => t - downbeatEpochRef.current)
+    const liveScore = scoreTapsStrict(expectedBeats, tapsForScoring, 60000 / exercise.tempo_bpm)
     for (const note of liveScore.noteResults) {
       if (note.verdict === 'missed') continue
       const onset = onsets[note.index]
@@ -240,8 +226,6 @@ export function ExercisePlayer() {
       }
     }
   }
-
-  const showMetronome = phase === 'count-in' || (phase === 'capturing' && mode === 'strict')
 
   const inferredMsPerBeat = result?.inferred_bpm ? 60000 / result.inferred_bpm : 600
 
@@ -294,22 +278,15 @@ export function ExercisePlayer() {
 
       {/* Compact info row */}
       <div className="player-info-row">
-        {showMetronome && <Metronome bpm={exercise.tempo_bpm} running compact />}
+        {(phase === 'count-in' || phase === 'capturing') && (
+          <Metronome bpm={exercise.tempo_bpm} running compact />
+        )}
         <span className="player-info-text">
-          {phase === 'idle' && (
-            <span className="muted">{exercise.description || "Tap START when you're ready."}</span>
-          )}
           {phase === 'count-in' && (
-            <span>
-              {mode === 'strict'
-                ? `Count-in — start tapping on the downbeat`
-                : `Feel the beat at ${exercise.tempo_bpm} BPM, then tap freely`}
-            </span>
+            <span>Count-in at {exercise.tempo_bpm} BPM — tap on beat 1</span>
           )}
           {phase === 'capturing' && (
-            <span>
-              {mode === 'strict' ? 'Stay locked to the metronome' : 'Tap freely at your own tempo'}
-            </span>
+            <span>Stay locked to the metronome</span>
           )}
           {phase === 'submitting' && <span className="muted">Checking your rhythm…</span>}
           {phase === 'result' && result && (
@@ -321,11 +298,7 @@ export function ExercisePlayer() {
               {!result.gave_up && (
                 <>
                   {' '}Accuracy: {Math.round(result.accuracy * 100)}%
-                  {result.mode === 'strict'
-                    ? ` — metronome at ${Math.round(result.inferred_bpm ?? exercise.tempo_bpm)} BPM.`
-                    : result.inferred_bpm
-                      ? ` at ≈${Math.round(result.inferred_bpm)} BPM.`
-                      : '.'}
+                  {` at ${exercise.tempo_bpm} BPM.`}
                 </>
               )}
             </span>
@@ -383,24 +356,6 @@ export function ExercisePlayer() {
           </button>
         )}
       </div>
-
-      {/* DIFFICULTY MODE TOGGLE — hidden, pending decision on whether to remove permanently.
-          See note at top of README.md. The `mode` state and `handleStart` strict-mode
-          logic are fully intact; just uncomment this block to restore the UI.
-      {phase === 'result' && (
-        <fieldset className="mode-toggle">
-          <legend>Difficulty</legend>
-          <label className={mode === 'free' ? 'selected' : ''}>
-            <input type="radio" name="attempt-mode" value="free" checked={mode === 'free'} onChange={() => setMode('free')} />
-            Free tempo — you set the speed
-          </label>
-          <label className={mode === 'strict' ? 'selected' : ''}>
-            <input type="radio" name="attempt-mode" value="strict" checked={mode === 'strict'} onChange={() => setMode('strict')} />
-            With the metronome — count-in, then stay on its beat
-          </label>
-        </fieldset>
-      )}
-      */}
 
       {phase === 'result' && result && !result.gave_up && !result.passed && lastTaps.length > 1 && (
         <div className="played-back">
