@@ -806,9 +806,8 @@
   box-shadow: 0 1px 3px rgba(0,0,0,0.25);
 }
 
-/* Wrong / missed — rendered as a black ✕ with no circle background */
-.note-dot-wrong,
-.note-dot-missed {
+/* Wrong — rendered as a black ✕ with no circle background */
+.note-dot-wrong {
   width: 18px;
   height: 18px;
   border-radius: 0;

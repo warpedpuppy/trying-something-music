@@ -14,18 +14,15 @@ export interface DotMarker {
 
 const DOT_COLORS: Record<DotMarker['kind'], string> = {
   on_time: '#2e9e5b',
-  early:   '#e0a73c',
-  late:    '#e0a73c',
+  early:   '#2e9e5b',
+  late:    '#2e9e5b',
   wrong:   'transparent',  // rendered as an X, no circle
-  missed:  'transparent',  // rendered as an X, no circle
+  missed:  '#f97316',      // orange circle, like Play Along
   playing: '#3b6fe0',
 }
 
 const DOT_SYMBOLS: Partial<Record<DotMarker['kind'], string>> = {
-  early:  '◂',
-  late:   '▸',
   wrong:  '✕',
-  missed: '✕',
 }
 
 interface RhythmStaffProps {
@@ -132,7 +129,7 @@ export function RhythmStaff({
               className={`note-dot note-dot-${dot.kind}`}
               style={{
                 left: anchor.x - 7,
-                top:  anchor.y - (dot.kind === 'wrong' || dot.kind === 'missed' ? 18 : 14),
+                top:  anchor.y - (dot.kind === 'wrong' ? 18 : 14),
                 background: DOT_COLORS[dot.kind],
               }}
               title={dot.label ?? dot.kind.replace('_', ' ')}

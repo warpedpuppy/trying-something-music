@@ -11,6 +11,7 @@ import { useTapCapture } from '../hooks/useTapCapture'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { tickEngine } from '../lib/audio'
 import { expectedOnsets, tapsToPattern } from '../lib/rhythm'
+import { scoreTapsFree, scoreTapsStrict } from '../lib/scoring'
 
 type Phase = 'idle' | 'count-in' | 'capturing' | 'submitting' | 'result'
 
@@ -214,12 +215,20 @@ export function ExercisePlayer() {
   if (!exercise) return <p className="page-loading">Loading exercise…</p>
 
   const dots: DotMarker[] = []
-  if (phase === 'capturing') {
-    // Optimistic real-time feedback: each tap maps to the next onset in order.
-    // Tap 0 → onset 0 (turns the downbeat arrow green via RhythmStaff's .hit logic);
-    // taps 1..N → green dots at those note positions.
-    for (let i = 0; i < tapCapture.taps.length && i < onsets.length; i++) {
-      dots.push({ eventIndex: onsets[i].eventIndex, kind: 'on_time' })
+  if (phase === 'capturing' && tapCapture.taps.length > 0) {
+    // Real-time scoring: evaluate each tap as it comes in, same as Play Along.
+    // Skip 'missed' verdicts — those notes haven't been reached yet.
+    const expectedBeats = onsets.map(o => o.beat)
+    const tapsForScoring = mode === 'strict'
+      ? tapCapture.taps.map(t => t - downbeatEpochRef.current)
+      : tapCapture.taps
+    const liveScore = mode === 'strict' && exercise
+      ? scoreTapsStrict(expectedBeats, tapsForScoring, 60000 / exercise.tempo_bpm)
+      : scoreTapsFree(expectedBeats, tapsForScoring)
+    for (const note of liveScore.noteResults) {
+      if (note.verdict === 'missed') continue
+      const onset = onsets[note.index]
+      if (onset) dots.push({ eventIndex: onset.eventIndex, kind: note.verdict })
     }
   } else if (phase === 'result' && result && !result.gave_up) {
     for (const note of result.note_results) {
@@ -342,10 +351,10 @@ export function ExercisePlayer() {
 
       {phase === 'result' && result && !result.gave_up && (
         <div className="result-legend">
-          <span><span className="legend-swatch" style={{ background: '#2e9e5b' }} /> on time</span>
-          <span><span className="legend-swatch" style={{ background: '#e0a73c' }} /> early / late</span>
+          <span><span className="legend-swatch" style={{ background: '#2e9e5b' }} /> hit</span>
+          <span><span className="legend-swatch" style={{ background: '#f97316' }} /> missed</span>
           <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ fontWeight: 900, fontSize: '13px', lineHeight: 1 }}>✕</span> wrong / missed
+            <span style={{ fontWeight: 900, fontSize: '13px', lineHeight: 1 }}>✕</span> wrong
           </span>
         </div>
       )}
