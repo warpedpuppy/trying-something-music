@@ -435,6 +435,15 @@
   font-size: 0.875rem;
 }
 
+.button-primary.block,
+.button-secondary.block {
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 14px 20px;
+  font-size: 1rem;
+}
+
 .link-button {
   background: none;
   border: none;

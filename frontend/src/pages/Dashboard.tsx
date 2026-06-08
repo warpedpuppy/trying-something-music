@@ -69,7 +69,7 @@ export function Dashboard() {
         <h2>Up next</h2>
         <p>{next.message}</p>
         {next.exercise_id !== null ? (
-          <Link to={`/rhythm/exercises/${next.exercise_id}`} className="button-primary">
+          <Link to={`/rhythm/exercises/${next.exercise_id}`} className="button-primary block">
             Start "{next.title}" (level {next.level})
           </Link>
         ) : (

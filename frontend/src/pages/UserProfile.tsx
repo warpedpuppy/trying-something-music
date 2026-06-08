@@ -5,6 +5,7 @@ import type { ProgressSummary } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { computeBadges } from '../lib/badges'
 import { THEORY_TOPIC_SLUGS } from '../lib/badges'
+import { SHOW_THEORY } from '../lib/featureFlags'
 import {
   findUserById,
   getPlayAlongBest,
@@ -149,8 +150,7 @@ function DefaultUserProfileTab({
           <h2>Create a named profile</h2>
           <p>
             Named profiles are useful when more than one person shares this browser.
-            Each keeps its own rhythm level, badges, and theory progress completely
-            separate.
+            Each keeps its own rhythm level and badges completely separate.
           </p>
           <p>
             <strong>There is no password.</strong> There's no data here important
@@ -274,7 +274,7 @@ export function UserProfile() {
     { id: 'overview', label: 'Overview' },
     { id: 'privacy',  label: 'Your data' },
     { id: 'profile',  label: profileTabLabel },
-    { id: 'theory',   label: 'Theory' },
+    ...(SHOW_THEORY ? [{ id: 'theory' as ProfileTab, label: 'Theory' }] : []),
     { id: 'badges',   label: 'Badges' },
   ]
 
@@ -332,7 +332,7 @@ export function UserProfile() {
               <div className="stat-value">{best.maxCleanMeasures}</div>
               <div className="stat-label">Play Along best</div>
             </div>
-            {levelStats.map(({ name, completed, total }) => (
+            {SHOW_THEORY && levelStats.map(({ name, completed, total }) => (
               <div
                 key={name}
                 className={`stat-card${completed === total && total > 0 ? ' stat-card--complete' : ''}`}
@@ -391,14 +391,12 @@ export function UserProfile() {
             <p>
               Because everything lives in your browser,{' '}
               <strong>clearing your browser's local storage will erase all of it</strong> —
-              your level, your badges, your theory progress — with no way to recover it.
+              your level and your badges — with no way to recover it.
               Most browsers offer this under "Clear site data" or "Clear cookies and cache."
               If that happens, you start fresh.
             </p>
             <p className="profile-warning-temper">
-              That said: <em>repetition is education.</em> Re-reading a theory topic you've
-              already visited costs you nothing — you'll move through it faster the second
-              time and probably notice something you missed. Re-tapping rhythms you've
+              That said: <em>repetition is education.</em> Re-tapping rhythms you've
               already passed just makes you more fluent. Starting over isn't a tragedy;
               it's more practice.
             </p>
