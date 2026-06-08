@@ -8,7 +8,7 @@ import { SHOW_THEORY } from "../lib/featureFlags";
 type AboutTab = "about" | "badges" | "maker";
 
 export function About() {
-  usePageTitle("About");
+  usePageTitle("About", "About Trying Something — a free rhythm trainer that keeps all your practice data private on your own device.");
   const [tab, setTab] = useState<AboutTab>("about");
 
   return (
@@ -71,7 +71,7 @@ export function About() {
             tool to help with the basics.
           </p>
 
-          <h2>Privacy — your data never leaves your device</h2>
+          <h2>Privacy — your practice data never leaves your device</h2>
           <p>
             No account is required to use this site. The moment you arrive, you
             are automatically identified as <strong>"You"</strong> and your
@@ -80,23 +80,25 @@ export function About() {
           </p>
           <p>
             <strong>
-              No remote server ever learns anything about you from this site.
+              Your rhythm level, exercise attempts, and badges{SHOW_THEORY && ', and theory visits'} are
+              stored only on your device.
             </strong>{" "}
-            Your rhythm level, your exercise attempts, your badges{SHOW_THEORY && ', your theory visits'} —
-            every byte of that data is written directly to your own device and
-            read back from your own device. There are no tracking
-            pixels, no analytics scripts, no advertising networks, no accounts
-            shared with third parties, no cookies sent to a server. The site
-            does not make network requests to any backend. If you open your
-            browser's developer tools and watch the network tab while you
-            practice, you will see exactly zero requests carrying your data
-            anywhere.
+            No remote server ever receives any of that data. There are no
+            advertising networks, no accounts shared with third parties, and no
+            backend that touches your practice history. If you clear your
+            browser's local storage, your data is gone — there is no cloud
+            backup because there is no cloud.
           </p>
           <p>
-            The only trade-off to this approach is that if you clear your
-            browser's local storage, your data is gone — there is no cloud
-            backup because there is no cloud. That's the intentional price of
-            keeping everything completely private.
+            <strong>One exception: Google Analytics.</strong> Like most
+            websites, this site uses Google Analytics to collect anonymous
+            traffic data — which pages are visited, roughly where visitors are
+            coming from, and what devices they use. This helps us understand
+            how the site is being used, but it contains nothing about your
+            practice. Your taps, your rhythm level, your badges — none of that
+            is ever included. Google Analytics uses a cookie and sends
+            anonymised page-view data to Google. If you use an ad blocker
+            that blocks Google Analytics, the site works exactly the same.
           </p>
           <p>
             Nothing nefarious is going on. This is a music learning tool built
