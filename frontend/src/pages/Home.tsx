@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { VexflowScrollingStaff } from '../components/VexflowScrollingStaff'
+import { SHOW_THEORY } from '../lib/featureFlags'
 
 export function Home() {
   return (
@@ -12,7 +13,7 @@ export function Home() {
         <div className="pa-banner-fade" aria-hidden="true" />
         <div className="pa-banner-content">
           <p className="pa-banner-eyebrow">Featured</p>
-          <h2 className="pa-banner-title">Play Along</h2>
+          <h2 className="pa-banner-title">Rhythm Game</h2>
           <p className="pa-banner-desc">
             Sheet music scrolls past at a steady tempo — tap along and feel the rhythm.
             No score, no pressure. Just you and the beat.
@@ -28,26 +29,27 @@ export function Home() {
         <Link to="/rhythm/dashboard" className="section-card section-card-rhythm">
           <div className="section-card-icon">♩</div>
           <div>
-            <h2>Rhythm Training</h2>
+            <h2>Read Rhythm</h2>
             <p>
-              Sheet music scrolls past — you tap along and the app listens in real time.
+              Sheet music notation — you tap along and the app listens in real time.
               Eight progressive levels from whole notes to sixteenth-note syncopation.
             </p>
             <span className="section-card-cta">Go to dashboard →</span>
           </div>
         </Link>
-
-        <Link to="/theory" className="section-card section-card-theory">
-          <div className="section-card-icon">𝄞</div>
-          <div>
-            <h2>Music Theory</h2>
-            <p>
-              Twenty-plus interactive topics across three levels — from intervals and
-              key signatures through counterpoint and jazz reharmonization.
-            </p>
-            <span className="section-card-cta">Explore theory →</span>
-          </div>
-        </Link>
+        {SHOW_THEORY && (
+          <Link to="/theory" className="section-card section-card-theory">
+            <div className="section-card-icon">𝄞</div>
+            <div>
+              <h2>Music Theory</h2>
+              <p>
+                Twenty-plus interactive topics across three levels — from intervals and
+                key signatures through counterpoint and jazz reharmonization.
+              </p>
+              <span className="section-card-cta">Explore theory →</span>
+            </div>
+          </Link>
+        )}
       </section>
 
       <p className="home-footer-nudge">

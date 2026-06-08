@@ -1,50 +1,14 @@
-import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect } from 'react'
 import { AuthProvider } from './auth/AuthContext'
+import { useAuth } from './auth/AuthContext'
 import { ProtectedRoute } from './auth/ProtectedRoute'
 import { NavBar } from './components/NavBar'
 import { RippleCanvas } from './components/RippleCanvas'
 import { clearRipples } from './lib/rippleEngine'
-import { ComingSoon } from './pages/ComingSoon'
-
-// Evaluated once at module load — stable for the entire session.
-const IS_TESTING = new URLSearchParams(window.location.search).has('testing')
-
-// Clears all active ripples whenever the route changes.
-// Must live inside <BrowserRouter> to access useLocation.
-function RippleClearer() {
-  const { pathname } = useLocation()
-  useEffect(() => { clearRipples() }, [pathname])
-  return null
-}
-
-// Keeps ?testing=true in the URL after every internal navigation.
-// React Router's <Link> strips query params by default, so we
-// re-add the param via replace-navigation after each route change.
-function TestingParamPreserver() {
-  const location = useLocation()
-  const navigate = useNavigate()
-
-  useEffect(() => {
-    const params = new URLSearchParams(location.search)
-    if (!params.has('testing')) {
-      params.set('testing', 'true')
-      navigate(
-        { pathname: location.pathname, search: '?' + params.toString(), hash: location.hash },
-        { replace: true },
-      )
-    }
-  // Run whenever any part of the location changes; the guard prevents loops.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, location.search, location.hash])
-
-  return null
-}
-import { Outlet } from 'react-router-dom'
-import { useAuth } from './auth/AuthContext'
 import { recordTheoryVisit } from './lib/localDb'
+import { SHOW_THEORY } from './lib/featureFlags'
 import { About } from './pages/About'
-import { UserProfile } from './pages/UserProfile'
 import { Dashboard } from './pages/Dashboard'
 import { ExerciseList } from './pages/ExerciseList'
 import { ExercisePlayer } from './pages/ExercisePlayer'
@@ -53,6 +17,7 @@ import { Learn } from './pages/Learn'
 import { Login } from './pages/Login'
 import { PlayAlong } from './pages/PlayAlong'
 import { Register } from './pages/Register'
+import { UserProfile } from './pages/UserProfile'
 import { TheoryHome, TheoryLevelPage } from './pages/theory/TheoryHome'
 import { TheoryPractice } from './pages/theory/TheoryPractice'
 import { CircleOfFifths } from './pages/theory/CircleOfFifths'
@@ -78,8 +43,33 @@ import { FormAndStructure } from './pages/theory/FormAndStructure'
 import { Reharmonization } from './pages/theory/Reharmonization'
 import './App.css'
 
-// Records theory topic visits for badge tracking.
-// Sits as a layout route wrapping all /theory/* routes.
+function RippleClearer() {
+  const { pathname } = useLocation()
+  useEffect(() => { clearRipples() }, [pathname])
+  return null
+}
+
+// Keeps ?theory=true in the URL after every internal navigation.
+// React Router's <Link> strips query params by default.
+function DevFlagPreserver() {
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    if (SHOW_THEORY && !params.has('theory')) {
+      params.set('theory', 'true')
+      navigate(
+        { pathname: location.pathname, search: '?' + params.toString(), hash: location.hash },
+        { replace: true },
+      )
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, location.search, location.hash])
+
+  return null
+}
+
 function TheoryTracker() {
   const { pathname } = useLocation()
   const { user } = useAuth()
@@ -92,25 +82,12 @@ function TheoryTracker() {
 }
 
 function App() {
-  // ── Testing gate — show landing page unless ?testing=true is present ──────
-  // ComingSoon uses <Link>, so it must be rendered inside a Router or it throws
-  // (a Router-less <Link> crashes at runtime → blank page).
-  if (!IS_TESTING) {
-    return (
-      <BrowserRouter>
-        <ComingSoon />
-      </BrowserRouter>
-    )
-  }
-
   return (
     <AuthProvider>
       <BrowserRouter>
-        {/* Global ripple canvas — lowest visible z-index, pointer-events:none */}
         <RippleCanvas />
         <RippleClearer />
-        {/* Keep ?testing=true in the URL after every navigation */}
-        <TestingParamPreserver />
+        <DevFlagPreserver />
 
         <NavBar />
         <main className="page">
@@ -128,35 +105,37 @@ function App() {
             <Route path="/rhythm/exercises/:id" element={<ProtectedRoute><ExercisePlayer /></ProtectedRoute>} />
             <Route path="/rhythm/play-along" element={<PlayAlong />} />
 
-            {/* theory section — TheoryTracker records visits for badge tracking */}
-            <Route path="/theory" element={<TheoryTracker />}>
-              <Route index                    element={<TheoryHome />} />
-              <Route path="beginner"          element={<TheoryLevelPage levelName="Beginner" />} />
-              <Route path="intermediate"      element={<TheoryLevelPage levelName="Intermediate" />} />
-              <Route path="advanced"          element={<TheoryLevelPage levelName="Advanced" />} />
-              <Route path="practice"          element={<TheoryPractice />} />
-              <Route path="circle-of-fifths"  element={<CircleOfFifths />} />
-              <Route path="notes"             element={<NotesAndStaff />} />
-              <Route path="keys"              element={<KeySignatures />} />
-              <Route path="intervals"         element={<IntervalsPage />} />
-              <Route path="scales"            element={<ScalesAndMajorScale />} />
-              <Route path="chords"            element={<TriadsAndChords />} />
-              <Route path="cadences"          element={<Cadences />} />
-              <Route path="progressions"      element={<ChordProgressions />} />
-              <Route path="diatonic-harmony"  element={<DiatonicHarmony />} />
-              <Route path="voice-leading"     element={<VoiceLeading />} />
-              <Route path="secondary-dominants" element={<SecondaryDominants />} />
-              <Route path="modal-mixture"     element={<ModalMixture />} />
-              <Route path="blues"             element={<Blues />} />
-              <Route path="chord-symbols"     element={<ChordSymbols />} />
-              <Route path="modulation"        element={<Modulation />} />
-              <Route path="modes"             element={<ModesPage />} />
-              <Route path="extended-chords"   element={<ExtendedChords />} />
-              <Route path="tritone-sub"       element={<TritoneSubstitution />} />
-              <Route path="counterpoint"      element={<Counterpoint />} />
-              <Route path="form"              element={<FormAndStructure />} />
-              <Route path="reharmonization"   element={<Reharmonization />} />
-            </Route>
+            {/* theory section — only when ?theory=true flag is set */}
+            {SHOW_THEORY && (
+              <Route path="/theory" element={<TheoryTracker />}>
+                <Route index                      element={<TheoryHome />} />
+                <Route path="beginner"            element={<TheoryLevelPage levelName="Beginner" />} />
+                <Route path="intermediate"        element={<TheoryLevelPage levelName="Intermediate" />} />
+                <Route path="advanced"            element={<TheoryLevelPage levelName="Advanced" />} />
+                <Route path="practice"            element={<TheoryPractice />} />
+                <Route path="circle-of-fifths"    element={<CircleOfFifths />} />
+                <Route path="notes"               element={<NotesAndStaff />} />
+                <Route path="keys"                element={<KeySignatures />} />
+                <Route path="intervals"           element={<IntervalsPage />} />
+                <Route path="scales"              element={<ScalesAndMajorScale />} />
+                <Route path="chords"              element={<TriadsAndChords />} />
+                <Route path="cadences"            element={<Cadences />} />
+                <Route path="progressions"        element={<ChordProgressions />} />
+                <Route path="diatonic-harmony"    element={<DiatonicHarmony />} />
+                <Route path="voice-leading"       element={<VoiceLeading />} />
+                <Route path="secondary-dominants" element={<SecondaryDominants />} />
+                <Route path="modal-mixture"       element={<ModalMixture />} />
+                <Route path="blues"               element={<Blues />} />
+                <Route path="chord-symbols"       element={<ChordSymbols />} />
+                <Route path="modulation"          element={<Modulation />} />
+                <Route path="modes"               element={<ModesPage />} />
+                <Route path="extended-chords"     element={<ExtendedChords />} />
+                <Route path="tritone-sub"         element={<TritoneSubstitution />} />
+                <Route path="counterpoint"        element={<Counterpoint />} />
+                <Route path="form"                element={<FormAndStructure />} />
+                <Route path="reharmonization"     element={<Reharmonization />} />
+              </Route>
+            )}
 
             {/* user profile */}
             <Route path="/profile" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />

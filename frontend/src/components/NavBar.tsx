@@ -4,6 +4,7 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { setToken } from '../api/client'
 import { Logo } from './Logo'
+import { SHOW_THEORY } from '../lib/featureFlags'
 
 
 // ── Welcome modal content ─────────────────────────────────────────────────────
@@ -53,7 +54,7 @@ function RhythmWelcome({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="welcome-section">
-          <h3>Play Along</h3>
+          <h3>Rhythm Game</h3>
           <ul className="welcome-list">
             <li>No pressure, no score — just tap along to an endless scroll of generated notation.</li>
             <li>Set your own tempo with the slider or by tapping the "Tap tempo" button.</li>
@@ -71,7 +72,7 @@ function RhythmWelcome({ onClose }: { onClose: () => void }) {
             </li>
             <li>
               <strong>Just want to feel the rhythm?</strong> Head straight to{' '}
-              <Link to="/rhythm/play-along" onClick={onClose}>Play Along</Link>.
+              <Link to="/rhythm/play-along" onClick={onClose}>Rhythm Game</Link>.
             </li>
             <li>
               Your <Link to="/rhythm/dashboard" onClick={onClose}>Dashboard</Link> shows exactly
@@ -95,12 +96,10 @@ function TheoryWelcome({ onClose }: { onClose: () => void }) {
         <h2 className="modal-title">Welcome to Music Theory</h2>
         <button type="button" className="modal-close" aria-label="Close" onClick={onClose}>✕</button>
       </div>
-
       <p className="welcome-intro">
         This section explains <em>why</em> music works — the rules, patterns, and structures that
         composers and musicians use. No prior knowledge needed: start anywhere that catches your curiosity.
       </p>
-
       <div className="welcome-sections">
         <div className="welcome-section">
           <h3>How it's organised</h3>
@@ -112,42 +111,21 @@ function TheoryWelcome({ onClose }: { onClose: () => void }) {
             <li>You don't have to go in order — feel free to jump to whatever interests you most.</li>
           </ul>
         </div>
-
-        <div className="welcome-section">
-          <h3>What's available now</h3>
-          <ul className="welcome-list">
-            <li>
-              <strong>Circle of Fifths</strong> — an interactive diagram of all 12 keys. Click any key
-              to explore its signature, relative minor, and all seven diatonic chords.
-            </li>
-            <li>More lessons are actively being built — check back regularly.</li>
-          </ul>
-        </div>
-
         <div className="welcome-section">
           <h3>Where to start</h3>
           <ul className="welcome-list">
-            <li>
-              <strong>No theory background?</strong> The Beginner tab lists topics in a logical order —
-              start with Notes & the Staff when it's available.
-            </li>
             <li>
               <strong>Some experience?</strong> Jump straight to the{' '}
               <Link to="/theory/circle-of-fifths" onClick={onClose}>Circle of Fifths</Link> —
               it's interactive, visual, and deeply useful no matter your level.
             </li>
             <li>
-              Use the <strong>Dashboard</strong> tab to see what's available and browse by level.
-            </li>
-            <li>
               Once you've completed a topic's Learn section, its exercises appear in the{' '}
-              <Link to="/theory/practice" onClick={onClose}>Practice</Link> tab —
-              return there any time to keep your skills sharp.
+              <Link to="/theory/practice" onClick={onClose}>Practice</Link> tab.
             </li>
           </ul>
         </div>
       </div>
-
       <div className="welcome-footer">
         <Link to="/theory/circle-of-fifths" className="button-primary" onClick={onClose}>
           Open Circle of Fifths →
@@ -169,7 +147,7 @@ export function NavBar() {
 
   const inPlayAlong = location.pathname === '/rhythm/play-along'
   const inRhythm    = location.pathname.startsWith('/rhythm') && !inPlayAlong
-  const inTheory    = location.pathname.startsWith('/theory')
+  const inTheory    = SHOW_THEORY && location.pathname.startsWith('/theory')
 
   // Close welcome modal on navigation; do NOT auto-close the mobile menu on navigation
   // so the user can switch sections without it snapping shut.
@@ -191,7 +169,6 @@ export function NavBar() {
         {inRhythm && <RhythmWelcome onClose={() => setShowWelcome(false)} />}
         {inTheory && <TheoryWelcome onClose={() => setShowWelcome(false)} />}
         {!inRhythm && !inTheory && (
-          // fallback — shouldn't happen since the button only shows in-section
           <div>
             <button type="button" className="modal-close" onClick={() => setShowWelcome(false)}>✕</button>
           </div>
@@ -216,7 +193,7 @@ export function NavBar() {
             to="/rhythm/play-along"
             className={`section-pill section-pill-playalong${inPlayAlong ? ' section-pill-active' : ''}`}
           >
-            Play Along
+            Rhythm Game
             {/* Extra sparkle spans — positioned by CSS, hidden when pill is active */}
             <span className="pa-sparkle pa-sparkle-1" aria-hidden="true">✦</span>
             <span className="pa-sparkle pa-sparkle-2" aria-hidden="true">✧</span>
@@ -226,14 +203,16 @@ export function NavBar() {
             to="/rhythm/dashboard"
             className={`section-pill${inRhythm ? ' section-pill-active section-pill-rhythm' : ''}`}
           >
-            Rhythm
+            Read Rhythm
           </Link>
-          <Link
-            to="/theory"
-            className={`section-pill${inTheory ? ' section-pill-active section-pill-theory' : ''}`}
-          >
-            Theory
-          </Link>
+          {SHOW_THEORY && (
+            <Link
+              to="/theory"
+              className={`section-pill${inTheory ? ' section-pill-active section-pill-theory' : ''}`}
+            >
+              Theory
+            </Link>
+          )}
           <Link to="/about" className="section-pill">About</Link>
         </nav>
 
@@ -275,16 +254,16 @@ export function NavBar() {
               onClick={() => setMenuOpen(false)}
               className={({ isActive }) => `mobile-nav-link${isActive ? ' active' : ''}`}
             >
-              Play Along
+              Rhythm Game
             </NavLink>
 
-            {/* Rhythm accordion — tapping the heading expands/collapses; sub-links navigate */}
+            {/* Read Rhythm accordion — tapping the heading expands/collapses; sub-links navigate */}
             <button
               type="button"
               className={`mobile-nav-link mobile-nav-accordion${inRhythm ? ' active' : ''}${mobileSection === 'rhythm' ? ' expanded' : ''}`}
               onClick={() => setMobileSection(s => s === 'rhythm' ? null : 'rhythm')}
             >
-              Rhythm
+              Read Rhythm
               <span className="mobile-nav-chevron">▼</span>
             </button>
             <div className={`mobile-nav-sub${mobileSection === 'rhythm' ? ' open' : ''}`}>
@@ -300,29 +279,32 @@ export function NavBar() {
               </button>
             </div>
 
-            {/* Theory accordion */}
-            <button
-              type="button"
-              className={`mobile-nav-link mobile-nav-accordion${inTheory ? ' active' : ''}${mobileSection === 'theory' ? ' expanded' : ''}`}
-              onClick={() => setMobileSection(s => s === 'theory' ? null : 'theory')}
-            >
-              Theory
-              <span className="mobile-nav-chevron">▼</span>
-            </button>
-            <div className={`mobile-nav-sub${mobileSection === 'theory' ? ' open' : ''}`}>
-              <NavLink to="/theory" end onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Dashboard</NavLink>
-              <NavLink to="/theory/beginner" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Beginner</NavLink>
-              <NavLink to="/theory/intermediate" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Intermediate</NavLink>
-              <NavLink to="/theory/advanced" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Advanced</NavLink>
-              <NavLink to="/theory/practice" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Practice</NavLink>
-              <button
-                type="button"
-                className="mobile-nav-link sub subnav-welcome-btn"
-                onClick={() => { setMenuOpen(false); setShowWelcome(true) }}
-              >
-                Overview & where to start
-              </button>
-            </div>
+            {SHOW_THEORY && (
+              <>
+                <button
+                  type="button"
+                  className={`mobile-nav-link mobile-nav-accordion${inTheory ? ' active' : ''}${mobileSection === 'theory' ? ' expanded' : ''}`}
+                  onClick={() => setMobileSection(s => s === 'theory' ? null : 'theory')}
+                >
+                  Theory
+                  <span className="mobile-nav-chevron">▼</span>
+                </button>
+                <div className={`mobile-nav-sub${mobileSection === 'theory' ? ' open' : ''}`}>
+                  <NavLink to="/theory" end onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Dashboard</NavLink>
+                  <NavLink to="/theory/beginner" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Beginner</NavLink>
+                  <NavLink to="/theory/intermediate" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Intermediate</NavLink>
+                  <NavLink to="/theory/advanced" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Advanced</NavLink>
+                  <NavLink to="/theory/practice" onClick={() => setMenuOpen(false)} className={({ isActive }) => isActive ? 'mobile-nav-link sub active' : 'mobile-nav-link sub'}>Practice</NavLink>
+                  <button
+                    type="button"
+                    className="mobile-nav-link sub subnav-welcome-btn"
+                    onClick={() => { setMenuOpen(false); setShowWelcome(true) }}
+                  >
+                    Overview & where to start
+                  </button>
+                </div>
+              </>
+            )}
 
             <Link to="/about" className="mobile-nav-link" onClick={() => setMenuOpen(false)}>About</Link>
           </nav>
