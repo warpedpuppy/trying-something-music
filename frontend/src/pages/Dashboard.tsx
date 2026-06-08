@@ -36,7 +36,7 @@ export function Dashboard() {
 
   return (
     <div>
-      <h1>Welcome back, {user?.username}</h1>
+      <h1>Welcome back, {user?.username}!</h1>
 
       {progress.remediation_active && (
         <div className="remediation-banner">
