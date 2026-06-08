@@ -3,6 +3,7 @@ import { VexflowScrollingStaff } from "../components/VexflowScrollingStaff";
 import { BadgeItem } from "../components/BadgeItem";
 import { BADGE_DEFS } from "../lib/badges";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { SHOW_THEORY } from "../lib/featureFlags";
 
 type AboutTab = "about" | "badges" | "maker";
 
@@ -81,9 +82,9 @@ export function About() {
             <strong>
               No remote server ever learns anything about you from this site.
             </strong>{" "}
-            Your rhythm level, your exercise attempts, your theory visits, your
-            badges — every byte of that data is written directly to your own
-            device and read back from your own device. There are no tracking
+            Your rhythm level, your exercise attempts, your badges{SHOW_THEORY && ', your theory visits'} —
+            every byte of that data is written directly to your own device and
+            read back from your own device. There are no tracking
             pixels, no analytics scripts, no advertising networks, no accounts
             shared with third parties, no cookies sent to a server. The site
             does not make network requests to any backend. If you open your
@@ -118,23 +119,31 @@ export function About() {
       {/* Badges tab */}
       {tab === "badges" && (
         <section className="about-body">
-          <h2 style={{ marginTop: 0 }}>Badge catalog</h2>
-          <p>
-            There are {BADGE_DEFS.length} badges to earn across rhythm training
-            and music theory. Your progress is tracked automatically — no extra
-            steps needed.
-          </p>
-          <div className="badge-grid about-badge-grid">
-            {BADGE_DEFS.map((def) => (
-              <div key={def.id} className="about-badge-entry">
-                <BadgeItem
-                  badge={{ ...def, earned: true, earnedAt: undefined }}
-                  alwaysEarned
-                />
-                <p className="about-badge-desc">{def.description}</p>
-              </div>
-            ))}
-          </div>
+          {(() => {
+            const visibleBadges = SHOW_THEORY
+              ? BADGE_DEFS
+              : BADGE_DEFS.filter(d => !d.id.startsWith('theory-'))
+            return (
+              <>
+                <h2 style={{ marginTop: 0 }}>Badge catalog</h2>
+                <p>
+                  There are {visibleBadges.length} badges to earn. Your progress
+                  is tracked automatically — no extra steps needed.
+                </p>
+                <div className="badge-grid about-badge-grid">
+                  {visibleBadges.map((def) => (
+                    <div key={def.id} className="about-badge-entry">
+                      <BadgeItem
+                        badge={{ ...def, earned: true, earnedAt: undefined }}
+                        alwaysEarned
+                      />
+                      <p className="about-badge-desc">{def.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )
+          })()}
         </section>
       )}
 
