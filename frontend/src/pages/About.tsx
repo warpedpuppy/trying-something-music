@@ -18,9 +18,9 @@ export function About() {
         <VexflowScrollingStaff silent />
         <div className="about-hero-text">
           <p className="about-tagline">
-            Learn the basics of music.
+            Learn to read rhythm.
             <br />
-            Rewire your brain.
+            It can't hurt.
           </p>
         </div>
       </section>
