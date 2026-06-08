@@ -90,7 +90,7 @@ export function ExercisePlayer() {
 
     tickEngine.startMetronome(
       ex.tempo_bpm,
-      (index, wallTimeMs) => {
+      (index, _wallTimeMs) => {
         if (index < countInBeats) setCountInBeat(index + 1)
 
         if (index === countInBeats - 1) {
