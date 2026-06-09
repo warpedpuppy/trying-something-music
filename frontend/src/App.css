@@ -2838,7 +2838,7 @@ a.theory-card:hover {
 /* ── Welcome screen ─────────────────────────────────────────────────────────── */
 
 .pa-stage {
-  max-width: 520px;
+  max-width: 720px;
   margin: 40px auto;
   display: flex;
   flex-direction: column;
@@ -3026,6 +3026,7 @@ a.theory-card:hover {
   gap: 20px;
   padding: 16px 0 4px;
   border-top: 1px solid var(--border, #e5e7eb);
+  text-align: left;
 }
 
 .pa-settings-section {
@@ -3035,11 +3036,9 @@ a.theory-card:hover {
 }
 
 .pa-settings-heading {
-  font-size: 0.8rem;
+  font-size: 0.95rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--muted);
+  color: var(--ink);
   margin: 0;
 }
 
