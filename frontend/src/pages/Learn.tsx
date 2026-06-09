@@ -334,7 +334,7 @@ const SAMPLES: Record<SampleTab, SampleExercise> = {
 const TAB_LABELS: Record<SampleTab, string> = { easy: 'Easy', medium: 'Medium', hard: 'Hard' }
 
 export function Learn() {
-  usePageTitle('Learn Rhythm Notation')
+  usePageTitle('Learn Rhythm Notation', 'Learn to read rhythm notation from whole notes to sixteenth-note syncopation — illustrated guides for every level.')
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<SampleTab>('easy')
   const location = useLocation()

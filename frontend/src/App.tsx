@@ -87,7 +87,7 @@ function App() {
       <BrowserRouter>
         <RippleCanvas />
         <RippleClearer />
-        <DevFlagPreserver />
+        {SHOW_THEORY && <DevFlagPreserver />}
 
         <NavBar />
         <main className="page">
