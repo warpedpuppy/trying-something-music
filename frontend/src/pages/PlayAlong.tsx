@@ -662,11 +662,6 @@ export function WelcomeScreen({
     localCfg.startBpm < 168 ? 'Fast' :
     'Very fast'
 
-  const altSigs = localCfg.timeSigs
-    .filter(ts => !(ts.top === 4 && ts.bottom === 4))
-    .sort((a, b) => a.afterMeasures - b.afterMeasures)
-  const altUnlockAt = altSigs[0]?.afterMeasures ?? localCfg.bpmIncreaseAfterMeasures
-
   function update(patch: Partial<PlayAlongConfig>) {
     setLocalCfg(prev => {
       const next = { ...prev, ...patch }
