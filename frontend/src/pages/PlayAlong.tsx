@@ -719,8 +719,7 @@ export function WelcomeScreen({
         <li>Hits turn green, misses turn orange — {localCfg.consecutiveMissesReset} consecutive misses ends the game</li>
         <li>The orange ▼ marks each downbeat and pulses to keep your place</li>
         <li>
-          Every {localCfg.bpmIncreaseAfterMeasures} clean measures, tempo rises by {localCfg.bpmIncreaseAmount} BPM
-          {' '}(cap: {localCfg.bpmCap})
+          Every {localCfg.bpmIncreaseAfterMeasures} perfect measures, tempo rises by {localCfg.bpmIncreaseAmount} BPM (beats per minute), up to {localCfg.bpmCap}
         </li>
         <li>Adjust difficulty, tempo, and time signatures under Settings below</li>
         <li><strong>Tap any measure while playing to pause and hear it played correctly</strong></li>
@@ -768,14 +767,14 @@ export function WelcomeScreen({
           <section className="pa-settings-section">
             <h3 className="pa-settings-heading">Tempo</h3>
             <label className="pa-settings-row">
-              <span>BPM* ceiling</span>
+              <span>BPM ceiling</span>
               <input type="number" min={localCfg.startBpm} max={400} step={1}
                 value={localCfg.bpmCap}
                 onChange={e => update({ bpmCap: Number(e.target.value) })}
               />
             </label>
             <label className="pa-settings-row">
-              <span>Increase BPM after every N clean measures</span>
+              <span>Quantity of perfect measures between tempo increases</span>
               <input type="number" min={1} max={500} step={1}
                 value={localCfg.bpmIncreaseAfterMeasures}
                 onChange={e => update({ bpmIncreaseAfterMeasures: Number(e.target.value) })}
@@ -800,7 +799,7 @@ export function WelcomeScreen({
               />
             </label>
             <label className="pa-settings-row">
-              <span>Triplets unlock after N measures</span>
+              <span>Quantity of perfect measures before triplets appear</span>
               <input type="number" min={0} max={500} step={1}
                 value={localCfg.tripletAfterMeasures}
                 onChange={e => update({ tripletAfterMeasures: Number(e.target.value) })}
@@ -851,7 +850,6 @@ export function WelcomeScreen({
           </section>
 
           <div className="pa-settings-footer">
-            <p className="pa-settings-footnote">* BPM = beats per minute, the measure of tempo</p>
             <button type="button" className="pa-settings-reset" onClick={resetDefaults}>
               Reset to defaults
             </button>
