@@ -20,7 +20,7 @@ export function About() {
           <p className="about-tagline">
             Learn to read rhythm.
             <br />
-            It can't hurt.
+            Turns out it's pretty satisfying.
           </p>
         </div>
       </section>

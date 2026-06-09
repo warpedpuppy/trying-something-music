@@ -2851,7 +2851,7 @@ a.theory-card:hover {
 .pa-welcome-title {
   font-size: 2rem;
   font-weight: 700;
-  color: var(--ink);
+  color: #f97316;
   margin: 0;
 }
 
@@ -2888,6 +2888,22 @@ a.theory-card:hover {
   font-weight: 700;
 }
 
+@media (max-width: 600px) {
+  .pa-stage {
+    margin: 16px auto;
+    padding: 0 8px;
+  }
+  .pa-welcome-title {
+    font-size: 1.7rem;
+  }
+  .pa-welcome-bullets {
+    width: 100%;
+  }
+  .pa-welcome-bullets li {
+    font-size: 0.9rem;
+  }
+}
+
 .pa-cta {
   margin-top: 8px;
   padding: 12px 32px;
@@ -2895,6 +2911,25 @@ a.theory-card:hover {
 }
 
 /* bpm setup */
+.pa-tempo-row {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+}
+
+.pa-tempo-inline-bpm {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.pa-tempo-inline-label {
+  color: var(--muted);
+  font-weight: 400;
+}
+
 .pa-setup-heading {
   font-size: 1.4rem;
   font-weight: 700;

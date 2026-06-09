@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom'
 import { VexflowScrollingStaff } from '../components/VexflowScrollingStaff'
 import { SHOW_THEORY } from '../lib/featureFlags'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 export function Home() {
+  usePageTitle('Rhythm Trainer', 'Learn to read sheet music rhythms and tap along in real time. Eight progressive levels, no account needed — all progress saved in your browser.')
   return (
     <div>
       {/* ── Play Along hero banner ─────────────────────────────────────────── */}
@@ -13,7 +15,7 @@ export function Home() {
         <div className="pa-banner-fade" aria-hidden="true" />
         <div className="pa-banner-content">
           <p className="pa-banner-eyebrow">Featured</p>
-          <h2 className="pa-banner-title">Rhythm Game</h2>
+          <h1 className="pa-banner-title">Rhythm Game</h1>
           <p className="pa-banner-desc">
             Sheet music scrolls past at a steady tempo — tap along and feel the rhythm.
             No score, no pressure. Just you and the beat.

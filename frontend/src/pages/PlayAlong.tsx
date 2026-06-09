@@ -58,7 +58,7 @@ interface PendingOnset {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function PlayAlong() {
-  usePageTitle('Play Along')
+  usePageTitle('Play Along', 'Sheet music scrolls past at a steady tempo — tap along and feel the rhythm. Free, no account needed.')
 
   // Config loaded from localStorage (admin-editable)
   const [cfg, setCfg] = useState<PlayAlongConfig>(loadPlayAlongConfig)
@@ -713,37 +713,25 @@ export function WelcomeScreen({
 
   return (
     <div className="pa-stage pa-welcome">
-      <h1 className="pa-welcome-title">Play Along</h1>
-      <p className="pa-welcome-body">
-        Sheet music appears on screen. Hit <strong>START</strong> and tap along —
-        notes you hit turn green, misses turn orange.{' '}
-        {localCfg.consecutiveMissesReset} misses in a row ends the game.
-      </p>
+      <h1 className="pa-welcome-title">Rhythm Game!</h1>
       <ul className="pa-welcome-bullets">
-        <li>Watch the orange arrow — it marks each downbeat and pulses to keep your place</li>
-        <li>Tap each note in time as the music scrolls by</li>
+        <li>Sheet music scrolls by — tap the button in time with each note</li>
+        <li>Hits turn green, misses turn orange — {localCfg.consecutiveMissesReset} consecutive misses ends the game</li>
+        <li>The orange ▼ marks each downbeat and pulses to keep your place</li>
         <li>
-          Tempo rises by {localCfg.bpmIncreaseAmount} every {localCfg.bpmIncreaseAfterMeasures} clean
-          measures, up to {localCfg.bpmCap} BPM
+          Every {localCfg.bpmIncreaseAfterMeasures} clean measures, tempo rises by {localCfg.bpmIncreaseAmount} BPM
+          {' '}(cap: {localCfg.bpmCap})
         </li>
-        {localCfg.tripletAfterMeasures > 0 && (
-          <li>Triplets unlock after {localCfg.tripletAfterMeasures} clean measures</li>
-        )}
-        {altSigs.length > 0 && (
-          <li>
-            After {altUnlockAt} clean measures,{' '}
-            {altSigs.map(ts => `${ts.top}/${ts.bottom}`).join(' and ')} can appear
-          </li>
-        )}
-        <li>Tap any measure to hear it played back</li>
+        <li>Adjust difficulty, tempo, and time signatures under Settings below</li>
+        <li><strong>Tap any measure while playing to pause and hear it played correctly</strong></li>
       </ul>
 
-      <p className="pa-setup-heading">Starting tempo</p>
-      <div className="pa-bpm-display">
-        <span className="pa-bpm-number">{localCfg.startBpm}</span>
-        <span className="pa-bpm-unit">BPM</span>
-      </div>
-      <p className="pa-speed-label">{speedLabel}</p>
+      <p className="pa-tempo-row">
+        Starting tempo:{' '}
+        <span className="pa-tempo-inline-bpm">{localCfg.startBpm}</span>
+        {' '}BPM
+        <span className="pa-tempo-inline-label"> · <em>{speedLabel}</em></span>
+      </p>
       <input
         type="range"
         className="pa-bpm-slider"
