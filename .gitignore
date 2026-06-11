@@ -1,36 +1,24 @@
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-.Python
-*.egg
-*.egg-info/
-dist/
-build/
-.eggs/
-.venv/
-venv/
-env/
-ENV/
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# Database
-*.db
-*.sqlite
-*.sqlite3
+node_modules
+dist
+dist-ssr
+*.local
 
-# Environment variables
-.env
-.env.*
-!.env.example
-
-# Editor / OS
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
 .DS_Store
-.idea/
-.vscode/
 *.suo
+*.ntvs*
+*.njsproj
+*.sln
 *.sw?
-
-# Pytest
-.pytest_cache/
-
