@@ -1,85 +1,46 @@
-# Trying Something — Rhythm Trainer 🎵
+# Trying Something — Rhythm Trainer
 
-[**Live Demo: tryingsomething.com**](http://tryingsomething.com)
+**[tryingsomething.com](https://tryingsomething.com)**
 
-**Trying Something** is an interactive web application designed to teach rhythm in sheet music. Built to serve as an intuitive rhythm trainer, the platform provides real-time feedback to help users master time signatures, note values, and syncopation. The live application is accessible at [tryingsomething.com](http://tryingsomething.com/), and a comprehensive music theory section is actively under development to expand the tool into a complete sight-reading resource.
+You've stared at sheet music and felt that small panic — the notes make sense, but *when* do you play them? Trying Something is a rhythm trainer built to fix exactly that. Tap along to notated rhythms, hear your timing reflected back in real time, and watch the gap between "I see it" and "I feel it" shrink.
 
-## 🚀 Roadmap
+No signup required. Works in any browser. Installs as a PWA so it lives on your home screen like a real app.
 
-- [x] Core Rhythm Trainer and interactive playback
-- [ ] Music Theory fundamentals section (Coming Soon)
+---
+
+## What it does
+
+**Rhythm exercises** — Sheet music appears on screen. A metronome counts you in, then you tap. The app tells you how close you are to the beat and gives you a score. Nail it and move on; fumble it and try again. Exercises cover whole notes all the way through syncopation and dotted rhythms.
+
+**Play Along** — Pick a BPM, choose a reel, and tap along to a musical phrase at your own pace. Bump the tempo up as you get comfortable. A game-over review shows you exactly where your timing drifted.
+
+**Music Theory** — A growing section on note values, time signatures, and how rhythm actually works on a page. Written for players, not academics.
+
+**Badges and progress** — Exercises track your personal bests. A dashboard shows where you've improved and what's still fighting back.
+
+---
+
+## Roadmap
+
+- [x] Core rhythm trainer with live tap scoring
+- [x] Play Along mode with BPM picker and session review
+- [x] Badges and progress dashboard
+- [x] Progressive Web App (installable, offline-capable)
+- [ ] Music Theory fundamentals section
 - [ ] Advanced sight-reading modules
 
-# React + TypeScript + Vite
+---
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Running locally
 
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(["dist"]),
-  {
-    files: ["**/*.{ts,tsx}"],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ["./tsconfig.node.json", "./tsconfig.app.json"],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Open `http://localhost:5173`.
 
-```js
-// eslint.config.js
-import reactX from "eslint-plugin-react-x";
-import reactDom from "eslint-plugin-react-dom";
+---
 
-export default defineConfig([
-  globalIgnores(["dist"]),
-  {
-    files: ["**/*.{ts,tsx}"],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs["recommended-typescript"],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ["./tsconfig.node.json", "./tsconfig.app.json"],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
-```
+Built with React, TypeScript, Vite, and VexFlow for music notation rendering.
