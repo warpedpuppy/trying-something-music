@@ -341,3 +341,155 @@ export function generateReel(count: number, baseSeed = 1337, allowTriplets = tru
 
   return measures
 }
+
+// ── Concept-stage system (infinite, pedagogically sequenced) ──────────────────
+
+export type DifficultyMode = 'easy' | 'intermediate' | 'advanced'
+
+interface TimeSigDef { top: number; bottom: number; beats: number }
+interface ConceptStageSpec {
+  name: string
+  oneBeatIdx: number[]
+  twoBeatIdx: number[]
+  fourBeatIdx: number[]
+  timeSigs: TimeSigDef[]
+}
+
+// ONE_BEAT fill indices (see ONE_BEAT array above):
+//   0=n(q)  1=n(q)dup  2=r(q)  3=n(8)+n(8)  4=triplet  5=n(8)+r(8)  6=r(8)+n(8)
+//   7=r(8)+n(8)dup  8=4×n(16)  9=gallop  10=rev-gallop  11+12=offbeat 16ths
+// TWO_BEAT fill indices:
+//   0=n(h)  1=r(h)  2=q.+8  3=q.+r8  4=8+q.  5=sync-rest-tie  6=8+r(q)+8  7=r(q)+n(q)
+// FOUR_BEAT fill indices: 0=n(w)  1=r(w)
+
+const TS_44: TimeSigDef = { top: 4, bottom: 4, beats: 4 }
+const TS_34: TimeSigDef = { top: 3, bottom: 4, beats: 3 }
+const TS_68: TimeSigDef = { top: 6, bottom: 8, beats: 3 }
+
+// Each stage is cumulative — fills and time sigs listed are ALL that are available.
+// Stages are designed so each one introduces exactly one new rhythmic concept.
+const CONCEPT_STAGES: ConceptStageSpec[] = [
+  { name: 'Quarter Notes',   oneBeatIdx: [0,1],               twoBeatIdx: [],                fourBeatIdx: [],    timeSigs: [TS_44] },
+  { name: 'Half Notes',      oneBeatIdx: [0,1],               twoBeatIdx: [0],               fourBeatIdx: [],    timeSigs: [TS_44] },
+  { name: 'Whole Notes',     oneBeatIdx: [0,1],               twoBeatIdx: [0],               fourBeatIdx: [0],   timeSigs: [TS_44] },
+  { name: 'Eighth Notes',    oneBeatIdx: [0,1,3],             twoBeatIdx: [0],               fourBeatIdx: [0],   timeSigs: [TS_44] },
+  { name: 'Quarter Rests',   oneBeatIdx: [0,1,2,3],           twoBeatIdx: [0],               fourBeatIdx: [0],   timeSigs: [TS_44] },
+  { name: 'Half Rests',      oneBeatIdx: [0,1,2,3],           twoBeatIdx: [0,1],             fourBeatIdx: [0],   timeSigs: [TS_44] },
+  { name: 'Dotted Rhythms',  oneBeatIdx: [0,1,2,3],           twoBeatIdx: [0,1,2,4],         fourBeatIdx: [0],   timeSigs: [TS_44] },
+  { name: '3/4 Time',        oneBeatIdx: [0,1,2,3],           twoBeatIdx: [0,1,2,4],         fourBeatIdx: [0],   timeSigs: [TS_44, TS_34] },
+  { name: 'Syncopation',     oneBeatIdx: [0,1,2,3,5,6,7],    twoBeatIdx: [0,1,2,4,5,6,7],   fourBeatIdx: [0],   timeSigs: [TS_44, TS_34] },
+  { name: '6/8 Time',        oneBeatIdx: [0,1,2,3,5,6,7],    twoBeatIdx: [0,1,2,4,5,6,7],   fourBeatIdx: [0],   timeSigs: [TS_44, TS_34, TS_68] },
+  { name: 'Triplets',        oneBeatIdx: [0,1,2,3,4,5,6,7],  twoBeatIdx: [0,1,2,4,5,6,7],   fourBeatIdx: [0],   timeSigs: [TS_44, TS_34, TS_68] },
+  { name: 'Sixteenth Notes', oneBeatIdx: [0,1,2,3,4,5,6,7,8,9,10,11,12], twoBeatIdx: [0,1,2,3,4,5,6,7], fourBeatIdx: [0,1], timeSigs: [TS_44, TS_34, TS_68] },
+]
+
+/** Number of measures to spend on each concept stage before advancing. */
+const STAGE_LENGTH: Record<DifficultyMode, number> = {
+  easy: 8,
+  intermediate: 4,
+  advanced: 2,
+}
+
+export function getConceptStageIndex(absIdx: number, mode: DifficultyMode): number {
+  const len = STAGE_LENGTH[mode]
+  // Stage 0 (quarter notes only) uses half the normal length in Easy — enough to
+  // establish the pulse without overloading beginners with too many identical measures.
+  const stage0Len = mode === 'easy' ? Math.ceil(len / 2) : len
+  if (absIdx < stage0Len) return 0
+  return Math.min(1 + Math.floor((absIdx - stage0Len) / len), CONCEPT_STAGES.length - 1)
+}
+
+export function getConceptStageName(absIdx: number, mode: DifficultyMode): string {
+  return CONCEPT_STAGES[getConceptStageIndex(absIdx, mode)].name
+}
+
+function fillMeasureWithStage(beats: number, stage: ConceptStageSpec, rng: () => number): PatternEvent[] {
+  const events: PatternEvent[] = []
+  let remaining = beats
+
+  while (remaining > 0) {
+    const eligible: Fill[] = []
+    if (remaining >= 4) {
+      for (const idx of stage.fourBeatIdx) eligible.push(FOUR_BEAT[idx].fill)
+    }
+    if (remaining >= 2) {
+      for (const idx of stage.twoBeatIdx) eligible.push(TWO_BEAT[idx].fill)
+    }
+    for (const idx of stage.oneBeatIdx) eligible.push(ONE_BEAT[idx].fill)
+    if (eligible.length === 0) break
+
+    const fill = eligible[Math.floor(rng() * eligible.length)]
+    events.push(...fill.map(e => ({ ...e })))
+    remaining -= fillBeats(fill)
+    remaining = Math.round(remaining * 12) / 12
+  }
+  return events
+}
+
+function safeGenerateWithStage(beats: number, stage: ConceptStageSpec, rng: () => number): PatternEvent[] {
+  for (let attempt = 0; attempt < 40; attempt++) {
+    try {
+      const events = fillMeasureWithStage(beats, stage, rng)
+      if (fillsBar(events, beats) && countNotes(events) >= 1) return events
+    } catch {
+      // try again
+    }
+  }
+  return fallback(beats)
+}
+
+/**
+ * Generate a single measure for any absolute index in an infinite game.
+ * Fully deterministic: (absIdx, mode, baseSeed) → always the same measure.
+ * Each index maps to a concept stage, so the stream introduces rhythmic ideas
+ * one at a time and never repeats a previously seen measure.
+ */
+export function generateMeasureAtIndex(
+  absIdx: number,
+  mode: DifficultyMode,
+  baseSeed: number,
+): GeneratedMeasure {
+  const stageIdx = getConceptStageIndex(absIdx, mode)
+  const stage = CONCEPT_STAGES[stageIdx]
+
+  const timeSigRng = mulberry32(baseSeed + absIdx * 7 + 3)
+  const noteRng    = mulberry32(baseSeed + absIdx * 31 + 997)
+
+  const tsIdx = Math.floor(timeSigRng() * stage.timeSigs.length)
+  const ts    = stage.timeSigs[tsIdx]
+  const { top, bottom, beats } = ts
+
+  let events = safeGenerateWithStage(beats, stage, noteRng)
+  if (absIdx === 0) {
+    events = ensureNoLeadingRest(events)
+    events = ensureNoTrailingRest(events)
+  }
+
+  // Determine if the time signature changed from the previous measure.
+  // We replay the previous measure's time-sig RNG to check — cheap and deterministic.
+  let showClef    = absIdx === 0
+  let showTimeSig = absIdx === 0
+  if (absIdx > 0) {
+    const prevStageIdx = getConceptStageIndex(absIdx - 1, mode)
+    const prevStage    = CONCEPT_STAGES[prevStageIdx]
+    const prevRng      = mulberry32(baseSeed + (absIdx - 1) * 7 + 3)
+    const prevTsIdx    = Math.floor(prevRng() * prevStage.timeSigs.length)
+    const prevTs       = prevStage.timeSigs[prevTsIdx]
+    const changed      = prevTs.top !== top || prevTs.bottom !== bottom
+    showClef    = changed
+    showTimeSig = changed
+  }
+
+  // Map stage index (0–11) onto the 1–5 dot display used by NotationBlock
+  const level = Math.min(Math.floor(stageIdx / 2) + 1, 5)
+
+  return {
+    events,
+    timeSigTop:    top,
+    timeSigBottom: bottom,
+    label:         `${top}/${bottom} · ${stage.name}`,
+    level,
+    showClef,
+    showTimeSig,
+  }
+}

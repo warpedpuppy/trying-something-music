@@ -2910,6 +2910,84 @@ a.theory-card:hover {
   font-size: 1rem;
 }
 
+/* difficulty mode picker */
+.pa-mode-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.pa-mode-heading {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 0;
+}
+
+.pa-mode-picker {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.pa-mode-btn {
+  padding: 9px 22px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.pa-mode-btn:hover:not(.active) {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+.pa-mode-btn.active {
+  border-color: var(--accent);
+  background: var(--accent-faint);
+  color: var(--accent);
+}
+
+.pa-mode-desc {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 0;
+  min-height: 1.4em;
+}
+
+/* concept-stage advance notification */
+.pa-stage-notif {
+  position: fixed;
+  top: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: #fff;
+  padding: 7px 18px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  animation: pa-fade-in 0.3s ease;
+  z-index: 200;
+  pointer-events: none;
+}
+
+@keyframes pa-fade-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
 /* bpm setup */
 .pa-tempo-row {
   font-size: 1rem;

@@ -1,6 +1,12 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { renderPattern } from '../lib/vexflowPattern'
-import { generateReel, type GeneratedMeasure } from '../lib/rhythmGenerator'
+import {
+  generateMeasureAtIndex,
+  getConceptStageIndex,
+  getConceptStageName,
+  type DifficultyMode,
+  type GeneratedMeasure,
+} from '../lib/rhythmGenerator'
 import { tickEngine } from '../lib/audio'
 import { expectedOnsets } from '../lib/rhythm'
 import { RhythmPlayback } from '../components/RhythmPlayback'
@@ -22,24 +28,18 @@ import {
   DEFAULT_CONFIG,
   loadPlayAlongConfig,
   savePlayAlongConfig,
-  reelLevel,
   type PlayAlongConfig,
-  type TimeSigUnlock,
 } from '../lib/playAlongConfig'
 import { getSession, updatePlayAlongBest } from '../lib/localDb'
 
 // ── Reel setup ────────────────────────────────────────────────────────────────
 
-const REEL_UNIQUE = 24
+// Number of DOM slots in the scrolling ring buffer.
+const SLOT_COUNT = 24
+// How many slots ahead to pre-generate before they scroll into view.
+const LOOK_AHEAD = 8
 const HIT_WINDOW_MS = 175
 const REVIEW_SLOT_PX = 320
-
-function buildReel(level: number, seed = Math.floor(Math.random() * 99999), allowTriplets = true): GeneratedMeasure[] {
-  // When triplets are allowed, lift the reel floor to level 3 so triplets appear
-  // from the very first measure of the rebuilt reel — not after a 5-measure warm-up.
-  const minLevel = allowTriplets ? 3 : 1
-  return generateReel(REEL_UNIQUE, seed + level * 100, allowTriplets, minLevel)
-}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -48,7 +48,7 @@ type Phase = 'welcome' | 'static' | 'playing' | 'gameover'
 /** A note onset that the game is tracking for hit/miss. */
 interface PendingOnset {
   measureAbsIdx: number   // absolute (non-looped) measure index
-  measureLoopIdx: number  // 0..REEL_UNIQUE-1
+  measureLoopIdx: number  // 0..SLOT_COUNT-1
   eventIndex: number      // index within the measure's events array
   beatQuarters: number    // beat position in quarter-note units
   dueMs: number           // elapsed ms when this note is at the cursor
@@ -84,6 +84,10 @@ export function PlayAlong() {
   // BPM notification banner
   const [bpmNotif, setBpmNotif] = useState<number | null>(null)
 
+  // Difficulty mode and concept-stage notification
+  const [mode, setMode] = useState<DifficultyMode>('easy')
+  const [stageNotif, setStageNotif] = useState<string | null>(null)
+
   // DOM refs
   const tapBtnRef       = useRef<HTMLButtonElement>(null)
   const reelViewportRef = useRef<HTMLDivElement>(null)
@@ -111,20 +115,33 @@ export function PlayAlong() {
   const prevCompletedRef      = useRef(-1)       // last absolute measure we scored
   const bpmNotifTimerRef      = useRef<number | null>(null)
 
+  // Difficulty mode ref (for RAF access without stale closure)
+  const modeRef            = useRef<DifficultyMode>('easy')
+  // Random seed for this game session — new each startStatic call
+  const baseSeedRef        = useRef(1337)
+  // Which absolute measure index each DOM slot currently holds
+  const slotGenerationsRef = useRef<number[]>([])
+  // Stage notification timer
+  const stageNotifTimerRef = useRef<number | null>(null)
+  // Previous concept stage index — for detecting stage advances
+  const prevStageRef       = useRef(-1)
+
   // Current measure beat dots
   const [beatsInMeasure, setBeatsInMeasure] = useState(4)
   const prevMeasureLoopIdxRef = useRef(-1)
 
   // Pending onsets ref (tracking upcoming notes)
   const pendingRef = useRef<PendingOnset[]>([])
-  const reelRef    = useRef<GeneratedMeasure[]>(buildReel(reelLevel(cfg, 0), undefined, 0 >= cfg.tripletAfterMeasures))
+  // Ring buffer of SLOT_COUNT measure slots — populated and recycled as the game advances
+  const reelRef    = useRef<GeneratedMeasure[]>([])
 
   // Tap timing
   const tapTimesRef     = useRef<number[]>([])
   const tapFlashTimerRef = useRef<number | null>(null)
 
-  // Loop indices that had at least one miss during this round (for game-over review)
-  const mistakenLoopIndicesRef = useRef(new Set<number>())
+  // Absolute-index → GeneratedMeasure for every measure that had at least one miss
+  // (keyed by absIdx so recycled slots don't overwrite prior mistakes)
+  const mistakenAbsMeasuresRef = useRef(new Map<number, GeneratedMeasure>())
 
   // Reel scroll: accumulated pixel offset (avoids position jump when BPM changes)
   const reelPxRef       = useRef(0)
@@ -133,7 +150,7 @@ export function PlayAlong() {
   // ── Build pending onsets for a given absolute measure index ───────────────
 
   const scheduleMeasure = useCallback((absIdx: number) => {
-    const loopIdx  = absIdx % REEL_UNIQUE
+    const loopIdx  = absIdx % SLOT_COUNT
     const measure  = reelRef.current[loopIdx]
     const mspM     = msPerMeasure(bpmRef.current)
     const bpm      = bpmRef.current
@@ -184,36 +201,69 @@ export function PlayAlong() {
       }
       lastFrameTimeRef.current = now
 
-      // Scroll
+      // Scroll — the ring buffer loops every SLOT_COUNT slots
       if (reelTrackRef.current) {
-        const totalLoopPx = REEL_UNIQUE * SLOT_PX
+        const totalLoopPx = SLOT_COUNT * SLOT_PX
         const tx = vpWidth * CURSOR_FRAC - (reelPxRef.current % totalLoopPx)
         reelTrackRef.current.style.transform = `translateX(${tx}px)`
       }
 
       // Beat dots: update when measure changes
-      const loopIdx = measureAtCursor(elapsed, mspM, REEL_UNIQUE)
+      const loopIdx = measureAtCursor(elapsed, mspM, SLOT_COUNT)
       cursorLoopIdxRef.current = loopIdx
       if (loopIdx !== prevMeasureLoopIdxRef.current) {
         prevMeasureLoopIdxRef.current = loopIdx
         setBeatsInMeasure(reelRef.current[loopIdx]?.timeSigTop ?? 4)
       }
 
-      // Pre-schedule upcoming measures
+      // Absolute measure index at the cursor
       const absIdx = totalMeasuresPassed(elapsed, mspM)
+
+      // ── Concept-stage advance notification ───────────────────────────────────
+      const curStageIdx = getConceptStageIndex(absIdx, modeRef.current)
+      if (curStageIdx !== prevStageRef.current && prevStageRef.current >= 0) {
+        prevStageRef.current = curStageIdx
+        const stageName = getConceptStageName(absIdx, modeRef.current)
+        setStageNotif(stageName)
+        if (stageNotifTimerRef.current) window.clearTimeout(stageNotifTimerRef.current)
+        stageNotifTimerRef.current = window.setTimeout(() => setStageNotif(null), 4000)
+      }
+
+      // ── Infinite scroll: recycle stale slots before they re-enter the viewport ──
+      // Look LOOK_AHEAD slots ahead; update any slot whose generation doesn't match.
+      const staleSlots: number[] = []
+      for (let a = absIdx; a < absIdx + LOOK_AHEAD; a++) {
+        const slotIdx = a % SLOT_COUNT
+        if (slotGenerationsRef.current[slotIdx] !== a) {
+          slotGenerationsRef.current[slotIdx] = a
+          reelRef.current[slotIdx] = generateMeasureAtIndex(a, modeRef.current, baseSeedRef.current)
+          staleSlots.push(slotIdx)
+        }
+      }
+      if (staleSlots.length > 0) {
+        // Trigger a re-render so NotationBlock picks up the new measure objects.
+        // Clearing the feedback maps for recycled slots is both correct (fresh slate)
+        // and serves as the re-render trigger.
+        setHitMap(prev  => { const n = {...prev};  for (const s of staleSlots) delete n[s]; return n })
+        setMissMap(prev => { const n = {...prev};  for (const s of staleSlots) delete n[s]; return n })
+        setStrayMap(prev => { const n = {...prev}; for (const s of staleSlots) delete n[s]; return n })
+      }
+
+      // ── Pre-schedule upcoming measures ───────────────────────────────────────
       for (let a = absIdx; a <= absIdx + 3; a++) {
         const alreadyScheduled = pendingRef.current.some(p => p.measureAbsIdx === a)
         if (!alreadyScheduled) scheduleMeasure(a)
       }
 
-      // Miss detection: any onset whose window has passed without being tapped
+      // ── Miss detection ───────────────────────────────────────────────────────
       const msB = msPerBeat(bpmRef.current)
       for (const onset of pendingRef.current) {
         if (onset.resolved) continue
         if (elapsed > onset.dueMs + HIT_WINDOW_MS) {
           onset.resolved = true
           consecutiveMissesRef.current++
-          mistakenLoopIndicesRef.current.add(onset.measureLoopIdx)
+          // Store the actual measure object so game-over review works even after slot recycle
+          mistakenAbsMeasuresRef.current.set(onset.measureAbsIdx, reelRef.current[onset.measureLoopIdx])
           setMissMap(prev => {
             const ex = prev[onset.measureLoopIdx] ?? []
             if (ex.includes(onset.eventIndex)) return prev
@@ -227,25 +277,14 @@ export function PlayAlong() {
         void msB
       }
 
-      // Completed measure scoring: when cursor moves past a measure's last onset
+      // ── Completed measure scoring ─────────────────────────────────────────────
       const completed = totalMeasuresPassed(elapsed, mspM) - 1
       if (completed > prevCompletedRef.current && completed >= 0) {
         prevCompletedRef.current = completed
-        const compLoopIdx = completed % REEL_UNIQUE
+        const compLoopIdx = completed % SLOT_COUNT
         const hadMiss = missMap[compLoopIdx]?.length > 0
         if (!hadMiss) {
           successfulMeasuresRef.current++
-          const prev = successfulMeasuresRef.current - 1
-          const curr = successfulMeasuresRef.current
-          const newLevel = reelLevel(cfg, curr)
-          const levelChanged = newLevel > reelLevel(cfg, prev)
-          const tripletsJustUnlocked = curr >= cfg.tripletAfterMeasures && prev < cfg.tripletAfterMeasures
-          if (levelChanged || tripletsJustUnlocked) {
-            reelRef.current = buildReel(newLevel, 1337, curr >= cfg.tripletAfterMeasures)
-            setHitMap({})
-            setMissMap({})
-            setStrayMap({})
-          }
           if (
             successfulMeasuresRef.current % cfg.bpmIncreaseAfterMeasures === 0 &&
             bpmRef.current < cfg.bpmCap
@@ -287,19 +326,33 @@ export function PlayAlong() {
 
   // ── Welcome → Static ──────────────────────────────────────────────────────
 
-  function startStatic(overrideBpm?: number) {
+  function startStatic(overrideBpm?: number, newMode?: DifficultyMode) {
     tickEngine.cancelAll()
-    const initialBpm = overrideBpm ?? cfg.startBpm
-    bpmRef.current = initialBpm
+    const initialBpm   = overrideBpm ?? cfg.startBpm
+    const activeMode   = newMode ?? mode
+    bpmRef.current     = initialBpm
+    modeRef.current    = activeMode
+    if (newMode) setMode(newMode)
     setBpm(initialBpm)
     consecutiveMissesRef.current  = 0
     successfulMeasuresRef.current = 0
-    reelRef.current = buildReel(reelLevel(cfg, 0), undefined, 0 >= cfg.tripletAfterMeasures)
+    prevCompletedRef.current      = -1
+    prevStageRef.current          = 0  // don't fire notification at game start
+
+    // Fresh random seed — every game session gets a unique measure sequence
+    const seed = Math.floor(Math.random() * 9999999)
+    baseSeedRef.current = seed
+
+    // Populate the ring buffer with the first SLOT_COUNT measures
+    reelRef.current        = Array.from({ length: SLOT_COUNT }, (_, i) => generateMeasureAtIndex(i, activeMode, seed))
+    slotGenerationsRef.current = Array.from({ length: SLOT_COUNT }, (_, i) => i)
+
     setHitMap({})
     setMissMap({})
     setStrayMap({})
     setBpmNotif(null)
-    mistakenLoopIndicesRef.current = new Set()
+    setStageNotif(null)
+    mistakenAbsMeasuresRef.current = new Map()
     setMistakenMeasures([])
     setPaused(false)
     userPausedRef.current = false
@@ -345,16 +398,12 @@ export function PlayAlong() {
 
   function triggerGameOver() {
     tickEngine.cancelAll()
-    // Save best streak before transitioning
     const session = getSession()
     if (session) updatePlayAlongBest(session.userId, successfulMeasuresRef.current)
     phaseRef.current = 'gameover'
     setPhase('gameover')
-    const indices = Array.from(mistakenLoopIndicesRef.current)
-    const measures = indices
-      .map(idx => reelRef.current[idx])
-      .filter(Boolean) as GeneratedMeasure[]
-    setMistakenMeasures(measures)
+    // Use the stored measure objects — correct even if a slot was recycled since the miss
+    setMistakenMeasures([...mistakenAbsMeasuresRef.current.values()])
     setPaused(false)
     userPausedRef.current = false
     pausedRef.current = false
@@ -364,11 +413,11 @@ export function PlayAlong() {
 
   function stopToWelcome() {
     tickEngine.cancelAll()
-    // Save best streak if the user played before stopping
     const session = getSession()
     if (session && phaseRef.current === 'playing') {
       updatePlayAlongBest(session.userId, successfulMeasuresRef.current)
     }
+    mistakenAbsMeasuresRef.current = new Map()
     phaseRef.current = 'welcome'
     setPhase('welcome')
     setBeatIndex(null)
@@ -446,7 +495,7 @@ export function PlayAlong() {
         return { ...prev, [bestOnset!.measureLoopIdx]: [...ex, bestOnset!.eventIndex] }
       })
     } else {
-      const loopIdx = measureAtCursor(elapsed, mspM, REEL_UNIQUE)
+      const loopIdx = measureAtCursor(elapsed, mspM, SLOT_COUNT)
       const x = strayTapX(elapsed, mspM, SLOT_PX)
       setStrayMap(prev => ({ ...prev, [loopIdx]: [...(prev[loopIdx] ?? []), x] }))
     }
@@ -507,7 +556,7 @@ export function PlayAlong() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (phase === 'welcome') {
-    return <WelcomeScreen onStart={(bpm) => startStatic(bpm)} cfg={cfg} onCfgChange={setCfg} />
+    return <WelcomeScreen onStart={(bpm, m) => startStatic(bpm, m)} cfg={cfg} onCfgChange={setCfg} />
   }
 
   // Review modal shared by playing and game-over phases
@@ -575,13 +624,20 @@ export function PlayAlong() {
         </div>
       )}
 
+      {/* Concept-stage advance notification */}
+      {stageNotif && (
+        <div className="pa-stage-notif" aria-live="polite">
+          New concept: {stageNotif}
+        </div>
+      )}
+
       {/* Scrolling notation reel */}
       <div className="pa-reel-viewport" ref={reelViewportRef} style={{ position: 'relative' }}>
         <div
           ref={reelTrackRef}
           className="pa-reel-track"
           style={{
-            width: `${REEL_UNIQUE * SLOT_PX}px`,
+            width: `${SLOT_COUNT * SLOT_PX}px`,
             transform: phase === 'static' ? `translateX(${staticTX}px)` : undefined,
           }}
         >
@@ -646,12 +702,13 @@ export function WelcomeScreen({
   cfg,
   onCfgChange,
 }: {
-  onStart: (bpm: number) => void
+  onStart: (bpm: number, mode: DifficultyMode) => void
   cfg: PlayAlongConfig
   onCfgChange: (cfg: PlayAlongConfig) => void
 }) {
   const [localCfg, setLocalCfg] = useState<PlayAlongConfig>(() => ({ ...cfg }))
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [selectedMode, setSelectedMode] = useState<DifficultyMode>('easy')
 
   const BPM_MIN = 40
   const BPM_MAX = localCfg.bpmCap
@@ -671,39 +728,17 @@ export function WelcomeScreen({
     })
   }
 
-  function updateTimeSig(index: number, patch: Partial<TimeSigUnlock>) {
-    setLocalCfg(prev => {
-      const timeSigs = prev.timeSigs.map((ts, i) => i === index ? { ...ts, ...patch } : ts)
-      const next = { ...prev, timeSigs }
-      savePlayAlongConfig(next)
-      onCfgChange(next)
-      return next
-    })
-  }
-
-  function addTimeSig() {
-    setLocalCfg(prev => {
-      const next = { ...prev, timeSigs: [...prev.timeSigs, { top: 5, bottom: 4, afterMeasures: 20 }] }
-      savePlayAlongConfig(next)
-      onCfgChange(next)
-      return next
-    })
-  }
-
-  function removeTimeSig(index: number) {
-    setLocalCfg(prev => {
-      const next = { ...prev, timeSigs: prev.timeSigs.filter((_, i) => i !== index) }
-      savePlayAlongConfig(next)
-      onCfgChange(next)
-      return next
-    })
-  }
-
   function resetDefaults() {
     const fresh = { ...DEFAULT_CONFIG }
     setLocalCfg(fresh)
     savePlayAlongConfig(fresh)
     onCfgChange(fresh)
+  }
+
+  const MODE_DESCRIPTIONS: Record<DifficultyMode, string> = {
+    easy:         'One new concept every 8 measures — perfect for beginners',
+    intermediate: 'One new concept every 4 measures — steady progression',
+    advanced:     'One new concept every 2 measures — fast progression',
   }
 
   return (
@@ -714,11 +749,28 @@ export function WelcomeScreen({
         <li>Hits turn green, misses turn orange — {localCfg.consecutiveMissesReset} consecutive misses ends the game</li>
         <li>The orange ▼ marks each downbeat and pulses to keep your place</li>
         <li>
-          Every {localCfg.bpmIncreaseAfterMeasures} perfect measures, tempo rises by {localCfg.bpmIncreaseAmount} BPM (beats per minute), up to {localCfg.bpmCap}
+          Every {localCfg.bpmIncreaseAfterMeasures} perfect measures, tempo rises by {localCfg.bpmIncreaseAmount} BPM, up to {localCfg.bpmCap}
         </li>
-        <li>Adjust difficulty, tempo, and time signatures under Settings below</li>
         <li><strong>Tap any measure while playing to pause and hear it played correctly</strong></li>
       </ul>
+
+      {/* Difficulty mode picker */}
+      <div className="pa-mode-section">
+        <p className="pa-mode-heading">Difficulty</p>
+        <div className="pa-mode-picker">
+          {(['easy', 'intermediate', 'advanced'] as DifficultyMode[]).map(m => (
+            <button
+              key={m}
+              type="button"
+              className={`pa-mode-btn${selectedMode === m ? ' active' : ''}`}
+              onClick={() => setSelectedMode(m)}
+            >
+              {m.charAt(0).toUpperCase() + m.slice(1)}
+            </button>
+          ))}
+        </div>
+        <p className="pa-mode-desc">{MODE_DESCRIPTIONS[selectedMode]}</p>
+      </div>
 
       <p className="pa-tempo-row">
         Starting tempo:{' '}
@@ -741,7 +793,7 @@ export function WelcomeScreen({
         <span>{BPM_MAX}</span>
       </div>
 
-      <button type="button" className="btn-primary pa-cta" onClick={() => onStart(localCfg.startBpm)}>
+      <button type="button" className="btn-primary pa-cta" onClick={() => onStart(localCfg.startBpm, selectedMode)}>
         Let's go
       </button>
 
@@ -793,55 +845,6 @@ export function WelcomeScreen({
                 onChange={e => update({ consecutiveMissesReset: Number(e.target.value) })}
               />
             </label>
-            <label className="pa-settings-row">
-              <span>Quantity of perfect measures before triplets appear</span>
-              <input type="number" min={0} max={500} step={1}
-                value={localCfg.tripletAfterMeasures}
-                onChange={e => update({ tripletAfterMeasures: Number(e.target.value) })}
-              />
-            </label>
-          </section>
-
-          <section className="pa-settings-section">
-            <h3 className="pa-settings-heading">Time signatures</h3>
-            <table className="pa-settings-table">
-              <thead>
-                <tr>
-                  <th>Top</th>
-                  <th>Bottom</th>
-                  <th>Unlock after</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {localCfg.timeSigs.map((ts, i) => (
-                  <tr key={i}>
-                    <td><input type="number" min={2} max={12} step={1}
-                      value={ts.top}
-                      onChange={e => updateTimeSig(i, { top: Number(e.target.value) })}
-                    /></td>
-                    <td><input type="number" min={2} max={16} step={1}
-                      value={ts.bottom}
-                      onChange={e => updateTimeSig(i, { bottom: Number(e.target.value) })}
-                    /></td>
-                    <td><input type="number" min={0} max={9999} step={1}
-                      value={ts.afterMeasures}
-                      onChange={e => updateTimeSig(i, { afterMeasures: Number(e.target.value) })}
-                    /></td>
-                    <td>
-                      <button type="button" className="pa-settings-remove"
-                        onClick={() => removeTimeSig(i)}
-                        aria-label={`Remove ${ts.top}/${ts.bottom}`}
-                        disabled={localCfg.timeSigs.length <= 1}
-                      >×</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <button type="button" className="pa-settings-add" onClick={addTimeSig}>
-              + Add time signature
-            </button>
           </section>
 
           <div className="pa-settings-footer">
@@ -995,8 +998,7 @@ const NotationBlock = memo(function NotationBlock({
     } catch {
       // silently ignore render errors
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [measure])
 
   const levelDots = '●'.repeat(measure.level) + '○'.repeat(5 - measure.level)
 
