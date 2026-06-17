@@ -16,12 +16,7 @@ import {
   SLOT_PX,
   CURSOR_FRAC,
   msPerMeasure,
-  msPerBeat,
-  measureAtCursor,
-  totalMeasuresPassed,
-  onsetDueMs,
   shouldPulseDownbeat,
-  strayTapX,
   resumedStartTime,
 } from '../lib/playAlongTiming'
 import {
@@ -51,7 +46,7 @@ interface PendingOnset {
   measureLoopIdx: number  // 0..SLOT_COUNT-1
   eventIndex: number      // index within the measure's events array
   beatQuarters: number    // beat position in quarter-note units
-  dueMs: number           // elapsed ms when this note is at the cursor
+  duePx: number           // reelPx when this note is at the cursor
   resolved: boolean       // hit or miss already recorded
 }
 
@@ -151,11 +146,9 @@ export function PlayAlong() {
   // ── Build pending onsets for a given absolute measure index ───────────────
 
   const scheduleMeasure = useCallback((absIdx: number) => {
-    const loopIdx  = absIdx % SLOT_COUNT
-    const measure  = reelRef.current[loopIdx]
-    const mspM     = msPerMeasure(bpmRef.current)
-    const bpm      = bpmRef.current
-    const onsets   = expectedOnsets({ events: measure.events })
+    const loopIdx = absIdx % SLOT_COUNT
+    const measure = reelRef.current[loopIdx]
+    const onsets  = expectedOnsets({ events: measure.events })
 
     for (const { eventIndex, beat } of onsets) {
       pendingRef.current.push({
@@ -163,7 +156,7 @@ export function PlayAlong() {
         measureLoopIdx: loopIdx,
         eventIndex,
         beatQuarters:   beat,
-        dueMs:          onsetDueMs(absIdx, beat, mspM, bpm),
+        duePx:          (absIdx + beat / 4) * SLOT_PX,
         resolved:       false,
       })
     }
@@ -191,9 +184,8 @@ export function PlayAlong() {
         rafId = requestAnimationFrame(frame)
         return
       }
-      const elapsed  = now - startTimeRef.current
-      const mspM     = msPerMeasure(bpmRef.current)
-      const vpWidth  = reelViewportRef.current?.offsetWidth ?? window.innerWidth
+      const mspM    = msPerMeasure(bpmRef.current)
+      const vpWidth = reelViewportRef.current?.offsetWidth ?? window.innerWidth
 
       // Accumulate reel scroll pixels frame-by-frame so a BPM change only affects
       // future speed and never causes a position jump.
@@ -209,26 +201,24 @@ export function PlayAlong() {
         reelTrackRef.current.style.transform = `translateX(${tx}px)`
       }
 
-      // Beat dots: update when measure changes
-      const loopIdx = measureAtCursor(elapsed, mspM, SLOT_COUNT)
+      // Derive position from pixels — always in sync with visual scroll regardless of BPM history
+      const measuresScrolled = reelPxRef.current / SLOT_PX
+      const absIdx  = Math.floor(measuresScrolled)
+      const loopIdx = absIdx % SLOT_COUNT
+
       cursorLoopIdxRef.current = loopIdx
       if (loopIdx !== prevMeasureLoopIdxRef.current) {
         prevMeasureLoopIdxRef.current = loopIdx
         setBeatsInMeasure(reelRef.current[loopIdx]?.timeSigTop ?? 4)
       }
 
-      // Derive beat index from elapsed — keeps dots phase-locked to the reel scroll.
-      const msB = msPerBeat(bpmRef.current)
-      const curBeats = reelRef.current[loopIdx]?.timeSigTop ?? 4
-      const rawBeat = Math.floor((elapsed % mspM) / msB)
-      const newBeatIdx = rawBeat % curBeats
+      const curBeats    = reelRef.current[loopIdx]?.timeSigTop ?? 4
+      const measurePhase = measuresScrolled - absIdx          // 0..1 within current measure
+      const newBeatIdx   = Math.floor(measurePhase * curBeats) % curBeats
       if (newBeatIdx !== prevBeatIndexRef.current) {
         prevBeatIndexRef.current = newBeatIdx
         setBeatIndex(newBeatIdx)
       }
-
-      // Absolute measure index at the cursor
-      const absIdx = totalMeasuresPassed(elapsed, mspM)
 
       // ── Concept-stage advance notification ───────────────────────────────────
       const curStageIdx = getConceptStageIndex(absIdx, modeRef.current)
@@ -267,9 +257,10 @@ export function PlayAlong() {
       }
 
       // ── Miss detection ───────────────────────────────────────────────────────
+      const hitWindowPx = HIT_WINDOW_MS * (SLOT_PX / mspM)
       for (const onset of pendingRef.current) {
         if (onset.resolved) continue
-        if (elapsed > onset.dueMs + HIT_WINDOW_MS) {
+        if (reelPxRef.current > onset.duePx + hitWindowPx) {
           onset.resolved = true
           consecutiveMissesRef.current++
           // Store the actual measure object so game-over review works even after slot recycle
@@ -287,7 +278,7 @@ export function PlayAlong() {
       }
 
       // ── Completed measure scoring ─────────────────────────────────────────────
-      const completed = totalMeasuresPassed(elapsed, mspM) - 1
+      const completed = absIdx - 1
       if (completed > prevCompletedRef.current && completed >= 0) {
         prevCompletedRef.current = completed
         const compLoopIdx = completed % SLOT_COUNT
@@ -311,8 +302,8 @@ export function PlayAlong() {
       }
 
       // Trim resolved onsets from the front to avoid unbounded growth
-      const cutoff = elapsed - 2000
-      while (pendingRef.current.length && pendingRef.current[0].dueMs < cutoff) {
+      const cutoffPx = reelPxRef.current - 2 * SLOT_PX
+      while (pendingRef.current.length && pendingRef.current[0].duePx < cutoffPx) {
         pendingRef.current.shift()
       }
 
@@ -466,20 +457,21 @@ export function PlayAlong() {
       triggerRainbowBurst(r.left + r.width / 2, r.top + r.height / 2)
     }
 
-    const now     = performance.now()
-    const elapsed = now - startTimeRef.current
-    const mspM    = msPerMeasure(bpmRef.current)
+    const now = performance.now()
 
     const recent = tapTimesRef.current.filter(t => now - t < 4000)
     recent.push(now)
     tapTimesRef.current = recent
 
+    const tapPx      = reelPxRef.current
+    const hitWindowPx = HIT_WINDOW_MS * (SLOT_PX / msPerMeasure(bpmRef.current))
+
     let bestOnset: PendingOnset | null = null
-    let bestDist = HIT_WINDOW_MS
+    let bestDist = hitWindowPx
 
     for (const onset of pendingRef.current) {
       if (onset.resolved) continue
-      const dist = Math.abs(elapsed - onset.dueMs)
+      const dist = Math.abs(tapPx - onset.duePx)
       if (dist < bestDist) {
         bestDist  = dist
         bestOnset = onset
@@ -495,8 +487,8 @@ export function PlayAlong() {
         return { ...prev, [bestOnset!.measureLoopIdx]: [...ex, bestOnset!.eventIndex] }
       })
     } else {
-      const loopIdx = measureAtCursor(elapsed, mspM, SLOT_COUNT)
-      const x = strayTapX(elapsed, mspM, SLOT_PX)
+      const loopIdx = Math.floor(reelPxRef.current / SLOT_PX) % SLOT_COUNT
+      const x = reelPxRef.current % SLOT_PX
       setStrayMap(prev => ({ ...prev, [loopIdx]: [...(prev[loopIdx] ?? []), x] }))
     }
   }
