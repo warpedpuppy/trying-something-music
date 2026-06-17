@@ -15,6 +15,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Metronome } from './Metronome'
 import { RhythmStaff } from './RhythmStaff'
 import type { DotMarker, NoteAnchor } from './RhythmStaff'
+import { CountingBeatRow } from './rhythm-playback/CountingBeatRow'
 import { tickEngine } from '../lib/audio'
 import { buildCountingBeats, expectedOnsets, onsetTimesMs, totalBeats } from '../lib/rhythm'
 import type { CountingBeat, Onset } from '../lib/rhythm'
@@ -276,18 +277,7 @@ export function RhythmPlayback({
         />
       </div>
 
-      {showCountingArea && (
-        <p className="playback-count-label">
-          {countingBeats.length === 0
-            ? <span className="rp-count-placeholder">counting will appear here</span>
-            : countingBeats.map((beat, i) => (
-                <span key={i} style={{ color: beat.hasNote ? '#f97316' : 'var(--muted)' }}>
-                  {i > 0 ? (beat.label === 'trip' || beat.label === 'let' ? '-' : ' ') : ''}{beat.label}
-                </span>
-              ))
-          }
-        </p>
-      )}
+      {showCountingArea && <CountingBeatRow countingBeats={countingBeats} />}
 
       {/* Action buttons — all on one row */}
       <div className="rp-actions">
