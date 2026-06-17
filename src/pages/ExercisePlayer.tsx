@@ -3,8 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api/client'
 import type { AttemptResult, Exercise } from '../api/types'
 import { Metronome } from '../components/Metronome'
-import { RhythmPlayback } from '../components/RhythmPlayback'
 import { RhythmStaff } from '../components/RhythmStaff'
+import { ExerciseGiveUpModal } from './exercise/ExerciseGiveUpModal'
 import type { DotMarker } from '../components/RhythmStaff'
 import { TapButton } from '../components/TapButton'
 import { useTapCapture } from '../hooks/useTapCapture'
@@ -242,33 +242,11 @@ export function ExercisePlayer() {
 
   return (
     <div className="player-wrap">
-      {/* Give-up playback modal */}
-      {showGiveUpModal && (
-        <div
-          className="modal-overlay"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowGiveUpModal(false) }}
-        >
-          <div className="modal-panel">
-            <div className="modal-header">
-              <h2 className="modal-title">Hear the rhythm</h2>
-              <button
-                type="button"
-                className="modal-close"
-                aria-label="Close"
-                onClick={() => setShowGiveUpModal(false)}
-              >
-                ✕
-              </button>
-            </div>
-            <RhythmPlayback
-              pattern={exercise.pattern}
-              timeSigTop={exercise.time_sig_top}
-              timeSigBottom={exercise.time_sig_bottom}
-              bpm={exercise.tempo_bpm}
-            />
-          </div>
-        </div>
-      )}
+      <ExerciseGiveUpModal
+        exercise={exercise}
+        open={showGiveUpModal}
+        onClose={() => setShowGiveUpModal(false)}
+      />
 
       {/* Title row */}
       <div className="player-header">
