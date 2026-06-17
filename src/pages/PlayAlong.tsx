@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   generateMeasureAtIndex,
-  getConceptStageIndex,
-  getConceptStageName,
   type DifficultyMode,
   type GeneratedMeasure,
 } from '../lib/rhythmGenerator'
@@ -15,7 +13,6 @@ import {
   SLOT_PX,
   CURSOR_FRAC,
   msPerMeasure,
-  shouldPulseDownbeat,
   resumedStartTime,
 } from '../lib/playAlongTiming'
 import {
@@ -25,23 +22,23 @@ import {
 import { getSession, updatePlayAlongBest } from '../lib/localDb'
 import {
   SLOT_COUNT,
-  LOOK_AHEAD,
   EXTRA_SLOTS,
   HIT_WINDOW_MS,
 } from './play-along/constants'
 import { NotationBlock } from './play-along/NotationBlock'
 import { GameOverScreen, type GameOverScreenProps } from './play-along/GameOverScreen'
 import { WelcomeScreen } from './play-along/WelcomeScreen'
+import { useGameLoop } from './play-along/useGameLoop'
 
 export { GameOverScreen, WelcomeScreen }
 export type { GameOverScreenProps }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Phase = 'welcome' | 'static' | 'playing' | 'gameover'
+export type Phase = 'welcome' | 'static' | 'playing' | 'gameover'
 
 /** A note onset that the game is tracking for hit/miss. */
-interface PendingOnset {
+export interface PendingOnset {
   measureAbsIdx: number   // absolute (non-looped) measure index
   measureLoopIdx: number  // 0..SLOT_COUNT-1
   eventIndex: number      // index within the measure's events array
@@ -170,156 +167,47 @@ export function PlayAlong() {
     for (let i = 0; i < 4; i++) scheduleMeasure(i)
   }
 
-  // ── RAF-driven reel scroll ────────────────────────────────────────────────
-
-  useEffect(() => {
-    if (phase !== 'playing') return
-
-    let rafId: number
-    const frame = () => {
-      const now = performance.now()
-      // Frozen while review modal or user pause is active
-      if (pausedRef.current || userPausedRef.current) {
-        lastFrameTimeRef.current = 0  // reset so dt doesn't span the pause on resume
-        rafId = requestAnimationFrame(frame)
-        return
-      }
-      const mspM    = msPerMeasure(bpmRef.current)
-      const vpWidth = reelViewportRef.current?.offsetWidth ?? window.innerWidth
-
-      // Accumulate reel scroll pixels frame-by-frame so a BPM change only affects
-      // future speed and never causes a position jump.
-      if (lastFrameTimeRef.current > 0) {
-        reelPxRef.current += (now - lastFrameTimeRef.current) * (SLOT_PX / mspM)
-      }
-      lastFrameTimeRef.current = now
-
-      // Scroll — the ring buffer loops every SLOT_COUNT slots
-      if (reelTrackRef.current) {
-        const totalLoopPx = SLOT_COUNT * SLOT_PX
-        const tx = vpWidth * CURSOR_FRAC - (reelPxRef.current % totalLoopPx)
-        reelTrackRef.current.style.transform = `translateX(${tx}px)`
-      }
-
-      // Derive position from pixels — always in sync with visual scroll regardless of BPM history
-      const measuresScrolled = reelPxRef.current / SLOT_PX
-      const absIdx  = Math.floor(measuresScrolled)
-      const loopIdx = absIdx % SLOT_COUNT
-
-      cursorLoopIdxRef.current = loopIdx
-      if (loopIdx !== prevMeasureLoopIdxRef.current) {
-        prevMeasureLoopIdxRef.current = loopIdx
-        setBeatsInMeasure(reelRef.current[loopIdx]?.timeSigTop ?? 4)
-      }
-
-      const curBeats    = reelRef.current[loopIdx]?.timeSigTop ?? 4
-      const measurePhase = measuresScrolled - absIdx          // 0..1 within current measure
-      const newBeatIdx   = Math.floor(measurePhase * curBeats) % curBeats
-      if (newBeatIdx !== prevBeatIndexRef.current) {
-        prevBeatIndexRef.current = newBeatIdx
-        setBeatIndex(newBeatIdx)
-      }
-
-      // ── Concept-stage advance notification ───────────────────────────────────
-      const curStageIdx = getConceptStageIndex(absIdx, modeRef.current)
-      if (curStageIdx !== prevStageRef.current && prevStageRef.current >= 0) {
-        prevStageRef.current = curStageIdx
-        const stageName = getConceptStageName(absIdx, modeRef.current)
-        setStageNotif(stageName)
-        if (stageNotifTimerRef.current) window.clearTimeout(stageNotifTimerRef.current)
-        stageNotifTimerRef.current = window.setTimeout(() => setStageNotif(null), 4000)
-      }
-
-      // ── Infinite scroll: recycle stale slots before they re-enter the viewport ──
-      // Look LOOK_AHEAD slots ahead; update any slot whose generation doesn't match.
-      const staleSlots: number[] = []
-      for (let a = absIdx; a < absIdx + LOOK_AHEAD; a++) {
-        const slotIdx = a % SLOT_COUNT
-        if (slotGenerationsRef.current[slotIdx] !== a) {
-          slotGenerationsRef.current[slotIdx] = a
-          reelRef.current[slotIdx] = generateMeasureAtIndex(a, modeRef.current, baseSeedRef.current)
-          staleSlots.push(slotIdx)
-        }
-      }
-      if (staleSlots.length > 0) {
-        // Trigger a re-render so NotationBlock picks up the new measure objects.
-        // Clearing the feedback maps for recycled slots is both correct (fresh slate)
-        // and serves as the re-render trigger.
-        setHitMap(prev  => { const n = {...prev};  for (const s of staleSlots) delete n[s]; return n })
-        setMissMap(prev => { const n = {...prev};  for (const s of staleSlots) delete n[s]; return n })
-        setStrayMap(prev => { const n = {...prev}; for (const s of staleSlots) delete n[s]; return n })
-      }
-
-      // ── Pre-schedule upcoming measures ───────────────────────────────────────
-      for (let a = absIdx; a <= absIdx + 3; a++) {
-        const alreadyScheduled = pendingRef.current.some(p => p.measureAbsIdx === a)
-        if (!alreadyScheduled) scheduleMeasure(a)
-      }
-
-      // ── Miss detection ───────────────────────────────────────────────────────
-      const hitWindowPx = HIT_WINDOW_MS * (SLOT_PX / mspM)
-      for (const onset of pendingRef.current) {
-        if (onset.resolved) continue
-        if (reelPxRef.current > onset.duePx + hitWindowPx) {
-          onset.resolved = true
-          consecutiveMissesRef.current++
-          // Store the actual measure object so game-over review works even after slot recycle
-          mistakenAbsMeasuresRef.current.set(onset.measureAbsIdx, reelRef.current[onset.measureLoopIdx])
-          setMissMap(prev => {
-            const ex = prev[onset.measureLoopIdx] ?? []
-            if (ex.includes(onset.eventIndex)) return prev
-            return { ...prev, [onset.measureLoopIdx]: [...ex, onset.eventIndex] }
-          })
-          if (consecutiveMissesRef.current >= cfg.consecutiveMissesReset) {
-            triggerGameOver()
-            return
-          }
-        }
-      }
-
-      // ── Completed measure scoring ─────────────────────────────────────────────
-      const completed = absIdx - 1
-      if (completed > prevCompletedRef.current && completed >= 0) {
-        prevCompletedRef.current = completed
-        const compLoopIdx = completed % SLOT_COUNT
-        const hadMiss = missMap[compLoopIdx]?.length > 0
-        if (!hadMiss) {
-          successfulMeasuresRef.current++
-          if (
-            successfulMeasuresRef.current % cfg.bpmIncreaseAfterMeasures === 0 &&
-            bpmRef.current < cfg.bpmCap
-          ) {
-            const newBpm = Math.min(bpmRef.current + cfg.bpmIncreaseAmount, cfg.bpmCap)
-            bpmRef.current = newBpm
-            setBpm(newBpm)
-            setBpmNotif(newBpm)
-            if (bpmNotifTimerRef.current) window.clearTimeout(bpmNotifTimerRef.current)
-            bpmNotifTimerRef.current = window.setTimeout(() => setBpmNotif(null), 3500)
-            tickEngine.cancelAll()
-            tickEngine.startMetronome(newBpm, undefined, undefined, beatsInMeasure)
-          }
-        }
-      }
-
-      // Trim resolved onsets from the front to avoid unbounded growth
-      const cutoffPx = reelPxRef.current - 2 * SLOT_PX
-      while (pendingRef.current.length && pendingRef.current[0].duePx < cutoffPx) {
-        pendingRef.current.shift()
-      }
-
-      rafId = requestAnimationFrame(frame)
-    }
-
-    rafId = requestAnimationFrame(frame)
-    return () => cancelAnimationFrame(rafId)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, cfg])
-
-  // ── Pulse the downbeat arrow at the cursor on every count-one ──────────────
-  useEffect(() => {
-    if (!shouldPulseDownbeat(phase, beatIndex)) return
-    setPulse(prev => ({ idx: cursorLoopIdxRef.current, n: (prev?.n ?? 0) + 1 }))
-  }, [beatIndex, phase])
+  // ── Game loop (RAF scroll + beat tracking + downbeat pulse) ─────────────────
+  useGameLoop({
+    phase,
+    cfg,
+    beatsInMeasure,
+    bpmRef,
+    reelRef,
+    reelViewportRef,
+    reelTrackRef,
+    pendingRef,
+    slotGenerationsRef,
+    modeRef,
+    pausedRef,
+    userPausedRef,
+    reelPxRef,
+    lastFrameTimeRef,
+    cursorLoopIdxRef,
+    consecutiveMissesRef,
+    prevMeasureLoopIdxRef,
+    prevBeatIndexRef,
+    prevStageRef,
+    prevCompletedRef,
+    stageNotifTimerRef,
+    bpmNotifTimerRef,
+    successfulMeasuresRef,
+    mistakenAbsMeasuresRef,
+    baseSeedRef,
+    setBeatsInMeasure,
+    setBeatIndex,
+    setHitMap,
+    setMissMap,
+    setStrayMap,
+    setPulse,
+    setStageNotif,
+    setBpmNotif,
+    setBpm,
+    onGameOver: triggerGameOver,
+    scheduleMeasure,
+    beatIndex,
+    missMap,
+  })
 
   // ── Welcome → Static ──────────────────────────────────────────────────────
 
