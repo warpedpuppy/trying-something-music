@@ -129,6 +129,7 @@ export function PlayAlong() {
   // Current measure beat dots
   const [beatsInMeasure, setBeatsInMeasure] = useState(4)
   const prevMeasureLoopIdxRef = useRef(-1)
+  const prevBeatIndexRef = useRef(-1)
 
   // Pending onsets ref (tracking upcoming notes)
   const pendingRef = useRef<PendingOnset[]>([])
@@ -216,6 +217,16 @@ export function PlayAlong() {
         setBeatsInMeasure(reelRef.current[loopIdx]?.timeSigTop ?? 4)
       }
 
+      // Derive beat index from elapsed — keeps dots phase-locked to the reel scroll.
+      const msB = msPerBeat(bpmRef.current)
+      const curBeats = reelRef.current[loopIdx]?.timeSigTop ?? 4
+      const rawBeat = Math.floor((elapsed % mspM) / msB)
+      const newBeatIdx = rawBeat % curBeats
+      if (newBeatIdx !== prevBeatIndexRef.current) {
+        prevBeatIndexRef.current = newBeatIdx
+        setBeatIndex(newBeatIdx)
+      }
+
       // Absolute measure index at the cursor
       const absIdx = totalMeasuresPassed(elapsed, mspM)
 
@@ -256,7 +267,6 @@ export function PlayAlong() {
       }
 
       // ── Miss detection ───────────────────────────────────────────────────────
-      const msB = msPerBeat(bpmRef.current)
       for (const onset of pendingRef.current) {
         if (onset.resolved) continue
         if (elapsed > onset.dueMs + HIT_WINDOW_MS) {
@@ -274,7 +284,6 @@ export function PlayAlong() {
             return
           }
         }
-        void msB
       }
 
       // ── Completed measure scoring ─────────────────────────────────────────────
@@ -296,10 +305,7 @@ export function PlayAlong() {
             if (bpmNotifTimerRef.current) window.clearTimeout(bpmNotifTimerRef.current)
             bpmNotifTimerRef.current = window.setTimeout(() => setBpmNotif(null), 3500)
             tickEngine.cancelAll()
-            tickEngine.startMetronome(newBpm, idx => {
-              const b = idx % beatsInMeasure
-              setBeatIndex(b)
-            }, undefined, beatsInMeasure)
+            tickEngine.startMetronome(newBpm, undefined, undefined, beatsInMeasure)
           }
         }
       }
@@ -388,10 +394,7 @@ export function PlayAlong() {
     const beats = reelRef.current[0]?.timeSigTop ?? 4
     tickEngine.cancelAll()
     setBeatIndex(0)
-    tickEngine.startMetronome(bpmRef.current, idx => {
-      const b = idx % beats
-      setBeatIndex(b)
-    }, undefined, beats)
+    tickEngine.startMetronome(bpmRef.current, undefined, undefined, beats)
   }
 
   // ── Playing → Game Over ───────────────────────────────────────────────────
@@ -445,10 +448,7 @@ export function PlayAlong() {
     setPaused(false)
     const beats = reelRef.current[cursorLoopIdxRef.current]?.timeSigTop ?? 4
     window.setTimeout(() => {
-      tickEngine.startMetronome(bpmRef.current, idx => {
-        const b = idx % beats
-        setBeatIndex(b)
-      }, undefined, beats)
+      tickEngine.startMetronome(bpmRef.current, undefined, undefined, beats)
     }, 50)
   }
 
@@ -536,10 +536,7 @@ export function PlayAlong() {
     if (!userPausedRef.current && (phaseRef.current === 'playing' || phaseRef.current === 'static')) {
       const beats = reelRef.current[0]?.timeSigTop ?? 4
       window.setTimeout(() => {
-        tickEngine.startMetronome(bpmRef.current, idx => {
-          const b = idx % beats
-          setBeatIndex(b)
-        }, undefined, beats)
+        tickEngine.startMetronome(bpmRef.current, undefined, undefined, beats)
       }, 50)
     }
   }
