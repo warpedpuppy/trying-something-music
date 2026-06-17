@@ -3,14 +3,13 @@ import { api } from '../../api/client'
 import type { AttemptResult, Exercise } from '../../api/types'
 import { tickEngine } from '../../lib/audio'
 import { expectedOnsets } from '../../lib/rhythm'
-import type { UseTapCaptureReturn } from '../../hooks/useTapCapture'
+import { useTapCapture } from '../../hooks/useTapCapture'
 
 type Phase = 'idle' | 'count-in' | 'capturing' | 'submitting' | 'result'
 
 interface UseExerciseSessionArgs {
   exerciseId: string | undefined
   exercise: Exercise | null
-  tapCapture: UseTapCaptureReturn
 }
 
 interface UseExerciseSessionReturn {
@@ -19,8 +18,8 @@ interface UseExerciseSessionReturn {
   result: AttemptResult | null
   lastTaps: number[]
   downbeatNonce: number | null
-  submitAttempt: (tapsMs: number[], gaveUp: boolean) => Promise<void>
-  startCountIn: (ex: Exercise) => void
+  downbeatEpoch: number
+  tapCapture: ReturnType<typeof useTapCapture>
   handleStart: () => void
   handleGiveUp: () => void
   handleTryAgain: () => void
@@ -29,7 +28,6 @@ interface UseExerciseSessionReturn {
 export function useExerciseSession({
   exerciseId,
   exercise,
-  tapCapture,
 }: UseExerciseSessionArgs): UseExerciseSessionReturn {
   const [phase, setPhase] = useState<Phase>('idle')
   const [countInBeat, setCountInBeat] = useState<number | null>(null)
@@ -39,6 +37,7 @@ export function useExerciseSession({
 
   const downbeatEpochRef = useRef(0)
   const captureOpenTimerRef = useRef<number | null>(null)
+  const onsets = exercise ? expectedOnsets(exercise.pattern) : []
 
   const clearCaptureOpenTimer = useCallback(() => {
     if (captureOpenTimerRef.current !== null) {
@@ -62,8 +61,28 @@ export function useExerciseSession({
     [exercise],
   )
 
+  const tapCapture = useTapCapture({
+    expectedTaps: exercise?.tap_count ?? Infinity,
+    onTap: (tapIndex) => {
+      tickEngine.tick('tap')
+      if (tapIndex === 0 && exercise && onsets.length > 0) {
+        const msPerBeat = 60000 / exercise.tempo_bpm
+        downbeatEpochRef.current = performance.now() - onsets[0].beat * msPerBeat
+      }
+    },
+    onComplete: (tapsMs) => {
+      tickEngine.stopMetronome()
+      setLastTaps(tapsMs)
+      const reported = tapsMs.map((tap) => tap - downbeatEpochRef.current)
+      void submitAttempt(reported, false)
+    },
+  })
+  const { reset: resetCapture } = tapCapture
+
   const startCountIn = useCallback((ex: Exercise) => {
-    const countInBeats = ex.time_sig_top < 4 ? ex.time_sig_top * 2 : ex.time_sig_top
+    const countInBeats = ex.time_sig_top < 4
+      ? ex.time_sig_top * 2
+      : ex.time_sig_top
     const beatMs = 60000 / ex.tempo_bpm
     setDownbeatNonce(0)
     setPhase('count-in')
@@ -91,7 +110,7 @@ export function useExerciseSession({
     )
   // tapCapture.start is a stable ref — intentionally omitted
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clearCaptureOpenTimer])
+  }, [clearCaptureOpenTimer, tapCapture])
 
   const handleStart = useCallback(() => {
     if (!exercise) return
@@ -115,21 +134,19 @@ export function useExerciseSession({
     handleStart()
   }, [clearCaptureOpenTimer, tapCapture, handleStart])
 
-  // Load exercise data and auto-start
+  // Load exercise data
   useEffect(() => {
-    let cancelled = false
     setPhase('idle')
     setResult(null)
     setCountInBeat(null)
     setDownbeatNonce(null)
-    tapCapture.reset()
+    resetCapture()
 
     return () => {
-      cancelled = true
       clearCaptureOpenTimer()
       tickEngine.cancelAll()
     }
-  }, [exerciseId, tapCapture, clearCaptureOpenTimer])
+  }, [exerciseId, resetCapture, clearCaptureOpenTimer])
 
   // Auto-start count-in when exercise arrives
   useEffect(() => {
@@ -144,8 +161,8 @@ export function useExerciseSession({
     result,
     lastTaps,
     downbeatNonce,
-    submitAttempt,
-    startCountIn,
+    downbeatEpoch: downbeatEpochRef.current,
+    tapCapture,
     handleStart,
     handleGiveUp,
     handleTryAgain,
