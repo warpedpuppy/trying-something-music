@@ -33,6 +33,9 @@ import { getSession, updatePlayAlongBest } from '../lib/localDb'
 const SLOT_COUNT = 24
 // How many slots ahead to pre-generate before they scroll into view.
 const LOOK_AHEAD = 8
+// How many phantom slots to append after the ring buffer to prevent the
+// translateX-reset snap from being visible.
+const EXTRA_SLOTS = 8
 const HIT_WINDOW_MS = 175
 const REVIEW_SLOT_PX = 320
 
@@ -626,21 +629,25 @@ export function PlayAlong() {
           ref={reelTrackRef}
           className="pa-reel-track"
           style={{
-            width: `${SLOT_COUNT * SLOT_PX}px`,
+            width: `${(SLOT_COUNT + EXTRA_SLOTS) * SLOT_PX}px`,
             transform: phase === 'static' ? `translateX(${staticTX}px)` : undefined,
           }}
         >
-          {reelRef.current.map((item, i) => (
-            <NotationBlock
-              key={i}
-              measure={item}
-              onClick={() => handleMeasureClick(item)}
-              hitNoteIndices={hitMap[i]}
-              missNoteIndices={missMap[i]}
-              strayXs={strayMap[i]}
-              pulseNonce={pulse?.idx === i ? pulse.n : 0}
-            />
-          ))}
+          {Array.from({ length: SLOT_COUNT + EXTRA_SLOTS }, (_, i) => {
+            const slotIdx = i % SLOT_COUNT
+            const item = reelRef.current[slotIdx]
+            return (
+              <NotationBlock
+                key={i}
+                measure={item}
+                onClick={() => handleMeasureClick(item)}
+                hitNoteIndices={hitMap[slotIdx]}
+                missNoteIndices={missMap[slotIdx]}
+                strayXs={strayMap[slotIdx]}
+                pulseNonce={pulse?.idx === slotIdx ? pulse.n : 0}
+              />
+            )
+          })}
         </div>
       </div>
 
