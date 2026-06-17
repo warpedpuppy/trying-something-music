@@ -26,18 +26,13 @@ import {
   type PlayAlongConfig,
 } from '../lib/playAlongConfig'
 import { getSession, updatePlayAlongBest } from '../lib/localDb'
-
-// ── Reel setup ────────────────────────────────────────────────────────────────
-
-// Number of DOM slots in the scrolling ring buffer.
-const SLOT_COUNT = 24
-// How many slots ahead to pre-generate before they scroll into view.
-const LOOK_AHEAD = 8
-// How many phantom slots to append after the ring buffer to prevent the
-// translateX-reset snap from being visible.
-const EXTRA_SLOTS = 8
-const HIT_WINDOW_MS = 175
-const REVIEW_SLOT_PX = 320
+import {
+  SLOT_COUNT,
+  LOOK_AHEAD,
+  EXTRA_SLOTS,
+  HIT_WINDOW_MS,
+  REVIEW_SLOT_PX,
+} from './play-along/constants'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
