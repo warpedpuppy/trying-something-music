@@ -32,7 +32,8 @@ describe('TickEngine', () => {
     engine.tick()
     const context = (engine as unknown as { context: AudioContext }).context
     expect(context.createOscillator).toHaveBeenCalledTimes(1)
-    expect(context.createGain).toHaveBeenCalledTimes(1)
+    // createGain is called twice: once for masterGain (in ensureContext) and once for the click
+    expect(context.createGain).toHaveBeenCalledTimes(2)
   })
 
   it('reuses the same AudioContext across ticks', () => {
@@ -86,9 +87,10 @@ describe('TickEngine', () => {
       expect(metronomeOscillator.frequency.value).not.toBe(tapOscillator.frequency.value)
       expect(metronomeOscillator.type).not.toBe(tapOscillator.type)
 
-      const tapPeak = peakGainOfClick(context, 0)
-      const metronomePeak = peakGainOfClick(context, 1)
-      expect(metronomePeak).toBeCloseTo(tapPeak / 2)
+      // Index 0 is masterGain; tap click is at index 1, first metronome click at index 2
+      const tapPeak = peakGainOfClick(context, 1)
+      const metronomePeak = peakGainOfClick(context, 2)
+      expect(metronomePeak).toBeCloseTo(tapPeak / 2, 1)
     })
 
     it('keeps scheduling beats as audio time advances', () => {

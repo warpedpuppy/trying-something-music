@@ -27,8 +27,8 @@ import {
 // ── DEFAULT_CONFIG ────────────────────────────────────────────────────────────
 
 describe('DEFAULT_CONFIG', () => {
-  it('has startBpm of 60', () => {
-    expect(DEFAULT_CONFIG.startBpm).toBe(60)
+  it('has startBpm of 105', () => {
+    expect(DEFAULT_CONFIG.startBpm).toBe(105)
   })
 
   it('has bpmCap higher than startBpm', () => {

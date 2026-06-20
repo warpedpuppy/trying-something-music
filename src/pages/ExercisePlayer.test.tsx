@@ -30,11 +30,14 @@ const EXERCISE: Exercise = {
   tap_count: 4,
 }
 
+// Fast BPM makes the 4-beat count-in complete in ~1 second of real time
+const FAST_EXERCISE: Exercise = { ...EXERCISE, tempo_bpm: 240 }
+
 const PASSED_RESULT: AttemptResult = {
   attempt_id: 10,
   passed: true,
   gave_up: false,
-  mode: 'free',
+  mode: 'strict',
   accuracy: 1,
   note_results: [0, 1, 2, 3].map((index) => ({
     index,
@@ -62,9 +65,10 @@ function renderPlayer() {
   )
 }
 
-async function tapSpace(times: number) {
+// Clicks the TAP button the given number of times using pointer events
+async function tapButton(times: number) {
   for (let i = 0; i < times; i++) {
-    await userEvent.keyboard(' ')
+    await userEvent.click(screen.getByRole('button', { name: /TAP/i }))
   }
 }
 
@@ -74,19 +78,19 @@ describe('ExercisePlayer', () => {
     renderPlayer()
     expect(await screen.findByText('Four steady quarters')).toBeInTheDocument()
     const link = screen.getByRole('link', { name: /learn about note values/i })
-    expect(link).toHaveAttribute('href', '/learn#note-values')
+    expect(link).toHaveAttribute('href', '/rhythm/learn#note-values')
   })
 
-  it('captures the right number of taps and submits them', async () => {
-    vi.spyOn(api, 'getExercise').mockResolvedValue(EXERCISE)
+  it('auto-starts count-in then captures taps and submits them', async () => {
+    vi.spyOn(api, 'getExercise').mockResolvedValue(FAST_EXERCISE)
     const submitSpy = vi.spyOn(api, 'submitAttempt').mockResolvedValue(PASSED_RESULT)
     renderPlayer()
     await screen.findByText('Four steady quarters')
 
-    await userEvent.click(screen.getByRole('button', { name: 'Start' }))
-    expect(screen.getByText(/0 \/ 4 taps/)).toBeInTheDocument()
+    // Count-in fires automatically — wait for the TAP button to appear (capturing phase)
+    await screen.findByRole('button', { name: /TAP/i }, { timeout: 4000 })
 
-    await tapSpace(4)
+    await tapButton(4)
 
     await waitFor(() => expect(submitSpy).toHaveBeenCalledTimes(1))
     const [exerciseId, taps, gaveUp] = submitSpy.mock.calls[0]
@@ -98,80 +102,73 @@ describe('ExercisePlayer', () => {
     expect(screen.getByText(/Accuracy: 100%/)).toBeInTheDocument()
   })
 
-  it('strict mode counts in for one measure, then submits taps relative to the downbeat', async () => {
-    // 240 BPM -> 250 ms per beat -> a 4-beat count-in lasts one second.
-    const fastExercise = { ...EXERCISE, tempo_bpm: 240 }
-    vi.spyOn(api, 'getExercise').mockResolvedValue(fastExercise)
-    const submitSpy = vi
-      .spyOn(api, 'submitAttempt')
-      .mockResolvedValue({ ...PASSED_RESULT, mode: 'strict', inferred_bpm: 240 })
+  it('count-in runs before capture opens', async () => {
+    vi.spyOn(api, 'getExercise').mockResolvedValue(FAST_EXERCISE)
+    const submitSpy = vi.spyOn(api, 'submitAttempt').mockResolvedValue({
+      ...PASSED_RESULT,
+      inferred_bpm: 240,
+    })
     renderPlayer()
     await screen.findByText('Four steady quarters')
 
-    await userEvent.click(screen.getByLabelText(/With the metronome/))
-    await userEvent.click(screen.getByRole('button', { name: 'Start' }))
-
+    // Count-in should be visible immediately after exercise loads
     expect(screen.getByText(/Count-in/)).toBeInTheDocument()
-    expect(api.submitAttempt).not.toHaveBeenCalled()
+    expect(submitSpy).not.toHaveBeenCalled()
 
-    await waitFor(() => expect(screen.getByText(/0 \/ 4 taps/)).toBeInTheDocument(), {
-      timeout: 4000,
-    })
-    expect(screen.getByText(/Stay locked to the metronome/)).toBeInTheDocument()
+    // Wait for count-in to end
+    await screen.findByRole('button', { name: /TAP/i }, { timeout: 4000 })
+    expect(screen.queryByText(/Count-in/)).not.toBeInTheDocument()
 
-    await tapSpace(4)
+    await tapButton(4)
     await waitFor(() => expect(submitSpy).toHaveBeenCalledTimes(1))
-    const [, taps, gaveUp, submittedMode] = submitSpy.mock.calls[0]
-    expect(submittedMode).toBe('strict')
+    const [, taps, gaveUp] = submitSpy.mock.calls[0]
     expect(gaveUp).toBe(false)
     expect(taps).toHaveLength(4)
-    // Taps are normalized to the downbeat epoch: tapping right after capture opens
-    // lands near beat zero, not near performance.now().
+    // Taps are relative to the downbeat epoch; first tap should be close to zero
     expect(Math.abs((taps as number[])[0])).toBeLessThan(2000)
-
-    expect(await screen.findByText(/against the metronome at 240 BPM/)).toBeInTheDocument()
   })
 
-  it('free mode is the default and does not count in', async () => {
-    vi.spyOn(api, 'getExercise').mockResolvedValue(EXERCISE)
+  it('free mode is the default and submits without a prior tap offset', async () => {
+    vi.spyOn(api, 'getExercise').mockResolvedValue(FAST_EXERCISE)
     const submitSpy = vi.spyOn(api, 'submitAttempt').mockResolvedValue(PASSED_RESULT)
     renderPlayer()
-    await screen.findByText('Four steady quarters')
-
-    expect(screen.getByLabelText(/Free tempo/)).toBeChecked()
-    await userEvent.click(screen.getByRole('button', { name: 'Start' }))
-    expect(screen.queryByText(/Count-in/)).not.toBeInTheDocument()
-    await tapSpace(4)
+    await screen.findByRole('button', { name: /TAP/i }, { timeout: 4000 })
+    await tapButton(4)
     await waitFor(() => expect(submitSpy).toHaveBeenCalledTimes(1))
-    expect(submitSpy.mock.calls[0][3]).toBe('free')
+    // Mode is always 'strict' — the count-in aligns taps to the downbeat
+    expect(submitSpy.mock.calls[0][3]).toBe('strict')
+    expect(submitSpy.mock.calls[0][2]).toBe(false)
   })
 
   it('runs the metronome at the exercise tempo while capturing and stops it after', async () => {
-    vi.spyOn(api, 'getExercise').mockResolvedValue(EXERCISE)
+    vi.spyOn(api, 'getExercise').mockResolvedValue(FAST_EXERCISE)
     vi.spyOn(api, 'submitAttempt').mockResolvedValue(PASSED_RESULT)
     const startSpy = vi.spyOn(tickEngine, 'startMetronome')
     const stopSpy = vi.spyOn(tickEngine, 'stopMetronome')
     renderPlayer()
     await screen.findByText('Four steady quarters')
 
-    expect(screen.queryByTestId('metronome')).not.toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Start' }))
-
-    expect(startSpy).toHaveBeenCalledWith(EXERCISE.tempo_bpm)
+    // Metronome starts automatically with the count-in
+    await waitFor(() => expect(startSpy).toHaveBeenCalledWith(
+      FAST_EXERCISE.tempo_bpm,
+      expect.any(Function),
+    ))
     expect(tickEngine.metronomeRunning).toBe(true)
     const metronome = screen.getByTestId('metronome')
     expect(metronome).toHaveAttribute('data-running', 'true')
     expect(metronome.querySelector('.metronome-pendulum.swinging')).not.toBeNull()
 
-    await tapSpace(4)
+    // Wait for capturing phase then tap
+    await screen.findByRole('button', { name: /TAP/i }, { timeout: 4000 })
+    await tapButton(4)
     await screen.findByText(/Passed!/)
     expect(stopSpy).toHaveBeenCalled()
     expect(tickEngine.metronomeRunning).toBe(false)
     expect(screen.queryByTestId('metronome')).not.toBeInTheDocument()
   })
 
-  it('submits a gave_up attempt after the give-up playback finishes', async () => {
-    vi.spyOn(api, 'getExercise').mockResolvedValue(EXERCISE)
+  it('submits a gave_up attempt after the give-up button is clicked', async () => {
+    vi.spyOn(api, 'getExercise').mockResolvedValue(FAST_EXERCISE)
     const submitSpy = vi.spyOn(api, 'submitAttempt').mockResolvedValue({
       ...PASSED_RESULT,
       passed: false,
@@ -182,16 +179,19 @@ describe('ExercisePlayer', () => {
     renderPlayer()
     await screen.findByText('Four steady quarters')
 
-    await userEvent.click(screen.getByRole('button', { name: /I give up/ }))
-    expect(screen.getByText(/Listen — this is the rhythm/)).toBeInTheDocument()
+    // Give-up button appears only during capturing — wait for it
+    await screen.findByRole('button', { name: /I give up/i }, { timeout: 4000 })
 
-    await waitFor(() => expect(submitSpy).toHaveBeenCalledWith(1, [], true, 'free'), {
+    await userEvent.click(screen.getByRole('button', { name: /I give up/i }))
+    expect(screen.getByRole('heading', { name: /Hear the rhythm/i })).toBeInTheDocument()
+
+    await waitFor(() => expect(submitSpy).toHaveBeenCalledWith(1, [], true, 'strict'), {
       timeout: 5000,
     })
   })
 
   it('shows what the student actually played after a failed attempt', async () => {
-    vi.spyOn(api, 'getExercise').mockResolvedValue(EXERCISE)
+    vi.spyOn(api, 'getExercise').mockResolvedValue(FAST_EXERCISE)
     vi.spyOn(api, 'submitAttempt').mockResolvedValue({
       ...PASSED_RESULT,
       passed: false,
@@ -203,9 +203,9 @@ describe('ExercisePlayer', () => {
       message: 'Not quite.',
     })
     renderPlayer()
-    await screen.findByText('Four steady quarters')
-    await userEvent.click(screen.getByRole('button', { name: 'Start' }))
-    await tapSpace(4)
+
+    await screen.findByRole('button', { name: /TAP/i }, { timeout: 4000 })
+    await tapButton(4)
 
     const toggle = await screen.findByRole('button', { name: /Show what you actually played/ })
     await userEvent.click(toggle)

@@ -42,6 +42,7 @@ class MockGain {
   gain = {
     setValueAtTime: vi.fn(),
     exponentialRampToValueAtTime: vi.fn(),
+    cancelScheduledValues: vi.fn(),
   }
   connect = vi.fn()
 }
@@ -73,4 +74,11 @@ if (typeof window !== 'undefined') {
     writable: true,
     value: MockAudioContext,
   })
+  if (!window.ResizeObserver) {
+    window.ResizeObserver = class {
+      observe = vi.fn()
+      unobserve = vi.fn()
+      disconnect = vi.fn()
+    } as unknown as typeof ResizeObserver
+  }
 }

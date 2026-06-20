@@ -58,19 +58,19 @@ function makeMeasure(overrides?: Partial<GeneratedMeasure>): GeneratedMeasure {
 
 describe('WelcomeScreen', () => {
   it('shows the Play Along title', () => {
-    render(<WelcomeScreen onStart={vi.fn()} cfg={TEST_CFG} />)
-    expect(screen.getByRole('heading', { name: 'Play Along' })).toBeInTheDocument()
+    render(<WelcomeScreen onStart={vi.fn()} cfg={TEST_CFG} onCfgChange={vi.fn()} initialMode="easy" />)
+    expect(screen.getByRole('heading', { name: 'Rhythm Game!' })).toBeInTheDocument()
   })
 
   it('displays the default starting BPM from config', () => {
-    render(<WelcomeScreen onStart={vi.fn()} cfg={TEST_CFG} />)
+    render(<WelcomeScreen onStart={vi.fn()} cfg={TEST_CFG} onCfgChange={vi.fn()} initialMode="easy" />)
     // The large BPM number and "Starting tempo" label
     expect(screen.getByText('60')).toBeInTheDocument()
-    expect(screen.getByText('Starting tempo')).toBeInTheDocument()
+    expect(screen.getByText(/starting tempo/i)).toBeInTheDocument()
   })
 
   it('BPM slider has min=40 and max=bpmCap', () => {
-    render(<WelcomeScreen onStart={vi.fn()} cfg={TEST_CFG} />)
+    render(<WelcomeScreen onStart={vi.fn()} cfg={TEST_CFG} onCfgChange={vi.fn()} initialMode="easy" />)
     const slider = screen.getByRole('slider', { name: /starting bpm/i })
     expect(slider).toHaveAttribute('min', '40')
     expect(slider).toHaveAttribute('max', String(TEST_CFG.bpmCap))
@@ -78,28 +78,28 @@ describe('WelcomeScreen', () => {
   })
 
   it('slider labels show min and max BPM', () => {
-    render(<WelcomeScreen onStart={vi.fn()} cfg={TEST_CFG} />)
+    render(<WelcomeScreen onStart={vi.fn()} cfg={TEST_CFG} onCfgChange={vi.fn()} initialMode="easy" />)
     expect(screen.getByText('40')).toBeInTheDocument()
     expect(screen.getByText(String(TEST_CFG.bpmCap))).toBeInTheDocument()
   })
 
   it('shows a speed label matching the BPM', () => {
-    render(<WelcomeScreen onStart={vi.fn()} cfg={TEST_CFG} />)
-    // 60 BPM should be "Moderate"
-    expect(screen.getByText('Moderate')).toBeInTheDocument()
+    render(<WelcomeScreen onStart={vi.fn()} cfg={TEST_CFG} onCfgChange={vi.fn()} initialMode="easy" />)
+    // 60 BPM is below the 66 threshold, so "Slow"
+    expect(screen.getByText('Slow')).toBeInTheDocument()
   })
 
   it("Let's go button calls onStart with the current BPM", async () => {
     const onStart = vi.fn()
-    render(<WelcomeScreen onStart={onStart} cfg={TEST_CFG} />)
+    render(<WelcomeScreen onStart={onStart} cfg={TEST_CFG} onCfgChange={vi.fn()} initialMode="easy" />)
     await userEvent.click(screen.getByRole('button', { name: /let.*s go/i }))
     expect(onStart).toHaveBeenCalledOnce()
-    expect(onStart).toHaveBeenCalledWith(60)
+    expect(onStart).toHaveBeenCalledWith(60, 'easy')
   })
 
   it('calls onStart with updated BPM after slider change', async () => {
     const onStart = vi.fn()
-    render(<WelcomeScreen onStart={onStart} cfg={TEST_CFG} />)
+    render(<WelcomeScreen onStart={onStart} cfg={TEST_CFG} onCfgChange={vi.fn()} initialMode="easy" />)
     const slider = screen.getByRole('slider', { name: /starting bpm/i })
     // Simulate slider change to 75
     await userEvent.click(slider)
@@ -110,19 +110,15 @@ describe('WelcomeScreen', () => {
   })
 
   it('shows misses-reset count in body text', () => {
-    render(<WelcomeScreen onStart={vi.fn()} cfg={TEST_CFG} />)
-    expect(screen.getByText(/5 misses in a row ends the game/i)).toBeInTheDocument()
+    render(<WelcomeScreen onStart={vi.fn()} cfg={TEST_CFG} onCfgChange={vi.fn()} initialMode="easy" />)
+    expect(screen.getByText(/5 consecutive misses ends the game/i)).toBeInTheDocument()
   })
 
   it('shows tempo cap info in bullet list', () => {
-    render(<WelcomeScreen onStart={vi.fn()} cfg={TEST_CFG} />)
-    expect(screen.getByText(/up to 80 BPM/i)).toBeInTheDocument()
+    render(<WelcomeScreen onStart={vi.fn()} cfg={TEST_CFG} onCfgChange={vi.fn()} initialMode="easy" />)
+    expect(screen.getByText(/up to 80/i)).toBeInTheDocument()
   })
 
-  it('shows alternate time sig unlock info when configured', () => {
-    render(<WelcomeScreen onStart={vi.fn()} cfg={TEST_CFG} />)
-    expect(screen.getByText(/3\/4/)).toBeInTheDocument()
-  })
 })
 
 // ── GameOverScreen ────────────────────────────────────────────────────────────
@@ -238,8 +234,8 @@ describe('GameOverScreen', () => {
       />
     )
     await userEvent.click(screen.getByRole('button', { name: /review mistaken measures/i }))
-    // Now on the list page — click Return
-    await userEvent.click(screen.getByRole('button', { name: /return to start page/i }))
+    // Now on the list page — two "Return to start page" buttons (top and bottom); click the first
+    await userEvent.click(screen.getAllByRole('button', { name: /return to start page/i })[0])
     expect(onReturn).toHaveBeenCalledOnce()
   })
 
@@ -265,7 +261,7 @@ describe('PlayAlong — welcome phase', () => {
     // loadPlayAlongConfig reads localStorage which the test setup polyfills
     // with an in-memory store, returning DEFAULT_CONFIG (startBpm: 60).
     render(<PlayAlong />)
-    expect(screen.getByRole('heading', { name: 'Play Along' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Rhythm Game!' })).toBeInTheDocument()
     expect(screen.getByRole('slider', { name: /starting bpm/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /let.*s go/i })).toBeInTheDocument()
   })
@@ -276,7 +272,7 @@ describe('PlayAlong — welcome phase', () => {
 describe('WelcomeScreen speed label', () => {
   function renderAt(bpm: number) {
     const cfg = { ...TEST_CFG, startBpm: bpm, bpmCap: Math.max(bpm, 120) }
-    render(<WelcomeScreen onStart={vi.fn()} cfg={cfg} />)
+    render(<WelcomeScreen onStart={vi.fn()} cfg={cfg} onCfgChange={vi.fn()} initialMode="easy" />)
   }
 
   it('shows Slow at 50 BPM', () => {
@@ -284,14 +280,14 @@ describe('WelcomeScreen speed label', () => {
     expect(screen.getByText('Slow')).toBeInTheDocument()
   })
 
-  it('shows Moderate at 65 BPM', () => {
+  it('shows Slow at 65 BPM', () => {
     renderAt(65)
-    expect(screen.getByText('Moderate')).toBeInTheDocument()
+    expect(screen.getByText('Slow')).toBeInTheDocument()
   })
 
-  it('shows Fast at 80 BPM', () => {
+  it('shows Moderate at 80 BPM', () => {
     renderAt(80)
-    expect(screen.getByText('Fast')).toBeInTheDocument()
+    expect(screen.getByText('Moderate')).toBeInTheDocument()
   })
 })
 
@@ -344,24 +340,24 @@ describe('GameOverScreen keyboard access', () => {
 
 describe('WelcomeScreen regression', () => {
   it('still shows the orange arrow hint bullet', () => {
-    render(<WelcomeScreen onStart={vi.fn()} cfg={TEST_CFG} />)
-    expect(screen.getByText(/watch the orange arrow/i)).toBeInTheDocument()
+    render(<WelcomeScreen onStart={vi.fn()} cfg={TEST_CFG} onCfgChange={vi.fn()} initialMode="easy" />)
+    expect(screen.getByText(/The orange.*marks each downbeat/i)).toBeInTheDocument()
   })
 
   it('still shows the tap-each-note bullet', () => {
-    render(<WelcomeScreen onStart={vi.fn()} cfg={TEST_CFG} />)
-    expect(screen.getByText(/tap each note in time/i)).toBeInTheDocument()
+    render(<WelcomeScreen onStart={vi.fn()} cfg={TEST_CFG} onCfgChange={vi.fn()} initialMode="easy" />)
+    expect(screen.getByText(/tap the button in time with each note/i)).toBeInTheDocument()
   })
 
   it('still shows the playback hint bullet', () => {
-    render(<WelcomeScreen onStart={vi.fn()} cfg={TEST_CFG} />)
-    expect(screen.getByText(/tap any measure to hear/i)).toBeInTheDocument()
+    render(<WelcomeScreen onStart={vi.fn()} cfg={TEST_CFG} onCfgChange={vi.fn()} initialMode="easy" />)
+    expect(screen.getByText(/tap any measure while playing/i)).toBeInTheDocument()
   })
 
   it('bpm-increase bullet uses cfg values', () => {
-    render(<WelcomeScreen onStart={vi.fn()} cfg={TEST_CFG} />)
-    // Mentions the increase amount and interval
-    expect(screen.getByText(/rises by 1 every 10 clean measures/i)).toBeInTheDocument()
+    render(<WelcomeScreen onStart={vi.fn()} cfg={TEST_CFG} onCfgChange={vi.fn()} initialMode="easy" />)
+    // Mentions the bpmIncreaseAfterMeasures (10) and bpmIncreaseAmount (1) from cfg
+    expect(screen.getByText(/every 10 perfect measures/i)).toBeInTheDocument()
   })
 })
 

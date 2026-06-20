@@ -108,9 +108,11 @@ export function useExerciseSession({
         }
       },
     )
-  // tapCapture.start is a stable ref — intentionally omitted
+  // tapCapture is a new object reference every render; only .start is used here,
+  // and it is a stable useCallback([], []). Including tapCapture would restart
+  // the metronome on every beat update, preventing the count-in from completing.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clearCaptureOpenTimer, tapCapture])
+  }, [clearCaptureOpenTimer])
 
   const handleStart = useCallback(() => {
     if (!exercise) return
