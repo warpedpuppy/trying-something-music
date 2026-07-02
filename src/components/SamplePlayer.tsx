@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { Pattern } from '../api/types'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '../auth/useAuth'
 import { Metronome } from './Metronome'
 import { RhythmPlayback } from './RhythmPlayback'
 import { RhythmStaff } from './RhythmStaff'
@@ -253,11 +253,11 @@ export function SamplePlayer({ exercise }: { exercise: SampleExercise }) {
         )}
       </div>
 
-      {/* Login nudge — only when logged out and a result is showing */}
+      {/* Profile nudge — only when no user is available and a result is showing */}
       {phase === 'result' && !user && (
         <div className="sample-login-nudge">
           <Link to="/register" className="button-primary">
-            Log in for more exercises →
+            Create a local profile for more exercises →
           </Link>
         </div>
       )}

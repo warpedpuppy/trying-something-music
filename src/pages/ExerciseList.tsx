@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api/client'
 import type { ExerciseListItem } from '../api/types'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '../auth/useAuth'
 import { skipToLevel } from '../lib/progression'
 import { usePageTitle } from '../hooks/usePageTitle'
 

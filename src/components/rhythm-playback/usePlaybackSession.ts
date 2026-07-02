@@ -52,7 +52,10 @@ export function usePlaybackSession({
   const playStartWallMsRef = useRef(0)
   const countingTimersRef = useRef<number[]>([])
   const onFirstPlayCompleteRef = useRef(onFirstPlayComplete)
-  onFirstPlayCompleteRef.current = onFirstPlayComplete
+
+  useEffect(() => {
+    onFirstPlayCompleteRef.current = onFirstPlayComplete
+  }, [onFirstPlayComplete])
 
   function stopPlayheadAnim() {
     if (playheadRafRef.current !== null) {
@@ -198,8 +201,9 @@ export function usePlaybackSession({
   }
 
   useEffect(() => {
-    startPlay(false, true)
+    const id = window.setTimeout(() => startPlay(false, true), 0)
     return () => {
+      window.clearTimeout(id)
       tickEngine.cancelAll()
       stopPlayheadAnim()
       clearCountingTimers()

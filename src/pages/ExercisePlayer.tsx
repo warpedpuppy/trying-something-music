@@ -39,13 +39,15 @@ export function ExercisePlayer() {
   // Load exercise data
   useEffect(() => {
     let cancelled = false
-    setExercise(null)
-    setError(null)
-    setShowPlayed(false)
-    setShowGiveUpModal(false)
     api
       .getExercise(Number(id))
-      .then((data) => { if (!cancelled) setExercise(data) })
+      .then((data) => {
+        if (cancelled) return
+        setError(null)
+        setShowPlayed(false)
+        setShowGiveUpModal(false)
+        setExercise(data)
+      })
       .catch((err) => { if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load') })
     return () => {
       cancelled = true

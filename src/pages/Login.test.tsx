@@ -24,11 +24,11 @@ function renderLogin() {
 }
 
 describe('Login', () => {
-  it('logs in with username only (no password)', async () => {
+  it('opens a saved profile with username only', async () => {
     const loginSpy = vi.spyOn(api, 'login').mockResolvedValue(TOKEN_RESPONSE)
     renderLogin()
     await userEvent.type(screen.getByLabelText('Profile name'), 'student')
-    await userEvent.click(screen.getByRole('button', { name: 'Log in' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Open profile' }))
     await waitFor(() => expect(loginSpy).toHaveBeenCalledWith('student'))
   })
 
@@ -36,7 +36,7 @@ describe('Login', () => {
     vi.spyOn(api, 'login').mockRejectedValue(new Error('No profile with that name exists.'))
     renderLogin()
     await userEvent.type(screen.getByLabelText('Profile name'), 'nobody')
-    await userEvent.click(screen.getByRole('button', { name: 'Log in' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Open profile' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'No profile with that name exists.',
     )

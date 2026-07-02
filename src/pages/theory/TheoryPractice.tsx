@@ -1,16 +1,14 @@
 import { Suspense, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useAuth } from '../../auth/AuthContext'
+import { useAuth } from '../../auth/useAuth'
 import { getTheoryCompletions } from '../../lib/localDb'
 import { PRACTICE_REGISTRY } from '../../lib/theoryPracticeRegistry'
+import { THEORY_LEVELS, THEORY_TOPIC_LABELS } from '../../lib/theoryTopics'
 import { usePageTitle } from '../../hooks/usePageTitle'
-import { LEVELS } from './TheoryHome'
 
-// Ordered topic list derived from LEVELS so practice chips appear in curriculum order
-const ORDERED_TOPICS = LEVELS.flatMap(level =>
-  level.topics.map(topic => {
-    const slug = topic.href.split('/').pop()!
-    return { slug, title: topic.title, levelName: level.name }
+const ORDERED_TOPICS = THEORY_LEVELS.flatMap(level =>
+  level.slugs.map(slug => {
+    return { slug, title: THEORY_TOPIC_LABELS[slug] ?? slug, levelName: level.name }
   })
 )
 

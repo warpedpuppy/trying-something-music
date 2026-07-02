@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { api } from '../api/client'
 import type { ProgressSummary } from '../api/types'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '../auth/useAuth'
 import { computeBadges } from '../lib/badges'
 import { THEORY_TOPIC_SLUGS } from '../lib/badges'
 import { SHOW_THEORY } from '../lib/featureFlags'
@@ -22,7 +22,7 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
-// ── Shared name-pair form (used for both login and create) ────────────────────
+// ── Shared name-pair form (used for both open and create) ─────────────────────
 
 interface NameFormProps {
   mode: 'login' | 'create'
@@ -55,8 +55,8 @@ function NameForm({ mode, onSubmit }: NameFormProps) {
   const label1 = mode === 'login' ? 'Profile name' : 'Choose a name'
   const label2 = mode === 'login' ? 'Type it again to confirm' : 'Type it again to confirm'
   const btnLabel = submitting
-    ? (mode === 'login' ? 'Logging in…' : 'Creating…')
-    : (mode === 'login' ? 'Log in' : 'Create profile')
+    ? (mode === 'login' ? 'Opening…' : 'Creating…')
+    : (mode === 'login' ? 'Open profile' : 'Create profile')
 
   return (
     <form onSubmit={handleSubmit} style={{ maxWidth: '320px' }}>
@@ -108,7 +108,7 @@ function DefaultUserProfileTab({
 
   return (
     <div style={{ marginTop: '22px' }}>
-      {/* Sub-tabs — only shown when there are existing named profiles to log in to */}
+      {/* Sub-tabs — only shown when there are existing named profiles to open */}
       {hasNamedProfiles && (
         <div className="tt-tabs" role="tablist" style={{ marginBottom: '22px' }}>
           <button
@@ -118,7 +118,7 @@ function DefaultUserProfileTab({
             className={`tt-tab${subTab === 'login' ? ' active' : ''}`}
             onClick={() => setSubTab('login')}
           >
-            Log in
+            Open profile
           </button>
           <button
             role="tab"
@@ -132,10 +132,10 @@ function DefaultUserProfileTab({
         </div>
       )}
 
-      {/* Log in sub-tab */}
+      {/* Open profile sub-tab */}
       {subTab === 'login' && hasNamedProfiles && (
         <div className="profile-section" style={{ marginTop: 0 }}>
-          <h2>Log in to a named profile</h2>
+          <h2>Open a named profile</h2>
           <p className="muted" style={{ marginBottom: '1rem' }}>
             Type the name of a profile that already exists on this browser.
             Type it twice — that's the only verification needed.
@@ -149,14 +149,12 @@ function DefaultUserProfileTab({
         <div className="profile-section" style={{ marginTop: 0 }}>
           <h2>Create a named profile</h2>
           <p>
-            Named profiles are useful when more than one person shares this browser.
+            Local profiles are useful when more than one person shares this browser.
             Each keeps its own rhythm level and badges completely separate.
           </p>
           <p>
-            <strong>There is no password.</strong> There's no data here important
-            enough to need one, and since this site collects no email addresses,
-            there would be no way to help you recover a forgotten password anyway.
-            Just pick a name. Everything stays on your device —{' '}
+            <strong>There is no password.</strong> This creates a browser profile,
+            not an online account. Just pick a name. Practice data stays on your device —{' '}
             <button type="button" className="link-button" onClick={onShowPrivacy}>
               learn how your data is stored
             </button>.
@@ -179,13 +177,13 @@ function NamedUserProfileTab() {
   return (
     <div style={{ marginTop: '22px' }}>
       <div className="profile-section" style={{ marginTop: 0 }}>
-        <h2>Log out</h2>
+        <h2>Switch back to You</h2>
         <p className="muted">
-          Logging out returns you to the default "You" profile. Your named
+          Switching back returns you to the default "You" profile. Your named
           profile's progress is saved and waiting whenever you come back.
         </p>
         <button type="button" className="button-secondary" onClick={logout}>
-          Log out
+          Switch back to You
         </button>
       </div>
 
@@ -236,9 +234,12 @@ export function UserProfile() {
       .then((p) => { if (!cancelled) setProgress(p) })
       .catch((e) => { if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load') })
     return () => { cancelled = true }
-  }, [user?.id])
+  }, [user])
 
-  useEffect(() => { setTab('overview') }, [user?.id])
+  useEffect(() => {
+    const id = window.setTimeout(() => setTab('overview'), 0)
+    return () => window.clearTimeout(id)
+  }, [user?.id])
 
   if (!user)     return null
   if (error)     return <p className="error-text">{error}</p>
@@ -267,8 +268,8 @@ export function UserProfile() {
 
   // Dynamic profile-tab label
   const profileTabLabel = isDefaultUser
-    ? (hasNamedProfiles ? 'Log in / create a profile' : 'Create a named profile')
-    : 'Log out'
+    ? (hasNamedProfiles ? 'Open or create a profile' : 'Create a named profile')
+    : 'Switch profile'
 
   const TABS: { id: ProfileTab; label: string }[] = [
     { id: 'overview', label: 'Overview' },
@@ -289,7 +290,7 @@ export function UserProfile() {
         <div>
           <h1 className="profile-username">{user.username}</h1>
           {isDefaultUser
-            ? <p className="profile-since">Your data is saved automatically — no account required.</p>
+            ? <p className="profile-since">Your practice data is saved automatically — no account required.</p>
             : localUser?.createdAt && (
                 <p className="profile-since">Member since {formatDate(localUser.createdAt)}</p>
               )}
@@ -372,24 +373,24 @@ export function UserProfile() {
           <div className="profile-section" style={{ marginTop: 0 }}>
             <h2>Your data stays with you</h2>
             <p>
-              Everything you do here is saved directly in <strong>your browser's local
+              Your practice data is saved directly in <strong>your browser's local
               storage</strong> — the same place browsers keep settings and offline data. No
-              account is required, and nothing is ever sent to a remote server. Not your
-              progress, not your attempt history, not your name.{' '}
+              account is required, and practice history is not sent to a remote server. Not your
+              progress, not your attempt history, not your local profile name.{' '}
               <strong>No server anywhere in the world learns anything about you from this
               site.</strong>
             </p>
             <p>
               Named profiles — if you create one — are also stored only in your browser.
-              No account is registered anywhere. No company holds your data.
-              The username you pick is just a label so two people sharing a browser
+              No account is registered anywhere. No company holds your practice data.
+              The name you pick is just a label so two people sharing a browser
               can keep their progress separate.
             </p>
           </div>
           <div className="profile-section profile-section--warning">
             <h2>⚠ One thing to know</h2>
             <p>
-              Because everything lives in your browser,{' '}
+              Because practice data lives in your browser,{' '}
               <strong>clearing your browser's local storage will erase all of it</strong> —
               your level and your badges — with no way to recover it.
               Most browsers offer this under "Clear site data" or "Clear cookies and cache."

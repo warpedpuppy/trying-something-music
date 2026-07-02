@@ -111,8 +111,8 @@ describe('ExercisePlayer', () => {
     renderPlayer()
     await screen.findByText('Four steady quarters')
 
-    // Count-in should be visible immediately after exercise loads
-    expect(screen.getByText(/Count-in/)).toBeInTheDocument()
+    // Count-in should appear before capture opens.
+    expect(await screen.findByText(/Count-in/)).toBeInTheDocument()
     expect(submitSpy).not.toHaveBeenCalled()
 
     // Wait for count-in to end

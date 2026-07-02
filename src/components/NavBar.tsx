@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '../auth/useAuth'
 import { setToken } from '../api/client'
 import { Logo } from './Logo'
 import { SHOW_THEORY } from '../lib/featureFlags'
@@ -151,7 +151,10 @@ export function NavBar() {
 
   // Close welcome modal on navigation; do NOT auto-close the mobile menu on navigation
   // so the user can switch sections without it snapping shut.
-  useEffect(() => { setShowWelcome(false) }, [location.pathname])
+  useEffect(() => {
+    const id = window.setTimeout(() => setShowWelcome(false), 0)
+    return () => window.clearTimeout(id)
+  }, [location.pathname])
 
   function handleLogout() {
     logout()
@@ -218,11 +221,11 @@ export function NavBar() {
 
         <div className="navbar-user">
           <Link to="/profile" className="navbar-username">{user?.username ?? 'You'}</Link>
-          {!isDefaultUser && (
-            <button type="button" className="link-button" onClick={handleLogout}>
-              Log out
-            </button>
-          )}
+            {!isDefaultUser && (
+              <button type="button" className="link-button" onClick={handleLogout}>
+              Switch to You
+              </button>
+            )}
         </div>
 
         <button
@@ -313,7 +316,7 @@ export function NavBar() {
               {user?.username ?? 'You'}
             </Link>
             {!isDefaultUser && (
-              <button type="button" className="link-button" onClick={handleLogout}>Log out</button>
+              <button type="button" className="link-button" onClick={handleLogout}>Switch to You</button>
             )}
           </div>
         </div>

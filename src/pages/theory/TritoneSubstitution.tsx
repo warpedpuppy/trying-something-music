@@ -186,7 +186,7 @@ function tsPick(pool: TSQ[], excludeKey?: string): TSQ {
   return p[Math.floor(Math.random() * p.length)]
 }
 
-function tsPickChoices(q: TSQ, _pool: TSQ[], _modeId: string): string[] {
+function tsPickChoices(q: TSQ): string[] {
   if (q.kind === 'find-chord') {
     const answer = q.tsQ.mode === 'find-sub' ? q.tsQ.pair.sub : q.tsQ.pair.original
     const vals = TRITONE_PAIRS.map(p => q.tsQ.mode === 'find-sub' ? p.sub : p.original)
@@ -196,7 +196,7 @@ function tsPickChoices(q: TSQ, _pool: TSQ[], _modeId: string): string[] {
   return [...q.conceptQ.choices].sort(() => Math.random() - 0.5)
 }
 
-function tsGetAnswer(q: TSQ, _modeId: string): string {
+function tsGetAnswer(q: TSQ): string {
   if (q.kind === 'find-chord') return q.tsQ.mode === 'find-sub' ? q.tsQ.pair.sub : q.tsQ.pair.original
   return q.conceptQ.answer
 }

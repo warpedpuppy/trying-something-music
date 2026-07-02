@@ -34,6 +34,7 @@ export function useExerciseSession({
   const [result, setResult] = useState<AttemptResult | null>(null)
   const [lastTaps, setLastTaps] = useState<number[]>([])
   const [downbeatNonce, setDownbeatNonce] = useState<number | null>(null)
+  const [downbeatEpoch, setDownbeatEpoch] = useState(0)
 
   const downbeatEpochRef = useRef(0)
   const captureOpenTimerRef = useRef<number | null>(null)
@@ -54,7 +55,7 @@ export function useExerciseSession({
         const attempt = await api.submitAttempt(exercise.id, tapsMs, gaveUp, 'strict')
         setResult(attempt)
         setPhase('result')
-      } catch (err) {
+      } catch {
         setPhase('idle')
       }
     },
@@ -68,6 +69,7 @@ export function useExerciseSession({
       if (tapIndex === 0 && exercise && onsets.length > 0) {
         const msPerBeat = 60000 / exercise.tempo_bpm
         downbeatEpochRef.current = performance.now() - onsets[0].beat * msPerBeat
+        setDownbeatEpoch(downbeatEpochRef.current)
       }
     },
     onComplete: (tapsMs) => {
@@ -90,7 +92,7 @@ export function useExerciseSession({
 
     tickEngine.startMetronome(
       ex.tempo_bpm,
-      (index, _wallTimeMs) => {
+      (index) => {
         if (index < countInBeats) setCountInBeat(index + 1)
 
         if (index === countInBeats - 1) {
@@ -138,13 +140,18 @@ export function useExerciseSession({
 
   // Load exercise data
   useEffect(() => {
-    setPhase('idle')
-    setResult(null)
-    setCountInBeat(null)
-    setDownbeatNonce(null)
-    resetCapture()
+    const id = window.setTimeout(() => {
+      setPhase('idle')
+      setResult(null)
+      setCountInBeat(null)
+      setDownbeatNonce(null)
+      downbeatEpochRef.current = 0
+      setDownbeatEpoch(0)
+      resetCapture()
+    }, 0)
 
     return () => {
+      window.clearTimeout(id)
       clearCaptureOpenTimer()
       tickEngine.cancelAll()
     }
@@ -154,7 +161,8 @@ export function useExerciseSession({
   useEffect(() => {
     if (!exercise) return
     tickEngine.warmUp()
-    startCountIn(exercise)
+    const id = window.setTimeout(() => startCountIn(exercise), 0)
+    return () => window.clearTimeout(id)
   }, [exercise, startCountIn])
 
   return {
@@ -163,7 +171,7 @@ export function useExerciseSession({
     result,
     lastTaps,
     downbeatNonce,
-    downbeatEpoch: downbeatEpochRef.current,
+    downbeatEpoch,
     tapCapture,
     handleStart,
     handleGiveUp,

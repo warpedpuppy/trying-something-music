@@ -183,10 +183,15 @@ const VSSMeasureBlock = memo(function VSSMeasureBlock({
   onAnchors,
 }: VSSMeasureBlockProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const [renderError, setRenderError] = useState(false)
 
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
+    let statusTimer: number | null = null
+    const setRenderErrorDeferred = (value: boolean) => {
+      statusTimer = window.setTimeout(() => setRenderError(value), 0)
+    }
     try {
       const result = renderPattern(
         el,
@@ -201,8 +206,13 @@ const VSSMeasureBlock = memo(function VSSMeasureBlock({
         },
       )
       onAnchors?.(result.anchors)
-    } catch {
-      // silently ignore VexFlow render errors
+      setRenderErrorDeferred(false)
+    } catch (err) {
+      console.warn('VexflowScrollingStaff measure render failed', err)
+      setRenderErrorDeferred(true)
+    }
+    return () => {
+      if (statusTimer !== null) window.clearTimeout(statusTimer)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -210,6 +220,7 @@ const VSSMeasureBlock = memo(function VSSMeasureBlock({
   return (
     <div className="vss-measure">
       <div className="vss-notation-wrapper">
+        {renderError && <p className="error-text">Notation unavailable</p>}
         <div ref={containerRef} className="pa-notation-container" />
       </div>
     </div>

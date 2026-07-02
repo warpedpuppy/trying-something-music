@@ -75,7 +75,7 @@ export function About() {
           <p>
             No account is required to use this site. The moment you arrive, you
             are automatically identified as <strong>"You"</strong> and your
-            progress begins saving to your browser's local storage. That's it.
+            practice progress begins saving to your browser's local storage. That's it.
             Nothing more happens.
           </p>
           <p>
@@ -86,7 +86,7 @@ export function About() {
             No remote server ever receives any of that data. There are no
             advertising networks, no accounts shared with third parties, and no
             backend that touches your practice history. If you clear your
-            browser's local storage, your data is gone — there is no cloud
+            browser's local storage, your practice data is gone — there is no cloud
             backup because there is no cloud.
           </p>
           <p>
@@ -108,11 +108,11 @@ export function About() {
           <h2>Multiple users on the same browser</h2>
           <p>
             If you share a browser with others and want to keep your progress
-            separate, you can create a named profile from your{" "}
+            separate, you can create a local named profile from your{" "}
             <a href="/profile">profile page</a> (click "You" in the top
             navigation). Each named profile stores its own data locally using
-            your chosen username as a label. There is no password — there is no
-            data here important enough to need one. Your name is just a label,
+            your chosen name as a label. There is no password because these are
+            browser profiles, not online accounts. Your name is just a label,
             stored entirely on your own device.
           </p>
         </section>
@@ -161,13 +161,13 @@ export function About() {
             Ted loves music. Ted loves coding. Hence this site.
           </p>
           <p>
-            More at{" "}
+            Trying Something is a product of{" "}
             <a
               href="https://warpedpuppy.com"
               target="_blank"
               rel="noopener noreferrer"
             >
-              warpedpuppy.com
+              Warped Puppy LLC
             </a>
             .
           </p>

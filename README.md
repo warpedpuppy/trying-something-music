@@ -14,7 +14,7 @@ No signup required. Works in any browser. Installs as a PWA so it lives on your 
 
 **Play Along** — Pick a BPM, choose a reel, and tap along to a musical phrase at your own pace. Bump the tempo up as you get comfortable. A game-over review shows you exactly where your timing drifted.
 
-**Music Theory** — A growing section on note values, time signatures, and how rhythm actually works on a page. Written for players, not academics.
+**Music Theory** — An experimental section on note values, time signatures, harmony, and how music works on a page. It is available behind the theory feature flag while the rhythm trainer remains the default product.
 
 **Badges and progress** — Exercises track your personal bests. A dashboard shows where you've improved and what's still fighting back.
 
@@ -26,7 +26,7 @@ No signup required. Works in any browser. Installs as a PWA so it lives on your 
 - [x] Play Along mode with BPM picker and session review
 - [x] Badges and progress dashboard
 - [x] Progressive Web App (installable, offline-capable)
-- [ ] Music Theory fundamentals section
+- [x] Music Theory experimental section behind a feature flag
 - [ ] Advanced sight-reading modules
 
 ---
@@ -34,7 +34,6 @@ No signup required. Works in any browser. Installs as a PWA so it lives on your 
 ## Running locally
 
 ```bash
-cd frontend
 npm install
 npm run dev
 ```

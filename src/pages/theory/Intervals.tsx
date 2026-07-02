@@ -193,7 +193,10 @@ function IntervalSingAlong({ question, onAdvance }: IntervalSingAlongProps) {
   const [revealed, setRevealed] = useState(false)
 
   // Reset revealed state when question changes
-  useEffect(() => { setRevealed(false) }, [question])
+  useEffect(() => {
+    const id = window.setTimeout(() => setRevealed(false), 0)
+    return () => window.clearTimeout(id)
+  }, [question])
 
   function handleReveal() {
     setRevealed(true)

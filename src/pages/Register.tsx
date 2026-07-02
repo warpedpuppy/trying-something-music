@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '../auth/useAuth'
 import { usePageTitle } from '../hooks/usePageTitle'
 
 export function Register() {
-  usePageTitle('Create a Profile')
+  usePageTitle('Create a Local Profile')
   const { register } = useAuth()
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
@@ -25,7 +25,7 @@ export function Register() {
       await register(username)
       navigate('/rhythm/dashboard')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed')
+      setError(err instanceof Error ? err.message : 'Could not create profile')
     } finally {
       setSubmitting(false)
     }
@@ -33,11 +33,10 @@ export function Register() {
 
   return (
     <div className="card auth-card">
-      <h1>Create a profile</h1>
+      <h1>Create a local profile</h1>
       <p className="muted">
-        No password needed. There's no data here important enough to require one,
-        and since we don't collect email addresses, there'd be no way to recover
-        a forgotten password anyway. Just pick a name.
+        No password needed. This creates a browser profile on this device, not
+        an online account. Just pick a name.
       </p>
       <form onSubmit={handleSubmit}>
         <div className="form-field">
@@ -70,7 +69,7 @@ export function Register() {
         </button>
       </form>
       <p className="muted">
-        Already have a profile? <Link to="/login">Log in</Link>
+        Already have a profile in this browser? <Link to="/login">Open it</Link>
       </p>
     </div>
   )

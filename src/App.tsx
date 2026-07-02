@@ -1,7 +1,7 @@
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { AuthProvider } from './auth/AuthContext'
-import { useAuth } from './auth/AuthContext'
+import { useAuth } from './auth/useAuth'
 import { ProtectedRoute } from './auth/ProtectedRoute'
 import { NavBar } from './components/NavBar'
 import { RippleCanvas } from './components/RippleCanvas'
@@ -18,30 +18,32 @@ import { Login } from './pages/Login'
 import { PlayAlong } from './pages/PlayAlong'
 import { Register } from './pages/Register'
 import { UserProfile } from './pages/UserProfile'
-import { TheoryHome, TheoryLevelPage } from './pages/theory/TheoryHome'
-import { TheoryPractice } from './pages/theory/TheoryPractice'
-import { CircleOfFifths } from './pages/theory/CircleOfFifths'
-import { NotesAndStaff } from './pages/theory/NotesAndStaff'
-import { KeySignatures } from './pages/theory/KeySignatures'
-import { IntervalsPage } from './pages/theory/Intervals'
-import { ScalesAndMajorScale } from './pages/theory/ScalesPage'
-import { TriadsAndChords } from './pages/theory/Chords'
-import { Cadences } from './pages/theory/Cadences'
-import { ChordProgressions } from './pages/theory/Progressions'
-import { DiatonicHarmony } from './pages/theory/DiatonicHarmony'
-import { VoiceLeading } from './pages/theory/VoiceLeading'
-import { SecondaryDominants } from './pages/theory/SecondaryDominants'
-import { ModalMixture } from './pages/theory/ModalMixture'
-import { Blues } from './pages/theory/Blues'
-import { ChordSymbols } from './pages/theory/ChordSymbols'
-import { Modulation } from './pages/theory/Modulation'
-import { ModesPage } from './pages/theory/Modes'
-import { ExtendedChords } from './pages/theory/ExtendedChords'
-import { TritoneSubstitution } from './pages/theory/TritoneSubstitution'
-import { Counterpoint } from './pages/theory/Counterpoint'
-import { FormAndStructure } from './pages/theory/FormAndStructure'
-import { Reharmonization } from './pages/theory/Reharmonization'
 import './App.css'
+
+const TheoryHome = lazy(() => import('./pages/theory/TheoryHome').then(m => ({ default: m.TheoryHome })))
+const TheoryLevelPage = lazy(() => import('./pages/theory/TheoryHome').then(m => ({ default: m.TheoryLevelPage })))
+const TheoryPractice = lazy(() => import('./pages/theory/TheoryPractice').then(m => ({ default: m.TheoryPractice })))
+const CircleOfFifths = lazy(() => import('./pages/theory/CircleOfFifths').then(m => ({ default: m.CircleOfFifths })))
+const NotesAndStaff = lazy(() => import('./pages/theory/NotesAndStaff').then(m => ({ default: m.NotesAndStaff })))
+const KeySignatures = lazy(() => import('./pages/theory/KeySignatures').then(m => ({ default: m.KeySignatures })))
+const IntervalsPage = lazy(() => import('./pages/theory/Intervals').then(m => ({ default: m.IntervalsPage })))
+const ScalesAndMajorScale = lazy(() => import('./pages/theory/ScalesPage').then(m => ({ default: m.ScalesAndMajorScale })))
+const TriadsAndChords = lazy(() => import('./pages/theory/Chords').then(m => ({ default: m.TriadsAndChords })))
+const Cadences = lazy(() => import('./pages/theory/Cadences').then(m => ({ default: m.Cadences })))
+const ChordProgressions = lazy(() => import('./pages/theory/Progressions').then(m => ({ default: m.ChordProgressions })))
+const DiatonicHarmony = lazy(() => import('./pages/theory/DiatonicHarmony').then(m => ({ default: m.DiatonicHarmony })))
+const VoiceLeading = lazy(() => import('./pages/theory/VoiceLeading').then(m => ({ default: m.VoiceLeading })))
+const SecondaryDominants = lazy(() => import('./pages/theory/SecondaryDominants').then(m => ({ default: m.SecondaryDominants })))
+const ModalMixture = lazy(() => import('./pages/theory/ModalMixture').then(m => ({ default: m.ModalMixture })))
+const Blues = lazy(() => import('./pages/theory/Blues').then(m => ({ default: m.Blues })))
+const ChordSymbols = lazy(() => import('./pages/theory/ChordSymbols').then(m => ({ default: m.ChordSymbols })))
+const Modulation = lazy(() => import('./pages/theory/Modulation').then(m => ({ default: m.Modulation })))
+const ModesPage = lazy(() => import('./pages/theory/Modes').then(m => ({ default: m.ModesPage })))
+const ExtendedChords = lazy(() => import('./pages/theory/ExtendedChords').then(m => ({ default: m.ExtendedChords })))
+const TritoneSubstitution = lazy(() => import('./pages/theory/TritoneSubstitution').then(m => ({ default: m.TritoneSubstitution })))
+const Counterpoint = lazy(() => import('./pages/theory/Counterpoint').then(m => ({ default: m.Counterpoint })))
+const FormAndStructure = lazy(() => import('./pages/theory/FormAndStructure').then(m => ({ default: m.FormAndStructure })))
+const Reharmonization = lazy(() => import('./pages/theory/Reharmonization').then(m => ({ default: m.Reharmonization })))
 
 function RippleClearer() {
   const { pathname } = useLocation()
@@ -107,7 +109,7 @@ function App() {
 
             {/* theory section — only when ?theory=true flag is set */}
             {SHOW_THEORY && (
-              <Route path="/theory" element={<TheoryTracker />}>
+              <Route path="/theory" element={<Suspense fallback={null}><TheoryTracker /></Suspense>}>
                 <Route index                      element={<TheoryHome />} />
                 <Route path="beginner"            element={<TheoryLevelPage levelName="Beginner" />} />
                 <Route path="intermediate"        element={<TheoryLevelPage levelName="Intermediate" />} />
@@ -148,7 +150,7 @@ function App() {
         </main>
 
         <footer className="site-footer">
-          <span>© {new Date().getFullYear()} trying something · all data stored locally in your browser</span>
+          <span>© {new Date().getFullYear()} <a href="https://warpedpuppy.com" target="_blank" rel="noopener noreferrer">Warped Puppy LLC</a> · trying something · practice data stored locally in your browser</span>
         </footer>
       </BrowserRouter>
     </AuthProvider>

@@ -13,7 +13,7 @@
 import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '../auth/useAuth'
 import { getTheoryCompletions, markTheoryComplete } from '../lib/localDb'
 import { THEORY_LEVELS } from '../lib/theoryTopics'
 

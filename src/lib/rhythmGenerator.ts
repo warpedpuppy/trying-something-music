@@ -21,6 +21,7 @@
  */
 
 import type { PatternEvent } from "../api/types";
+import { eventBeats } from "./rhythm";
 
 // ── Seeded PRNG (Mulberry32) ──────────────────────────────────────────────────
 
@@ -144,29 +145,7 @@ function fillMeasure(
 }
 
 function fillBeats(fill: Fill): number {
-  return fill.reduce((sum, e) => {
-    const base = durationBeats(e.duration);
-    return sum + base + (e.dots ? base * 0.5 : 0);
-  }, 0);
-}
-
-function durationBeats(dur: PatternEvent["duration"]): number {
-  switch (dur) {
-    case "w":
-      return 4;
-    case "h":
-      return 2;
-    case "q":
-      return 1;
-    case "8":
-      return 0.5;
-    case "16":
-      return 0.25;
-    case "8t":
-      return 1 / 3;
-    default:
-      return 1;
-  }
+  return fill.reduce((sum, e) => sum + eventBeats(e), 0);
 }
 
 // ── Post-processing ───────────────────────────────────────────────────────────
@@ -220,10 +199,7 @@ export function minNotesForLevel(level: number): number {
 // ── Safe wrapper ──────────────────────────────────────────────────────────────
 
 function fillsBar(events: PatternEvent[], beats: number): boolean {
-  const total = events.reduce((s, e) => {
-    const b = durationBeats(e.duration);
-    return s + b + (e.dots ? b * 0.5 : 0);
-  }, 0);
+  const total = events.reduce((sum, event) => sum + eventBeats(event), 0);
   return Math.abs(total - beats) < 0.01;
 }
 

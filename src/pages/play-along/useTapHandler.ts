@@ -10,7 +10,6 @@ interface UseTapHandlerArgs {
   userPausedRef: React.MutableRefObject<boolean>
   tapFlashTimerRef: React.MutableRefObject<number | null>
   tapBtnRef: React.MutableRefObject<HTMLButtonElement | null>
-  tapTimesRef: React.MutableRefObject<number[]>
   reelPxRef: React.MutableRefObject<number>
   bpmRef: React.MutableRefObject<number>
   pendingRef: React.MutableRefObject<PendingOnset[]>
@@ -25,7 +24,6 @@ export function useTapHandler({
   userPausedRef,
   tapFlashTimerRef,
   tapBtnRef,
-  tapTimesRef,
   reelPxRef,
   bpmRef,
   pendingRef,
@@ -45,12 +43,6 @@ export function useTapHandler({
       const r = tapBtnRef.current.getBoundingClientRect()
       triggerRainbowBurst(r.left + r.width / 2, r.top + r.height / 2)
     }
-
-    const now = performance.now()
-
-    const recent = tapTimesRef.current.filter(t => now - t < 4000)
-    recent.push(now)
-    tapTimesRef.current = recent
 
     const tapPx      = reelPxRef.current
     const hitWindowPx = HIT_WINDOW_MS * (SLOT_PX / msPerMeasure(bpmRef.current))
@@ -80,5 +72,5 @@ export function useTapHandler({
       const x = reelPxRef.current % SLOT_PX
       setStrayMap(prev => ({ ...prev, [loopIdx]: [...(prev[loopIdx] ?? []), x] }))
     }
-  }, [phase, userPausedRef, tapFlashTimerRef, tapBtnRef, tapTimesRef, reelPxRef, bpmRef, pendingRef, consecutiveMissesRef, setTapFlash, setHitMap, setStrayMap])
+  }, [phase, userPausedRef, tapFlashTimerRef, tapBtnRef, reelPxRef, bpmRef, pendingRef, consecutiveMissesRef, setTapFlash, setHitMap, setStrayMap])
 }

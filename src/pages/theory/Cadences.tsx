@@ -134,8 +134,8 @@ function cadPickQuestion(pool: Cadence[], excludeId?: string): Cadence {
   return candidates[Math.floor(Math.random() * candidates.length)]
 }
 
-function cadPickChoices(_q: Cadence, _pool: Cadence[]): string[] {
-  const correct = _q.type
+function cadPickChoices(q: Cadence): string[] {
+  const correct = q.type
   const others = TYPES.filter(t => t !== correct).sort(() => Math.random() - 0.5)
   return [...others, correct].sort(() => Math.random() - 0.5)
 }

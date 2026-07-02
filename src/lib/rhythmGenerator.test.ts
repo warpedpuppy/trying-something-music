@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import { generateReel, ensureNoLeadingRest, ensureNoTrailingRest, countNotes, minNotesForLevel } from './rhythmGenerator'
-import { DURATION_BEATS } from './rhythm'
+import { DURATION_BEATS, eventBeats } from './rhythm'
 
 // ── ensureNoLeadingRest ────────────────────────────────────────────────────────
 
@@ -148,16 +148,10 @@ describe('generateReel — first measure', () => {
   })
 
   it('still produces a measure with the correct beat count', () => {
-    const DURATION_BEATS: Record<string, number> = {
-      w: 4, h: 2, q: 1, '8': 0.5, '16': 0.25,
-    }
     for (let seed = 0; seed < 20; seed++) {
       const reel = generateReel(24, seed)
       const events = reel[0].events
-      const total = events.reduce((sum, e) => {
-        const base = DURATION_BEATS[e.duration] ?? 1
-        return sum + base + (e.dots ? base * 0.5 : 0)
-      }, 0)
+      const total = events.reduce((sum, event) => sum + eventBeats(event), 0)
       // First measure is always 4/4 at level 1-2
       expect(total, `seed ${seed}`).toBeCloseTo(4)
     }

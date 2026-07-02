@@ -1,11 +1,11 @@
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState, type MouseEvent } from 'react'
 import { renderPattern } from '../../lib/vexflowPattern'
 import { SLOT_PX } from '../../lib/playAlongTiming'
 import type { GeneratedMeasure } from '../../lib/rhythmGenerator'
 
 interface NotationBlockProps {
   measure: GeneratedMeasure
-  onClick: () => void
+  onClick: (event?: MouseEvent<HTMLDivElement>) => void
   hitNoteIndices?: number[]
   missNoteIndices?: number[]
   strayXs?: number[]
@@ -23,10 +23,15 @@ export const NotationBlock = memo(function NotationBlock({
   const containerRef = useRef<HTMLDivElement>(null)
   const anchorsRef   = useRef<Map<number, number>>(new Map())
   const [downbeatNoteX, setDownbeatNoteX] = useState<number | null>(null)
+  const [renderError, setRenderError] = useState(false)
 
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
+    let statusTimer: number | null = null
+    const setRenderErrorDeferred = (value: boolean) => {
+      statusTimer = window.setTimeout(() => setRenderError(value), 0)
+    }
     try {
       const result = renderPattern(
         el,
@@ -40,8 +45,13 @@ export const NotationBlock = memo(function NotationBlock({
       anchorsRef.current = map
 
       if (result.firstEventX !== undefined) setDownbeatNoteX(result.firstEventX)
-    } catch {
-      // silently ignore render errors
+      setRenderErrorDeferred(false)
+    } catch (err) {
+      console.warn('NotationBlock render failed', err)
+      setRenderErrorDeferred(true)
+    }
+    return () => {
+      if (statusTimer !== null) window.clearTimeout(statusTimer)
     }
   }, [measure])
 
@@ -65,6 +75,7 @@ export const NotationBlock = memo(function NotationBlock({
             style={{ left: downbeatNoteX }}
           >▼</div>
         )}
+        {renderError && <p className="error-text">Notation unavailable</p>}
         <div ref={containerRef} className="pa-notation-container" />
 
         {hitNoteIndices && hitNoteIndices.length > 0 && (

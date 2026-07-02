@@ -10,7 +10,7 @@ export function ComingSoon() {
         <Logo showTagline height={130} className="cs-logo" />
         <p className="cs-sub">
           An interactive platform for learning rhythm and music theory —
-          free, no account required to start, all data stays in your browser.
+          free, no account required to start, practice data stays in your browser.
         </p>
         <p className="cs-coming-soon">Coming soon</p>
       </section>
@@ -105,7 +105,7 @@ export function ComingSoon() {
       <footer className="cs-footer">
         <p>
           TryingSomething.com &nbsp;·&nbsp;
-          All data stored locally in your browser &nbsp;·&nbsp;
+          Practice data stored locally in your browser &nbsp;·&nbsp;
           No account needed to start &nbsp;·&nbsp;
           <Link to="/about" style={{ color: 'inherit', opacity: 0.7 }}>About this project</Link>
         </p>

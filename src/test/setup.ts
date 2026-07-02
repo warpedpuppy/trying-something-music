@@ -22,12 +22,14 @@ if (typeof window !== 'undefined' && typeof window.localStorage === 'undefined')
   }
   Object.defineProperty(window, 'localStorage', { value: localStorageStub, writable: true })
   Object.defineProperty(globalThis, 'localStorage', { value: localStorageStub, writable: true })
+} else if (typeof window !== 'undefined') {
+  Object.defineProperty(globalThis, 'localStorage', { value: window.localStorage, writable: true })
 }
 
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
-  if (typeof localStorage !== 'undefined') localStorage.clear()
+  if (typeof window !== 'undefined') window.localStorage.clear()
 })
 
 class MockOscillator {
@@ -81,4 +83,39 @@ if (typeof window !== 'undefined') {
       disconnect = vi.fn()
     } as unknown as typeof ResizeObserver
   }
+
+  const canvasContext = {
+    arc: vi.fn(),
+    beginPath: vi.fn(),
+    bezierCurveTo: vi.fn(),
+    clearRect: vi.fn(),
+    closePath: vi.fn(),
+    fill: vi.fn(),
+    fillRect: vi.fn(),
+    fillText: vi.fn(),
+    lineTo: vi.fn(),
+    measureText: vi.fn((text: string) => ({
+      width: text.length * 8,
+      actualBoundingBoxAscent: 10,
+      actualBoundingBoxDescent: 2,
+    })),
+    moveTo: vi.fn(),
+    quadraticCurveTo: vi.fn(),
+    rect: vi.fn(),
+    restore: vi.fn(),
+    rotate: vi.fn(),
+    save: vi.fn(),
+    scale: vi.fn(),
+    setLineDash: vi.fn(),
+    stroke: vi.fn(),
+    strokeRect: vi.fn(),
+    strokeText: vi.fn(),
+    transform: vi.fn(),
+    translate: vi.fn(),
+  }
+
+  Object.defineProperty(window.HTMLCanvasElement.prototype, 'getContext', {
+    writable: true,
+    value: vi.fn(() => canvasContext),
+  })
 }

@@ -211,7 +211,7 @@ function modPick(pool: ModQ[], excludeKey?: string): ModQ {
   return p[Math.floor(Math.random() * p.length)]
 }
 
-function modPickChoices(q: ModQ, _pool: ModQ[], _modeId: string): string[] {
+function modPickChoices(q: ModQ): string[] {
   if (q.kind === 'pivot') {
     const allRomans = q.step === 'from' ? FROM_ROMANS : TO_ROMANS
     const others = allRomans.filter(r => r !== q.answer).sort(() => Math.random() - 0.5).slice(0, 3)

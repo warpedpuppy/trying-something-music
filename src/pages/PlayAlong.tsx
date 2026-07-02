@@ -41,6 +41,14 @@ export interface PendingOnset {
   resolved: boolean; // hit or miss already recorded
 }
 
+function nowMs(): number {
+  return performance.now();
+}
+
+function randomSeed(): number {
+  return Math.floor(Math.random() * 9999999);
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function PlayAlong() {
@@ -63,6 +71,8 @@ export function PlayAlong() {
   const [mistakenMeasures, setMistakenMeasures] = useState<GeneratedMeasure[]>(
     [],
   );
+  const [reelSnapshot, setReelSnapshot] = useState<GeneratedMeasure[]>([]);
+  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
 
   // Green (hit) and orange (miss) dots, keyed by looped measure index
   const [hitMap, setHitMap] = useState<Record<number, number[]>>({});
@@ -105,6 +115,7 @@ export function PlayAlong() {
   // Game progression refs
   const consecutiveMissesRef = useRef(0);
   const successfulMeasuresRef = useRef(0);
+  const missedMeasureLoopIdxsRef = useRef(new Set<number>());
   const prevCompletedRef = useRef(-1); // last absolute measure we scored
   const bpmNotifTimerRef = useRef<number | null>(null);
 
@@ -121,6 +132,7 @@ export function PlayAlong() {
 
   // Current measure beat dots
   const [beatsInMeasure, setBeatsInMeasure] = useState(4);
+  const currentBeatsInMeasureRef = useRef(4);
   const prevMeasureLoopIdxRef = useRef(-1);
   const prevBeatIndexRef = useRef(-1);
 
@@ -129,8 +141,7 @@ export function PlayAlong() {
   // Ring buffer of SLOT_COUNT measure slots — populated and recycled as the game advances
   const reelRef = useRef<GeneratedMeasure[]>([]);
 
-  // Tap timing
-  const tapTimesRef = useRef<number[]>([]);
+  // Tap flash timer
   const tapFlashTimerRef = useRef<number | null>(null);
 
   // Absolute-index → GeneratedMeasure for every measure that had at least one miss
@@ -172,9 +183,10 @@ export function PlayAlong() {
   useGameLoop({
     phase,
     cfg,
-    beatsInMeasure,
+    currentBeatsInMeasureRef,
     bpmRef,
     reelRef,
+    setReelSnapshot,
     reelViewportRef,
     reelTrackRef,
     pendingRef,
@@ -193,6 +205,7 @@ export function PlayAlong() {
     stageNotifTimerRef,
     bpmNotifTimerRef,
     successfulMeasuresRef,
+    missedMeasureLoopIdxsRef,
     mistakenAbsMeasuresRef,
     baseSeedRef,
     setBeatsInMeasure,
@@ -207,7 +220,6 @@ export function PlayAlong() {
     onGameOver: triggerGameOver,
     scheduleMeasure,
     beatIndex,
-    missMap,
   });
 
   // ── Welcome → Static ──────────────────────────────────────────────────────
@@ -222,17 +234,20 @@ export function PlayAlong() {
     setBpm(initialBpm);
     consecutiveMissesRef.current = 0;
     successfulMeasuresRef.current = 0;
+    missedMeasureLoopIdxsRef.current = new Set();
     prevCompletedRef.current = -1;
     prevStageRef.current = 0; // don't fire notification at game start
 
     // Fresh random seed — every game session gets a unique measure sequence
-    const seed = Math.floor(Math.random() * 9999999);
+    const seed = randomSeed();
     baseSeedRef.current = seed;
 
     // Populate the ring buffer with the first SLOT_COUNT measures
-    reelRef.current = Array.from({ length: SLOT_COUNT }, (_, i) =>
+    const generatedReel = Array.from({ length: SLOT_COUNT }, (_, i) =>
       generateMeasureAtIndex(i, activeMode, seed),
     );
+    reelRef.current = generatedReel;
+    setReelSnapshot(generatedReel);
     slotGenerationsRef.current = Array.from(
       { length: SLOT_COUNT },
       (_, i) => i,
@@ -249,6 +264,7 @@ export function PlayAlong() {
     userPausedRef.current = false;
     pausedRef.current = false;
     const beats = reelRef.current[0]?.timeSigTop ?? 4;
+    currentBeatsInMeasureRef.current = beats;
     setBeatsInMeasure(beats);
     phaseRef.current = "static";
     setPhase("static");
@@ -267,7 +283,7 @@ export function PlayAlong() {
 
   function startPlaying() {
     initPending();
-    startTimeRef.current = performance.now();
+    startTimeRef.current = nowMs();
     reelPxRef.current = 0;
     lastFrameTimeRef.current = 0;
 
@@ -323,7 +339,7 @@ export function PlayAlong() {
   // ── User pause / resume ───────────────────────────────────────────────────
 
   function handlePause() {
-    const elapsed = performance.now() - startTimeRef.current;
+    const elapsed = nowMs() - startTimeRef.current;
     userPauseElapsedRef.current = elapsed;
     userPausedRef.current = true;
     setPaused(true);
@@ -333,7 +349,7 @@ export function PlayAlong() {
   function handleResume() {
     // Recalculate startTime from the saved elapsed at pause — ignores any
     // modal-review pauses that happened while user-paused.
-    startTimeRef.current = performance.now() - userPauseElapsedRef.current;
+    startTimeRef.current = nowMs() - userPauseElapsedRef.current;
     userPausedRef.current = false;
     pausedRef.current = false;
     setPaused(false);
@@ -350,7 +366,6 @@ export function PlayAlong() {
     userPausedRef,
     tapFlashTimerRef,
     tapBtnRef,
-    tapTimesRef,
     reelPxRef,
     bpmRef,
     pendingRef,
@@ -362,14 +377,14 @@ export function PlayAlong() {
 
   // ── Measure click → review modal ─────────────────────────────────────────
 
-  function handleMeasureClick(measure: GeneratedMeasure) {
+  function handleMeasureClick(measure: GeneratedMeasure, eventTime = 0) {
     if (phaseRef.current === "gameover") {
       setReviewMeasure(measure);
       return;
     }
     if (phaseRef.current === "playing" && !pausedRef.current) {
       pausedRef.current = true;
-      pauseStartRef.current = performance.now();
+      pauseStartRef.current = eventTime;
     }
     tickEngine.stopMetronome();
     setReviewMeasure(measure);
@@ -385,7 +400,7 @@ export function PlayAlong() {
       startTimeRef.current = resumedStartTime(
         startTimeRef.current,
         pauseStartRef.current,
-        performance.now(),
+        nowMs(),
       );
       pausedRef.current = false;
     } else if (pausedRef.current) {
@@ -419,6 +434,17 @@ export function PlayAlong() {
     return () =>
       document.removeEventListener("visibilitychange", handleVisibility);
   }, []);
+
+  useEffect(() => {
+    const viewport = reelViewportRef.current;
+    if (!viewport) return;
+    setViewportWidth(viewport.offsetWidth || window.innerWidth);
+    const observer = new ResizeObserver(() => {
+      setViewportWidth(viewport.offsetWidth || window.innerWidth);
+    });
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  }, [phase]);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -478,8 +504,7 @@ export function PlayAlong() {
   }
 
   // Compute the initial reel translateX for the static phase
-  const vpWidth = reelViewportRef.current?.offsetWidth ?? window.innerWidth;
-  const staticTX = vpWidth * CURSOR_FRAC;
+  const staticTX = viewportWidth * CURSOR_FRAC;
 
   return (
     <div className="pa-playing">
@@ -529,12 +554,12 @@ export function PlayAlong() {
         >
           {Array.from({ length: SLOT_COUNT + EXTRA_SLOTS }, (_, i) => {
             const slotIdx = i % SLOT_COUNT;
-            const item = reelRef.current[slotIdx];
+            const item = reelSnapshot[slotIdx];
             return (
               <NotationBlock
                 key={i}
                 measure={item}
-                onClick={() => handleMeasureClick(item)}
+                onClick={(event) => handleMeasureClick(item, event?.timeStamp ?? 0)}
                 hitNoteIndices={hitMap[slotIdx]}
                 missNoteIndices={missMap[slotIdx]}
                 strayXs={strayMap[slotIdx]}

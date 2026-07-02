@@ -58,11 +58,14 @@ export function RhythmStaff({
   const figureRef    = useRef<HTMLElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const onRenderedRef = useRef(onRendered)
-  onRenderedRef.current = onRendered   // keep ref fresh without triggering re-renders
 
   const [anchors, setAnchors]         = useState<NoteAnchor[]>([])
   const [firstEventX, setFirstEventX] = useState<number | null>(null)
   const [renderError, setRenderError] = useState<string | null>(null)
+
+  useLayoutEffect(() => {
+    onRenderedRef.current = onRendered
+  }, [onRendered])
 
   // Render (or re-render) the staff, clamping to the figure's available width.
   const doRender = (availableWidth: number) => {
@@ -77,6 +80,7 @@ export function RhythmStaff({
       onRenderedRef.current?.(result.width, result.anchors, result.firstEventX, result.staveEndX)
       setRenderError(null)
     } catch (err) {
+      console.warn('RhythmStaff render failed', err)
       setRenderError(err instanceof Error ? err.message : 'Could not render notation')
     }
   }

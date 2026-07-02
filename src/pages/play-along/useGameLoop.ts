@@ -7,16 +7,18 @@ import {
   type GeneratedMeasure,
 } from '../../lib/rhythmGenerator'
 import { tickEngine } from '../../lib/audio'
+import type { PlayAlongConfig } from '../../lib/playAlongConfig'
 import { msPerMeasure, shouldPulseDownbeat, SLOT_PX, CURSOR_FRAC } from '../../lib/playAlongTiming'
 import { SLOT_COUNT, LOOK_AHEAD, HIT_WINDOW_MS } from './constants'
 import type { Phase, PendingOnset } from '../PlayAlong'
 
 interface UseGameLoopArgs {
   phase: Phase
-  cfg: any
-  beatsInMeasure: number
+  cfg: PlayAlongConfig
+  currentBeatsInMeasureRef: React.MutableRefObject<number>
   bpmRef: React.MutableRefObject<number>
   reelRef: React.MutableRefObject<GeneratedMeasure[]>
+  setReelSnapshot: React.Dispatch<React.SetStateAction<GeneratedMeasure[]>>
   reelViewportRef: React.MutableRefObject<HTMLDivElement | null>
   reelTrackRef: React.MutableRefObject<HTMLDivElement | null>
   pendingRef: React.MutableRefObject<PendingOnset[]>
@@ -35,6 +37,7 @@ interface UseGameLoopArgs {
   stageNotifTimerRef: React.MutableRefObject<number | null>
   bpmNotifTimerRef: React.MutableRefObject<number | null>
   successfulMeasuresRef: React.MutableRefObject<number>
+  missedMeasureLoopIdxsRef: React.MutableRefObject<Set<number>>
   mistakenAbsMeasuresRef: React.MutableRefObject<Map<number, GeneratedMeasure>>
   baseSeedRef: React.MutableRefObject<number>
   setBeatsInMeasure: (n: number) => void
@@ -49,15 +52,23 @@ interface UseGameLoopArgs {
   onGameOver: () => void
   scheduleMeasure: (absIdx: number) => void
   beatIndex: number | null
-  missMap: Record<number, number[]>
+}
+
+export function nextSuccessfulMeasureCount(
+  currentCount: number,
+  missedMeasureLoopIdxs: Set<number>,
+  completedLoopIdx: number,
+): number {
+  return missedMeasureLoopIdxs.has(completedLoopIdx) ? currentCount : currentCount + 1
 }
 
 export function useGameLoop({
   phase,
   cfg,
-  beatsInMeasure,
+  currentBeatsInMeasureRef,
   bpmRef,
   reelRef,
+  setReelSnapshot,
   reelViewportRef,
   reelTrackRef,
   pendingRef,
@@ -76,6 +87,7 @@ export function useGameLoop({
   stageNotifTimerRef,
   bpmNotifTimerRef,
   successfulMeasuresRef,
+  missedMeasureLoopIdxsRef,
   mistakenAbsMeasuresRef,
   baseSeedRef,
   setBeatsInMeasure,
@@ -90,7 +102,6 @@ export function useGameLoop({
   onGameOver,
   scheduleMeasure,
   beatIndex,
-  missMap,
 }: UseGameLoopArgs): void {
   // ── RAF-driven reel scroll ────────────────────────────────────────────────
   useEffect(() => {
@@ -126,7 +137,9 @@ export function useGameLoop({
       cursorLoopIdxRef.current = loopIdx
       if (loopIdx !== prevMeasureLoopIdxRef.current) {
         prevMeasureLoopIdxRef.current = loopIdx
-        setBeatsInMeasure(reelRef.current[loopIdx]?.timeSigTop ?? 4)
+        const nextBeats = reelRef.current[loopIdx]?.timeSigTop ?? 4
+        currentBeatsInMeasureRef.current = nextBeats
+        setBeatsInMeasure(nextBeats)
       }
 
       const curBeats    = reelRef.current[loopIdx]?.timeSigTop ?? 4
@@ -159,6 +172,8 @@ export function useGameLoop({
         setHitMap(prev  => { const n = {...prev};  for (const s of staleSlots) delete n[s]; return n })
         setMissMap(prev => { const n = {...prev};  for (const s of staleSlots) delete n[s]; return n })
         setStrayMap(prev => { const n = {...prev}; for (const s of staleSlots) delete n[s]; return n })
+        setReelSnapshot([...reelRef.current])
+        for (const s of staleSlots) missedMeasureLoopIdxsRef.current.delete(s)
       }
 
       for (let a = absIdx; a <= absIdx + 3; a++) {
@@ -172,6 +187,7 @@ export function useGameLoop({
         if (reelPxRef.current > onset.duePx + hitWindowPx) {
           onset.resolved = true
           consecutiveMissesRef.current++
+          missedMeasureLoopIdxsRef.current.add(onset.measureLoopIdx)
           mistakenAbsMeasuresRef.current.set(onset.measureAbsIdx, reelRef.current[onset.measureLoopIdx])
           setMissMap(prev => {
             const ex = prev[onset.measureLoopIdx] ?? []
@@ -189,9 +205,13 @@ export function useGameLoop({
       if (completed > prevCompletedRef.current && completed >= 0) {
         prevCompletedRef.current = completed
         const compLoopIdx = completed % SLOT_COUNT
-        const hadMiss = missMap[compLoopIdx]?.length > 0
-        if (!hadMiss) {
-          successfulMeasuresRef.current++
+        const nextCount = nextSuccessfulMeasureCount(
+          successfulMeasuresRef.current,
+          missedMeasureLoopIdxsRef.current,
+          compLoopIdx,
+        )
+        if (nextCount !== successfulMeasuresRef.current) {
+          successfulMeasuresRef.current = nextCount
           if (
             successfulMeasuresRef.current % cfg.bpmIncreaseAfterMeasures === 0 &&
             bpmRef.current < cfg.bpmCap
@@ -203,7 +223,7 @@ export function useGameLoop({
             if (bpmNotifTimerRef.current) window.clearTimeout(bpmNotifTimerRef.current)
             bpmNotifTimerRef.current = window.setTimeout(() => setBpmNotif(null), 3500)
             tickEngine.cancelAll()
-            tickEngine.startMetronome(newBpm, undefined, undefined, beatsInMeasure)
+            tickEngine.startMetronome(newBpm, undefined, undefined, currentBeatsInMeasureRef.current)
           }
         }
       }
@@ -225,5 +245,5 @@ export function useGameLoop({
   useEffect(() => {
     if (!shouldPulseDownbeat(phase, beatIndex)) return
     setPulse(prev => ({ idx: cursorLoopIdxRef.current, n: (prev?.n ?? 0) + 1 }))
-  }, [beatIndex, phase])
+  }, [beatIndex, cursorLoopIdxRef, phase, setPulse])
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import type { Pattern } from '../api/types'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '../auth/useAuth'
 import { NotationExample } from '../components/NotationExample'
 import { SamplePlayer } from '../components/SamplePlayer'
 import type { SampleExercise } from '../components/SamplePlayer'
@@ -16,7 +16,7 @@ interface LearnSection {
 
 const p = (events: Pattern['events']): Pattern => ({ events })
 
-export const LEARN_SECTIONS: LearnSection[] = [
+const LEARN_SECTIONS: LearnSection[] = [
   {
     slug: 'reading-rhythm',
     title: 'How to read rhythm (start here)',

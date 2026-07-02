@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 interface TapCaptureOptions {
   /** The attempt ends automatically once this many taps have been recorded. */
@@ -30,8 +30,11 @@ export function useTapCapture({ expectedTaps, onTap, onComplete }: TapCaptureOpt
   const capturingRef = useRef(false)
   const onTapRef = useRef(onTap)
   const onCompleteRef = useRef(onComplete)
-  onTapRef.current = onTap
-  onCompleteRef.current = onComplete
+
+  useEffect(() => {
+    onTapRef.current = onTap
+    onCompleteRef.current = onComplete
+  }, [onTap, onComplete])
 
   const stop = useCallback((): number[] => {
     capturingRef.current = false

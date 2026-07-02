@@ -116,9 +116,7 @@ export function TheoryQuiz<Q>({
   const [streak, setStreak] = useState(0)
   const [best, setBest]     = useState(0)
 
-  const timerRef    = useRef<number | null>(null)
-  const modeIdRef   = useRef(modeId)
-  modeIdRef.current = modeId
+  const timerRef = useRef<number | null>(null)
 
   // Side-effect hook — audio autoplay, etc.
   useEffect(() => {
@@ -131,19 +129,17 @@ export function TheoryQuiz<Q>({
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
 
   const advance = useCallback((excludeKey?: string) => {
-    const m           = modeIdRef.current
-    const currentMode = modes.find(md => md.id === m) ?? modes[0]
+    const currentMode = modes.find(md => md.id === modeId) ?? modes[0]
     const q           = pickQuestion(currentMode.pool, excludeKey)
     setQuestion(q)
-    setChoices(pickChoices(q, currentMode.pool, m))
+    setChoices(pickChoices(q, currentMode.pool, modeId))
     setSelected(null)
-  }, [modes, pickQuestion, pickChoices])
+  }, [modeId, modes, pickQuestion, pickChoices])
 
   const switchMode = useCallback((newModeId: string) => {
     if (timerRef.current) clearTimeout(timerRef.current)
     const newMode = modes.find(m => m.id === newModeId) ?? modes[0]
     const q       = pickQuestion(newMode.pool)
-    modeIdRef.current = newModeId
     setModeId(newModeId)
     setQuestion(q)
     setChoices(pickChoices(q, newMode.pool, newModeId))
@@ -153,7 +149,7 @@ export function TheoryQuiz<Q>({
 
   function handleAnswer(choice: string) {
     if (selected !== null) return
-    const answer  = getAnswer(question, modeIdRef.current)
+    const answer  = getAnswer(question, modeId)
     const correct = choice === answer
     setSelected(choice)
     setTotal(t => t + 1)

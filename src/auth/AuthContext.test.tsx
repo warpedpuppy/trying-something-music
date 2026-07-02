@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it, beforeEach } from 'vitest'
-import { AuthProvider, useAuth } from './AuthContext'
+import { AuthProvider } from './AuthContext'
+import { useAuth } from './useAuth'
 
 // Each test gets a clean localStorage so users don't bleed between cases.
 beforeEach(() => localStorage.clear())

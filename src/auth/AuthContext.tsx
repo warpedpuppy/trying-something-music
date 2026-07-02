@@ -1,19 +1,9 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { api, setToken } from '../api/client'
 import { findUserById, getOrCreateDefaultUser, getSession, setSession } from '../lib/localDb'
 import type { User } from '../api/types'
-
-interface AuthState {
-  user: User | null
-  isDefaultUser: boolean
-  loading: boolean
-  login: (username: string) => Promise<void>
-  register: (username: string) => Promise<void>
-  logout: () => void
-}
-
-const AuthContext = createContext<AuthState | null>(null)
+import { AuthContext } from './authContextValue'
 
 function resolveInitialUser(): User | null {
   const session = getSession()
@@ -57,12 +47,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, loading, login, register, logout])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
-
-export function useAuth(): AuthState {
-  const context = useContext(AuthContext)
-  if (!context) {
-    throw new Error('useAuth must be used inside an AuthProvider')
-  }
-  return context
 }

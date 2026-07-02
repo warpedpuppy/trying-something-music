@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { usePageTitle } from '../../hooks/usePageTitle'
-import { useAuth } from '../../auth/AuthContext'
+import { useAuth } from '../../auth/useAuth'
 import { getTheoryCompletions } from '../../lib/localDb'
 
 interface Topic {
@@ -11,13 +11,13 @@ interface Topic {
   available: boolean
 }
 
-export interface Level {
+interface Level {
   name: 'Beginner' | 'Intermediate' | 'Advanced'
   tagline: string
   topics: Topic[]
 }
 
-export const LEVELS: Level[] = [
+const LEVELS: Level[] = [
   // ── Beginner ──────────────────────────────────────────────────────────────
   {
     name: 'Beginner',
@@ -201,7 +201,7 @@ function slugFromHref(href: string): string {
   return href.split('/').pop() ?? ''
 }
 
-export const LEVEL_BADGE_CLASS: Record<Level['name'], string> = {
+const LEVEL_BADGE_CLASS: Record<Level['name'], string> = {
   Beginner:     'theory-level-badge theory-level-badge-beginner',
   Intermediate: 'theory-level-badge theory-level-badge-intermediate',
   Advanced:     'theory-level-badge theory-level-badge-advanced',
